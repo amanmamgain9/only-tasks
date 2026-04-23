@@ -1,0 +1,514 @@
+// treeMutations.ts - All tree operations in one place
+import { v4 as uuidv4 } from 'uuid';
+import type { EnhancedTaskTreeType, Project, Operation, SubtreeNode } from "./types";
+import { generatePosition } from "./positionUtils";
+
+// ========================================================================
+// TYPES
+// ========================================================================
+
+export type EditorState = {
+  project: Project;
+  tasks: EnhancedTaskTreeType[];
+  currentRootTaskId: string | null;
+  expandedTasks: Set<string>;
+  selectionId?: string;
+  dueDateFilter?: 'today' | 'tomorrow' | 'this-week'; // ✅ Already added
+  chatId?: number; // ✅ NEW: Link state to chat for draft task creation
+};
+
+export type HistoryEntry = {
+  operation: Operation;
+  inverseOperation: Operation;
+  label: string;
+};
+
+// ========================================================================
+// FIND HELPERS
+// ========================================================================
+
+export const findTaskByClientId = (
+  tasks: EnhancedTaskTreeType[], 
+  targetClientId: string
+): EnhancedTaskTreeType | null => {
+  for (const task of tasks) {
+    if (task.clientId === targetClientId) return task;
+    if (task.subtasks) {
+      const found = findTaskByClientId(task.subtasks, targetClientId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+export const findParentTask = (
+  tasks: EnhancedTaskTreeType[], 
+  targetClientId: string
+): EnhancedTaskTreeType | null => {
+  for (const task of tasks) {
+    if (task.subtasks?.some(st => st.clientId === targetClientId)) {
+      return task;
+    }
+    if (task.subtasks) {
+      const found = findParentTask(task.subtasks, targetClientId);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+// ========================================================================
+// SERIALIZATION
+// ========================================================================
+
+export const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
+  return {
+    clientId: task.clientId,
+    title: task.title || '',
+    position: task.position || '',
+    isCompleted: task.isCompleted ?? false,
+    estimatedTimeMinutes: task.estimatedTimeMinutes,
+    dueDate: task.dueDate,
+    subtasks: task.subtasks?.filter(t => !t.isEphemeral).map(serializeSubtree)
+  };
+};
+
+// ========================================================================
+// TREE MANIPULATION
+// ========================================================================
+
+const removeTaskFromTree = (tasks: EnhancedTaskTreeType[], clientId: string): boolean => {
+  for (let i = 0; i < tasks.length; i++) {
+    if (tasks[i].clientId === clientId) {
+      tasks.splice(i, 1);
+      return true;
+    }
+    if (tasks[i].subtasks && removeTaskFromTree(tasks[i].subtasks!, clientId)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// ========================================================================
+// EMPTY NODE MANAGEMENT
+// ========================================================================
+
+export const createEmptyTask = (
+  draft: EditorState, 
+  parentTaskClientId: string | null
+): EnhancedTaskTreeType => {
+  const siblings = parentTaskClientId === null 
+    ? draft.tasks 
+    : findTaskByClientId(draft.tasks, parentTaskClientId)?.subtasks || [];
+
+  return {
+    clientId: uuidv4(),
+    title: '',
+    isCompleted: false,
+    projectId: draft.project.id,
+    parentTaskId: parentTaskClientId 
+      ? findTaskByClientId(draft.tasks, parentTaskClientId)?.id || null 
+      : null,
+    position: generatePosition(siblings),
+    subtasks: [],
+    isEphemeral: true
+  };
+};
+
+export const ensureTrailingEmptyTask = (
+  draft: EditorState, 
+  parentTaskClientId: string | null
+): void => {
+  let siblings: EnhancedTaskTreeType[];
+  
+  if (parentTaskClientId === null) {
+    siblings = draft.tasks;
+  } else {
+    const parent = findTaskByClientId(draft.tasks, parentTaskClientId);
+    if (!parent) return;
+    siblings = parent.subtasks || [];
+  }
+  
+  const lastTask = siblings[siblings.length - 1];
+  const needsEmpty = !lastTask || 
+    (!lastTask.isEphemeral || lastTask.title?.trim() !== '' || lastTask.isCompleted);
+  
+  if (needsEmpty) {
+    const emptyTask = createEmptyTask(draft, parentTaskClientId);
+    
+    if (parentTaskClientId === null) {
+      draft.tasks.push(emptyTask);
+    } else {
+      const parent = findTaskByClientId(draft.tasks, parentTaskClientId);
+      if (parent) {
+        parent.subtasks = parent.subtasks || [];
+        parent.subtasks.push(emptyTask);
+      }
+    }
+  }
+};
+
+export const ensureEmptyNodesEverywhere = (draft: EditorState): void => {
+  ensureTrailingEmptyTask(draft, null);
+  
+  const walkTasks = (tasks: EnhancedTaskTreeType[]) => {
+    tasks.forEach(task => {
+      if (draft.expandedTasks.has(task.clientId)) {
+        ensureTrailingEmptyTask(draft, task.clientId);
+      }
+      if (task.subtasks) {
+        walkTasks(task.subtasks);
+      }
+    });
+  };
+  
+  walkTasks(draft.tasks);
+};
+
+// ========================================================================
+// BACKEND SYNC CONFIGURATION
+// ========================================================================
+
+const BACKEND_SYNCED_OPERATIONS = new Set([
+  'CREATE_TASK',
+  'UPDATE_TITLE',
+  'TOGGLE_COMPLETE',
+  'DELETE_TASK',
+  'UPDATE_METADATA',
+  'IMPORT_TASKS'
+]);
+
+export const shouldSyncToBackend = (operation: Operation): boolean => {
+  return BACKEND_SYNCED_OPERATIONS.has(operation.type);
+};
+
+// ========================================================================
+// OPERATION APPLICATION
+// ========================================================================
+
+export const applyOperationToState = (draft: EditorState, operation: Operation): void => {
+  switch (operation.type) {
+    case 'TOGGLE_EXPANSION': {
+      const task = findTaskByClientId(draft.tasks, operation.clientId);
+      if (!task) return;
+      
+      if (operation.isExpanded) {
+        draft.expandedTasks.add(operation.clientId);
+        ensureTrailingEmptyTask(draft, operation.clientId);
+      } else {
+        draft.expandedTasks.delete(operation.clientId);
+      }
+      break;
+    }
+    
+    case 'SET_CURRENT_ROOT': {
+      if (operation.clientId === null || findTaskByClientId(draft.tasks, operation.clientId)) {
+        draft.currentRootTaskId = operation.clientId;
+      }
+      break;
+    }
+    
+    // ✅ UPDATED CASE - Handle metadata
+    case 'CREATE_TASK': {
+      const task = findTaskByClientId(draft.tasks, operation.clientId);
+      if (task && task.isEphemeral) {
+        // Task already exists as ephemeral, just promote it
+        task.isEphemeral = false;
+        
+        // Apply metadata if provided
+        if (operation.metadata) {
+          if (operation.metadata.dueDate !== undefined) {
+            task.dueDate = operation.metadata.dueDate;
+          }
+          if (operation.metadata.estimatedTimeMinutes !== undefined) {
+            task.estimatedTimeMinutes = operation.metadata.estimatedTimeMinutes;
+          }
+          if (operation.metadata.priority !== undefined) {
+            task.priority = operation.metadata.priority;
+          }
+        }
+      } else if (!task) {
+        // Task doesn't exist at all, create it
+        const newTask: EnhancedTaskTreeType = {
+          clientId: operation.clientId,
+          title: '', // Empty initially - title comes from UPDATE_TITLE
+          isCompleted: false,
+          projectId: draft.project.id,
+          parentTaskId: operation.parentClientId 
+            ? findTaskByClientId(draft.tasks, operation.parentClientId)?.id || null 
+            : null,
+          position: operation.position,
+          subtasks: [],
+          isEphemeral: false,
+          // Apply metadata if provided
+          dueDate: operation.metadata?.dueDate ?? null,
+          estimatedTimeMinutes: operation.metadata?.estimatedTimeMinutes ?? null,
+          priority: operation.metadata?.priority ?? null,
+        };
+        
+        if (operation.parentClientId === null) {
+          draft.tasks.push(newTask);
+        } else {
+          const parent = findTaskByClientId(draft.tasks, operation.parentClientId);
+          if (parent) {
+            parent.subtasks = parent.subtasks || [];
+            parent.subtasks.push(newTask);
+          }
+        }
+      }
+      break;
+    }
+    
+    case 'UPDATE_TITLE': {
+      const task = findTaskByClientId(draft.tasks, operation.clientId);
+      if (task) {
+        task.title = operation.title;
+      }
+      break;
+    }
+    
+    case 'TOGGLE_COMPLETE': {
+      const task = findTaskByClientId(draft.tasks, operation.clientId);
+      if (task) {
+        task.isCompleted = operation.isCompleted;
+      }
+      break;
+    }
+    
+    case 'UPDATE_METADATA': {
+      const task = findTaskByClientId(draft.tasks, operation.clientId);
+      if (task) {
+        if ('estimatedTimeMinutes' in operation) {
+          task.estimatedTimeMinutes = operation.estimatedTimeMinutes ?? null;
+        }
+        if ('dueDate' in operation) {
+          task.dueDate = operation.dueDate ?? null;
+        }
+        if ('priority' in operation) {
+          task.priority = operation.priority ?? null;
+        }
+        if ('description' in operation) {
+          task.description = operation.description ?? null;
+        }
+      }
+      break;
+    }
+    
+    case 'DELETE_TASK': {
+      const task = findTaskByClientId(draft.tasks, operation.clientId);
+      if (!task) return;
+      
+      if (draft.currentRootTaskId === operation.clientId) {
+        draft.currentRootTaskId = null;
+      }
+      
+      draft.expandedTasks.delete(operation.clientId);
+      removeTaskFromTree(draft.tasks, operation.clientId);
+      break;
+    }
+    
+    case 'IMPORT_TASKS': {
+      const reconstructTask = (subtree: SubtreeNode): EnhancedTaskTreeType => ({
+        ...subtree,
+        projectId: draft.project.id,
+        parentTaskId: null,
+        subtasks: subtree.subtasks?.map(reconstructTask),
+        isEphemeral: false
+      });
+      
+      const newTask = reconstructTask(operation.subtree);
+      
+      if (operation.parentClientId === null) {
+        draft.tasks.push(newTask);
+      } else {
+        const parent = findTaskByClientId(draft.tasks, operation.parentClientId);
+        if (parent) {
+          parent.subtasks = parent.subtasks || [];
+          parent.subtasks.push(newTask);
+          draft.expandedTasks.add(operation.parentClientId);
+        }
+      }
+      break;
+    }
+  }
+};
+
+export const getInverseOperation = (
+  operation: Operation, 
+  currentState: EditorState
+): Operation | null => {
+  switch (operation.type) {
+    case 'TOGGLE_EXPANSION':
+      return {
+        type: 'TOGGLE_EXPANSION',
+        clientId: operation.clientId,
+        isExpanded: !operation.isExpanded,
+        timestamp: Date.now()
+      };
+    
+    case 'SET_CURRENT_ROOT':
+      return {
+        type: 'SET_CURRENT_ROOT',
+        clientId: currentState.currentRootTaskId,
+        timestamp: Date.now()
+      };
+    
+    case 'CREATE_TASK': {
+      return {
+        type: 'DELETE_TASK',
+        clientId: operation.clientId,
+        timestamp: Date.now()
+      };
+    }
+    
+    case 'UPDATE_TITLE': {
+      const task = findTaskByClientId(currentState.tasks, operation.clientId);
+      return {
+        type: 'UPDATE_TITLE',
+        clientId: operation.clientId,
+        title: task?.title || '',
+        timestamp: Date.now()
+      };
+    }
+    
+    case 'TOGGLE_COMPLETE':
+      return {
+        type: 'TOGGLE_COMPLETE',
+        clientId: operation.clientId,
+        isCompleted: !operation.isCompleted,
+        timestamp: Date.now()
+      };
+    
+    case 'UPDATE_METADATA': {
+      const task = findTaskByClientId(currentState.tasks, operation.clientId);
+      return {
+        type: 'UPDATE_METADATA',
+        clientId: operation.clientId,
+        estimatedTimeMinutes: task?.estimatedTimeMinutes,
+        dueDate: task?.dueDate,
+        priority: task?.priority,
+        description: task?.description,
+        timestamp: Date.now()
+      };
+    }
+    
+    case 'DELETE_TASK': {
+      const task = findTaskByClientId(currentState.tasks, operation.clientId);
+      const parent = findParentTask(currentState.tasks, operation.clientId);
+      if (!task) return null;
+      
+      return {
+        type: 'IMPORT_TASKS',
+        rootClientId: operation.clientId,
+        parentClientId: parent?.clientId || null,
+        subtree: serializeSubtree(task),
+        timestamp: Date.now()
+      };
+    }
+    
+    case 'IMPORT_TASKS':
+      return {
+        type: 'DELETE_TASK',
+        clientId: operation.rootClientId,
+        timestamp: Date.now()
+      };
+  }
+};
+
+// ========================================================================
+// OPERATION CREATORS - NOW PURE!
+// ========================================================================
+
+export const createToggleExpansionOp = (
+  clientId: string,
+  isExpanded: boolean
+): Operation => {
+  return {
+    type: 'TOGGLE_EXPANSION',
+    clientId,
+    isExpanded,
+    timestamp: Date.now()
+  };
+};
+
+export const createSetCurrentRootOp = (
+  clientId: string | null
+): Operation => {
+  return {
+    type: 'SET_CURRENT_ROOT',
+    clientId,
+    timestamp: Date.now()
+  };
+};
+
+export const createTaskOp = (
+  clientId: string,
+  parentClientId: string | null,
+  position: string,
+  metadata?: {
+    dueDate?: string | null;
+    estimatedTimeMinutes?: number | null;
+    priority?: number | null;
+  }
+): Operation => {
+  return {
+    type: 'CREATE_TASK',
+    clientId,
+    parentClientId,
+    position,
+    metadata, // ✅ Already added
+    timestamp: Date.now()
+  };
+};
+
+export const createUpdateTitleOp = (
+  clientId: string,
+  title: string
+): Operation => {
+  return {
+    type: 'UPDATE_TITLE',
+    clientId,
+    title,
+    timestamp: Date.now()
+  };
+};
+
+export const createToggleCompletionOp = (
+  clientId: string,
+  isCompleted: boolean
+): Operation => {
+  return {
+    type: 'TOGGLE_COMPLETE',
+    clientId,
+    isCompleted,
+    timestamp: Date.now()
+  };
+};
+
+export const createDeleteTaskOp = (
+  clientId: string
+): Operation => {
+  return {
+    type: 'DELETE_TASK',
+    clientId,
+    timestamp: Date.now()
+  };
+};
+
+export const createUpdateMetadataOp = (
+  clientId: string,
+  updates: {
+    estimatedTimeMinutes?: number | null;
+    dueDate?: string | null;
+    priority?: number | null;
+    description?: string | null;
+  }
+): Operation => {
+  return {
+    type: 'UPDATE_METADATA',
+    clientId,
+    ...updates,
+    timestamp: Date.now()
+  } as Operation;
+};
