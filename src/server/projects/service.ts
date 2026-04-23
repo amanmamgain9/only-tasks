@@ -9,14 +9,7 @@ export async function ensureDefaultWorkspace(userId: number): Promise<void> {
   const existingUser = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
   if (existingUser.length === 0) {
-    await db.insert(users).values({
-      id: userId,
-      email: "local@onlytasks.app",
-      name: "Local User",
-      image: null,
-      createdAt: now,
-      updatedAt: now,
-    });
+    throw new Error(`Cannot initialize workspace for missing user ${userId}`);
   }
 
   const existingProjects = await projectRepo.findProjectsByUserId(userId);

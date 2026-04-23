@@ -1,13 +1,16 @@
 "use client";
 
-import React, { Suspense, useEffect, useRef } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import MyDayTasksComponent from "./MyWorkdayTasksComponent";
 import WorkspaceSidebar from "../WorkspaceSidebar";
 import { NavigationService } from "../../_services/navigationService";
+import type { AuthenticatedUser } from "@/server/auth";
 
 interface MyWorkplaceComponentProps {
   regionOrder: number;
   dueDateFilter?: "today" | "tomorrow" | "this-week";
+  viewer?: AuthenticatedUser | null;
 }
 
 const SkeletonMyWorkplaceComponent = () => {
@@ -23,8 +26,11 @@ const SkeletonMyWorkplaceComponent = () => {
   );
 };
 
-const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter }) => {
+const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
   const appRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const [resolvedViewer, setResolvedViewer] = useState<AuthenticatedUser | null>(viewer ?? null);
+  const [isLoadingViewer, setIsLoadingViewer] = useState(!viewer);
 
   useEffect(() => {
     if (!appRef.current) return;
@@ -34,6 +40,57 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
     };
   }, []);
 
+  useEffect(() => {
+    if (viewer) {
+      setResolvedViewer(viewer);
+      setIsLoadingViewer(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadViewer() {
+      try {
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (response.status === 401) {
+          window.location.href = `/sign-in?next=${encodeURIComponent(pathname || "/")}`;
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to load current user.");
+        }
+
+        const payload = (await response.json()) as { success: boolean; data?: AuthenticatedUser };
+        if (!cancelled) {
+          setResolvedViewer(payload.data ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          window.location.href = `/sign-in?next=${encodeURIComponent(pathname || "/")}`;
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingViewer(false);
+        }
+      }
+    }
+
+    void loadViewer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, viewer]);
+
+  if (isLoadingViewer || !resolvedViewer) {
+    return <SkeletonMyWorkplaceComponent />;
+  }
+
   return (
     <div
       ref={appRef}
@@ -41,7 +98,7 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
       className="relative min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_28%),linear-gradient(180deg,#fafaf9_0%,#f5f5f4_100%)]"
     >
       <div className="min-h-screen lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
-        <WorkspaceSidebar regionOrder={regionOrder} dueDateFilter={dueDateFilter} />
+        <WorkspaceSidebar regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={resolvedViewer} />
         <div className="min-w-0">
           <div data-region id="workspace-region" data-order={regionOrder + 1} className="px-4 py-5 sm:px-6 md:px-8">
             <div data-layout="vertical">
@@ -56,10 +113,10 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
   );
 };
 
-const MyWorkplaceParentComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter }) => {
+const MyWorkplaceParentComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
   return (
     <Suspense fallback={<SkeletonMyWorkplaceComponent />}>
-      <MyWorkplaceComponent regionOrder={regionOrder} dueDateFilter={dueDateFilter} />
+      <MyWorkplaceComponent regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={viewer ?? null} />
     </Suspense>
   );
 };

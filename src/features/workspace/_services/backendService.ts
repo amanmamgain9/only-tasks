@@ -25,7 +25,7 @@ const parseResponse = async <T>(response: Response): Promise<ApiResponse<T>> => 
 export const getProjects = async (): Promise<ApiResponse<Project[]> | null> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/projects`, {
-      method: "GET",
+      method: "POST",
       cache: "no-store",
     });
     return await parseResponse<Project[]>(response);
@@ -54,7 +54,7 @@ export const getProjectTree = async (
       : `${API_BASE_URL}/api/projects/${projectId}/tree?${searchParams.toString()}`;
 
     const response = await fetch(url, {
-      method: "GET",
+      method: "POST",
       cache: "no-store",
     });
     return await parseResponse<EnhancedTaskTreeType[]>(response);

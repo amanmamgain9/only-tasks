@@ -4,3 +4,4 @@ tsconfig.tsbuildinfo
 .DS_Store
 data/app.db
 data/app.db-*
+data/app.backup-*.sqlite
