@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isDevelopmentAuthEnabled, isGoogleAuthConfigured, listRecentUsers } from "@/server/auth";
+import { resolveOrigin } from "./_helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
@@ -17,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.status(200).json({
     success: true,
     data: {
-      googleEnabled: isGoogleAuthConfigured(),
+      googleEnabled: isGoogleAuthConfigured(resolveOrigin(req)),
       devAuthEnabled: true,
       users: users.map((user) => ({
         id: user.id,

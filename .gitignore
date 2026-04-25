@@ -2,6 +2,8 @@
 node_modules
 tsconfig.tsbuildinfo
 .DS_Store
+.env.local
+.env.*.local
 data/app.db
 data/app.db-*
 data/app.backup-*.sqlite

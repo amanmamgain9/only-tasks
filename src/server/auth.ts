@@ -49,12 +49,40 @@ function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
 
-function getGoogleRedirectUri(origin: string) {
-  return process.env.GOOGLE_REDIRECT_URI || `${origin}/api/auth/google/callback`;
+function resolveGoogleCredentials(origin?: string | null) {
+  const normalizedOrigin = origin?.toLowerCase() || "";
+
+  if (normalizedOrigin.includes("planmyworkday")) {
+    return {
+      clientId: process.env.PLANMYWORKDAY_GOOGLE_CLIENT_ID || null,
+      clientSecret: process.env.PLANMYWORKDAY_GOOGLE_CLIENT_SECRET || null,
+    };
+  }
+
+  if (normalizedOrigin.includes("painpulse")) {
+    return {
+      clientId: process.env.PAINPULSE_GOOGLE_CLIENT_ID || null,
+      clientSecret: process.env.PAINPULSE_GOOGLE_CLIENT_SECRET || null,
+    };
+  }
+
+  return {
+    clientId: process.env.GOOGLE_CLIENT_ID || null,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || null,
+  };
 }
 
-export function isGoogleAuthConfigured() {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+function getGoogleRedirectUri(origin: string) {
+  const normalizedOrigin = origin.toLowerCase();
+  if (normalizedOrigin.includes("planmyworkday") || normalizedOrigin.includes("painpulse")) {
+    return `${origin}/api/auth/google/callback`;
+  }
+  return process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL || `${origin}/api/auth/google/callback`;
+}
+
+export function isGoogleAuthConfigured(origin?: string | null) {
+  const credentials = resolveGoogleCredentials(origin || process.env.GOOGLE_AUTH_ORIGIN || null);
+  return Boolean(credentials.clientId && credentials.clientSecret);
 }
 
 export function isDevelopmentAuthEnabled() {
@@ -205,13 +233,17 @@ export async function revokeSessionFromRequest(request: Request) {
 }
 
 export function buildGoogleAuthorizationRequest(origin: string, redirectTo = "/") {
-  if (!isGoogleAuthConfigured()) {
+  if (!isGoogleAuthConfigured(origin)) {
+    throw new Error("Google authentication is not configured.");
+  }
+  const credentials = resolveGoogleCredentials(origin);
+  if (!credentials.clientId || !credentials.clientSecret) {
     throw new Error("Google authentication is not configured.");
   }
 
   const state = randomBytes(24).toString("hex");
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  url.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID!);
+  url.searchParams.set("client_id", credentials.clientId);
   url.searchParams.set("redirect_uri", getGoogleRedirectUri(origin));
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "openid email profile");
@@ -237,7 +269,8 @@ export async function completeGoogleLogin(
     ipAddress?: string | null;
   },
 ) {
-  if (!isGoogleAuthConfigured()) {
+  const credentials = resolveGoogleCredentials(params.origin);
+  if (!credentials.clientId || !credentials.clientSecret) {
     throw new Error("Google authentication is not configured.");
   }
 
@@ -252,8 +285,8 @@ export async function completeGoogleLogin(
     },
     body: new URLSearchParams({
       code: params.code,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
       redirect_uri: getGoogleRedirectUri(params.origin),
       grant_type: "authorization_code",
     }),

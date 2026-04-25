@@ -142,7 +142,7 @@ export default function SignInScreen() {
                 </form>
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-stone-300">
-                  Google auth is not configured yet. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` when you want production login on EC2.
+                  Google auth is not configured for this host. On `localhost`, this app uses `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. The `PLANMYWORKDAY_GOOGLE_*` values are only used on real `planmyworkday` hosts.
                 </div>
               )}
 
