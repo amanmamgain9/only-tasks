@@ -2,12 +2,11 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const SESSION_COOKIE_NAME = "only_tasks_session";
-const protectedPaths = new Set(["/", "/all-tasks", "/today", "/tomorrow", "/this-week"]);
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  if (!protectedPaths.has(pathname)) {
+  if (!(pathname === "/app" || pathname.startsWith("/app/"))) {
     return NextResponse.next();
   }
 
@@ -23,5 +22,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/all-tasks", "/today", "/tomorrow", "/this-week"],
+  matcher: ["/app", "/app/:path*"],
 };

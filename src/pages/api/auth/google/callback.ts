@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         path: "/",
       }),
     ]);
-    res.redirect(302, `${origin}${result.redirectTo || "/"}`);
+    res.redirect(302, `${origin}${result.redirectTo || "/app"}`);
   } catch (error) {
     res.setHeader("Set-Cookie", [
       expireCookie(GOOGLE_STATE_COOKIE_NAME),

@@ -22,7 +22,7 @@ export default function SignInScreen() {
   const [devAuthEnabled, setDevAuthEnabled] = useState(false);
   const [recentUsers, setRecentUsers] = useState<DevUser[]>([]);
 
-  const nextPath = searchParams?.get("next") || "/";
+  const nextPath = searchParams?.get("next") || "/app";
   const errorCode = searchParams?.get("error");
   const errorMessage = errorCode ? errorMessages[errorCode] ?? "Unable to complete sign-in." : null;
 
@@ -36,7 +36,7 @@ export default function SignInScreen() {
       });
 
       if (meResponse.ok) {
-        router.replace("/");
+        router.replace(nextPath);
         return;
       }
 
@@ -75,7 +75,7 @@ export default function SignInScreen() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [nextPath, router]);
 
   const featureCards = useMemo(
     () => [

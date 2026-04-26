@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const userId = Number(req.body?.userId);
-  const redirectTo = typeof req.body?.redirectTo === "string" ? req.body.redirectTo : "/";
+  const redirectTo = typeof req.body?.redirectTo === "string" ? req.body.redirectTo : "/app";
 
   if (!Number.isFinite(userId)) {
     res.status(400).json({ success: false, error: "Invalid user ID" });

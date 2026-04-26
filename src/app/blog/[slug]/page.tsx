@@ -1,0 +1,101 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+import { notFound } from "next/navigation";
+import { CalendarDays, Clock3, Tag } from "lucide-react";
+import MarketingFooter from "@/features/marketing/components/MarketingFooter";
+import MarketingHeader from "@/features/marketing/components/MarketingHeader";
+import { getAllBlogSlugs, getBlogPost } from "@/features/marketing/blog-data/posts";
+
+export function generateStaticParams() {
+  return getAllBlogSlugs().map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = getBlogPost(slug);
+
+  if (!post) {
+    return {
+      title: "Post not found",
+    };
+  }
+
+  return {
+    title: post.title,
+    description: post.description,
+    openGraph: {
+      title: post.title,
+      description: post.description,
+      images: [{ url: post.image }],
+      type: "article",
+    },
+  };
+}
+
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const post = getBlogPost(slug);
+
+  if (!post) {
+    notFound();
+  }
+
+  return (
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] text-slate-950">
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 sm:px-6 lg:px-8">
+        <MarketingHeader />
+
+        <article className="pb-16 pt-10">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)] md:p-8">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4" />
+                {new Date(post.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Clock3 className="h-4 w-4" />
+                {post.readTime}
+              </span>
+            </div>
+
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 md:text-5xl">{post.title}</h1>
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">{post.description}</p>
+
+            <div className="mt-8 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-100">
+              <Image src={post.image} alt={post.title} width={1200} height={720} className="h-auto w-full object-cover" priority />
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              <span className="font-medium text-slate-900">{post.author}</span>
+              <span className="text-slate-400">/</span>
+              <span>{post.authorRole}</span>
+            </div>
+
+            <div className="article-content mt-10" dangerouslySetInnerHTML={{ __html: post.content || "<p>No content available.</p>" }} />
+
+            <div className="mt-10 border-t border-slate-200 pt-6">
+              <div className="flex flex-wrap gap-2">
+                {post.tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700">
+                    <Tag className="h-3.5 w-3.5 text-indigo-500" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <MarketingFooter />
+      </div>
+    </main>
+  );
+}

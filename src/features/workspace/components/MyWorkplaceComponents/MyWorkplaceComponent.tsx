@@ -95,7 +95,7 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
     <div
       ref={appRef}
       data-scope
-      className="relative min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_28%),linear-gradient(180deg,#fafaf9_0%,#f5f5f4_100%)]"
+      className="relative min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_28%),linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]"
     >
       <div className="min-h-screen lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
         <WorkspaceSidebar regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={resolvedViewer} />
