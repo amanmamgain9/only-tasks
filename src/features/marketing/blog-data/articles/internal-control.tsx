@@ -1,5 +1,5 @@
 // app/blog/_data/articles/internal-control.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const internalControlArticle: BlogPost = {
   slug: "internal-control-over-external-outcomes",

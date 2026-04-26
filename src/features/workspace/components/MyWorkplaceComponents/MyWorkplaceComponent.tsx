@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useLocation } from "react-router-dom";
 import MyDayTasksComponent from "./MyWorkdayTasksComponent";
 import WorkspaceSidebar from "../WorkspaceSidebar";
 import { NavigationService } from "../../_services/navigationService";
@@ -28,7 +28,7 @@ const SkeletonMyWorkplaceComponent = () => {
 
 const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
   const appRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
+  const location = useLocation();
   const [resolvedViewer, setResolvedViewer] = useState<AuthenticatedUser | null>(viewer ?? null);
   const [isLoadingViewer, setIsLoadingViewer] = useState(!viewer);
 
@@ -57,7 +57,7 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
         });
 
         if (response.status === 401) {
-          window.location.href = `/sign-in?next=${encodeURIComponent(pathname || "/")}`;
+          window.location.href = `/sign-in?next=${encodeURIComponent(window.location.pathname || "/app")}`;
           return;
         }
 
@@ -71,7 +71,7 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
         }
       } catch {
         if (!cancelled) {
-          window.location.href = `/sign-in?next=${encodeURIComponent(pathname || "/")}`;
+          window.location.href = `/sign-in?next=${encodeURIComponent(window.location.pathname || "/app")}`;
         }
       } finally {
         if (!cancelled) {
@@ -85,7 +85,7 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
     return () => {
       cancelled = true;
     };
-  }, [pathname, viewer]);
+  }, [location.pathname, viewer]);
 
   if (isLoadingViewer || !resolvedViewer) {
     return <SkeletonMyWorkplaceComponent />;

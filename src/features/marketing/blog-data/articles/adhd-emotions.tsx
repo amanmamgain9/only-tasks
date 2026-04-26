@@ -1,5 +1,5 @@
 // app/blog/_data/articles/adhd-emotions.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const adhdEmotionsArticle: BlogPost = {
   slug: "when-focus-fails-and-emotions-explode",

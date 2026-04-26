@@ -1,5 +1,5 @@
 // app/blog/_data/articles/morning-routine.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const morningRoutineArticle: BlogPost = {
   slug: "morning-routine-for-adhd",

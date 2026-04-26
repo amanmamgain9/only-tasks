@@ -1,8 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 import { Calendar, CalendarDays, ChevronRight, ListTodo, LogOut, PanelLeft, Sparkles, Sunrise } from "lucide-react";
 import type { AuthenticatedUser } from "@/server/auth";
 
@@ -22,27 +21,27 @@ const navItems: Array<{
   filter?: DueDateFilter;
 }> = [
   {
-    href: "/app",
+    href: "/workspace/all-tasks",
     label: "All Tasks",
     description: "Everything in your current tree.",
     icon: ListTodo,
   },
   {
-    href: "/app/today",
+    href: "/workspace/today",
     label: "Today",
     description: "Tasks that should get handled today.",
     icon: Calendar,
     filter: "today",
   },
   {
-    href: "/app/tomorrow",
+    href: "/workspace/tomorrow",
     label: "Tomorrow",
     description: "Tomorrow's scheduled work.",
     icon: Sunrise,
     filter: "tomorrow",
   },
   {
-    href: "/app/this-week",
+    href: "/workspace/this-week",
     label: "This Week",
     description: "The week-level scheduling view.",
     icon: CalendarDays,
@@ -51,14 +50,16 @@ const navItems: Array<{
 ];
 
 function isItemActive(pathname: string, href: string) {
-  if (href === "/app") {
-    return pathname === "/app" || pathname === "/app/all-tasks";
+  const normalizedPathname = pathname.startsWith("/app") ? pathname.slice(4) || "/" : pathname;
+  if (href === "/workspace/all-tasks") {
+    return normalizedPathname === "/" || normalizedPathname === "/workspace" || normalizedPathname === "/workspace/all-tasks";
   }
-  return pathname === href;
+  return normalizedPathname === href;
 }
 
 export default function WorkspaceSidebar({ regionOrder, dueDateFilter, viewer }: WorkspaceSidebarProps) {
-  const pathname = usePathname() || "/";
+  const location = useLocation();
+  const pathname = location.pathname || "/";
   const initials =
     viewer.name
       ?.split(" ")
@@ -127,7 +128,7 @@ export default function WorkspaceSidebar({ regionOrder, dueDateFilter, viewer }:
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  to={item.href}
                   data-focusable
                   data-order={(index + 1).toString()}
                   className={`group block rounded-[1.15rem] border px-4 py-3 outline-none transition-all duration-200 focus-visible:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-400/30 ${

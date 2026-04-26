@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default function ThisWeekRedirectPage() {
-  redirect("/app/this-week");
+  redirect("/app/workspace/this-week");
 }

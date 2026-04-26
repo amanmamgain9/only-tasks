@@ -1,5 +1,5 @@
 // app/blog/_data/articles/stop-healing.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const stopHealingArticle: BlogPost = {
   slug: "stop-healing-start-building",

@@ -1,14 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
-import { CalendarDays, Clock3, Tag } from "lucide-react";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
-import { getAllBlogSlugs, getBlogPost } from "@/features/marketing/blog-data/posts";
+import { getBlogPost } from "@/features/marketing/blog-data/posts";
 
-export function generateStaticParams() {
-  return getAllBlogSlugs().map((slug) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -57,11 +54,11 @@ export default async function BlogPostPage({
           <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)] md:p-8">
             <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
               <span className="inline-flex items-center gap-1.5">
-                <CalendarDays className="h-4 w-4" />
+                <span aria-hidden="true">Date</span>
                 {new Date(post.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Clock3 className="h-4 w-4" />
+                <span aria-hidden="true">Time</span>
                 {post.readTime}
               </span>
             </div>
@@ -70,7 +67,7 @@ export default async function BlogPostPage({
             <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">{post.description}</p>
 
             <div className="mt-8 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-100">
-              <Image src={post.image} alt={post.title} width={1200} height={720} className="h-auto w-full object-cover" priority />
+              <img src={post.image} alt={post.title} width={1200} height={720} className="h-auto w-full object-cover" />
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-slate-600">
@@ -85,7 +82,9 @@ export default async function BlogPostPage({
               <div className="flex flex-wrap gap-2">
                 {post.tags.map((tag) => (
                   <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700">
-                    <Tag className="h-3.5 w-3.5 text-indigo-500" />
+                    <span aria-hidden="true" className="text-indigo-500">
+                      #
+                    </span>
                     {tag}
                   </span>
                 ))}

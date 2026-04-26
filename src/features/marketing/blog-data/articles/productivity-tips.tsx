@@ -1,5 +1,5 @@
 // app/blog/_data/articles/productivity-tips.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const productivityTipsArticle: BlogPost = {
   slug: "productivity-tips-for-adhd",

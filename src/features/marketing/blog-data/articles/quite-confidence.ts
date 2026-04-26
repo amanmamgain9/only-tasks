@@ -1,5 +1,5 @@
 // app/blog/_data/articles/confidence.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const quietConfidenceArticle: BlogPost = {
   slug: "if-youve-been-faking-confidence-read-this",

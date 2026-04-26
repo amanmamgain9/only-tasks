@@ -1,5 +1,5 @@
 // app/blog/_data/articles/trauma-productivity.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const traumaProductivityArticle: BlogPost = {
   slug: "why-productivity-hacks-fail-when-youve-experienced-trauma",

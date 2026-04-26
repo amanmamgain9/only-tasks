@@ -22,7 +22,7 @@ export default function SignInScreen() {
   const [devAuthEnabled, setDevAuthEnabled] = useState(false);
   const [recentUsers, setRecentUsers] = useState<DevUser[]>([]);
 
-  const nextPath = searchParams?.get("next") || "/app";
+  const nextPath = searchParams?.get("next") || "/app/workspace/all-tasks";
   const errorCode = searchParams?.get("error");
   const errorMessage = errorCode ? errorMessages[errorCode] ?? "Unable to complete sign-in." : null;
 

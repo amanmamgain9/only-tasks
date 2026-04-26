@@ -1,5 +1,5 @@
 // app/blog/_data/articles/planning-secrets-millionaires.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const planningSecretsMillionairesArticle: BlogPost = {
   slug: "planning-secrets-only-millionaires-know-lets-spill-some-tea",

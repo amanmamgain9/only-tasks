@@ -19,7 +19,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         ? req.body.next
         : typeof req.query.next === "string"
           ? req.query.next
-          : "/app";
+          : "/app/workspace/all-tasks";
     const result = buildGoogleAuthorizationRequest(resolveOrigin(req), nextPath);
 
     res.setHeader("Set-Cookie", [

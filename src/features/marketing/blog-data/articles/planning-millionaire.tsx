@@ -1,5 +1,5 @@
 // app/blog/_data/articles/planning-millionaire.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const planningMillionaireArticle: BlogPost = {
   slug: "why-planning-can-make-you-a-millionaire",

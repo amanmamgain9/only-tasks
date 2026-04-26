@@ -1,5 +1,5 @@
 // app/blog/_data/articles/sleep-reset.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const sleepResetArticle: BlogPost = {
   slug: "stuck-in-sleepless-limbo-reset-your-body-clock",

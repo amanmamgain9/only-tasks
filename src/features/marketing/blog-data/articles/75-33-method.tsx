@@ -1,5 +1,5 @@
 // app/blog/_data/articles/75-33-method.ts
-import { BlogPost } from '../posts';
+import type { BlogPost } from '../posts';
 
 export const method7533Article: BlogPost = {
   slug: "75-33-method-science-backed-productivity-system-beating-pomodoro",

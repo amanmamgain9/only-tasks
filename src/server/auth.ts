@@ -232,7 +232,7 @@ export async function revokeSessionFromRequest(request: Request) {
   await db.delete(authSessions).where(eq(authSessions.tokenHash, sha256(token)));
 }
 
-export function buildGoogleAuthorizationRequest(origin: string, redirectTo = "/app") {
+export function buildGoogleAuthorizationRequest(origin: string, redirectTo = "/app/workspace/all-tasks") {
   if (!isGoogleAuthConfigured(origin)) {
     throw new Error("Google authentication is not configured.");
   }
@@ -323,7 +323,7 @@ export async function completeGoogleLogin(
   });
 
   return {
-    redirectTo: params.redirectTo || "/app",
+    redirectTo: params.redirectTo || "/app/workspace/all-tasks",
     userId: user.id,
     session,
   };

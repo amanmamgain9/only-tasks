@@ -3,9 +3,9 @@ import Link from "next/link";
 
 const navLinks = [
   { href: "/", label: "Home" },
+  { href: "/feature", label: "Features" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Blog" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
 ];
 
 export default function MarketingHeader() {
@@ -31,13 +31,13 @@ export default function MarketingHeader() {
         </nav>
         <div className="flex items-center gap-3">
           <Link
-            href="/sign-in?next=/app"
+            href="/sign-in?next=/app/workspace/all-tasks"
             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:border-slate-300 hover:bg-slate-50"
           >
             Sign In
           </Link>
           <Link
-            href="/app"
+            href="/app/workspace/all-tasks"
             className="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             Open App

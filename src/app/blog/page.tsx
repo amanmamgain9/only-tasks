@@ -1,7 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Clock3 } from "lucide-react";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 import { getBlogPosts } from "@/features/marketing/blog-data/posts";
@@ -10,6 +9,8 @@ export const metadata: Metadata = {
   title: "Blog",
   description: "Productivity and task-management writing from PlanMyWorkday.",
 };
+
+export const dynamic = "force-dynamic";
 
 export default function BlogListingPage() {
   const posts = getBlogPosts();
@@ -37,16 +38,16 @@ export default function BlogListingPage() {
               className="group grid gap-6 rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(15,23,42,0.10)] md:grid-cols-[260px_minmax(0,1fr)] md:p-6"
             >
               <div className="relative overflow-hidden rounded-[1.3rem] border border-slate-200 bg-slate-100">
-                <Image src={post.image} alt={post.title} width={640} height={420} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                <img src={post.image} alt={post.title} width={640} height={420} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
                   <span className="inline-flex items-center gap-1.5">
-                    <CalendarDays className="h-4 w-4" />
+                    <span aria-hidden="true">Date</span>
                     {new Date(post.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <Clock3 className="h-4 w-4" />
+                    <span aria-hidden="true">Time</span>
                     {post.readTime}
                   </span>
                 </div>
@@ -59,7 +60,9 @@ export default function BlogListingPage() {
                   </div>
                   <span className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600">
                     Read article
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                    <span aria-hidden="true" className="transition group-hover:translate-x-0.5">
+                      -&gt;
+                    </span>
                   </span>
                 </div>
               </div>

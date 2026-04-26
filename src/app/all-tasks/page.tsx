@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default function AllTasksRedirectPage() {
-  redirect("/app/all-tasks");
+  redirect("/app/workspace/all-tasks");
 }
