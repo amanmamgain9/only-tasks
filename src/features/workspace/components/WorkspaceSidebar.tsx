@@ -1,8 +1,18 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Calendar, CalendarDays, ChevronRight, ListTodo, LogOut, PanelLeft, Sparkles, Sunrise } from "lucide-react";
+import {
+  Calendar,
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
+  ListTodo,
+  LogOut,
+  Sunrise,
+} from "lucide-react";
 import type { AuthenticatedUser } from "@/server/auth";
 
 type DueDateFilter = "today" | "tomorrow" | "this-week";
@@ -16,50 +26,51 @@ interface WorkspaceSidebarProps {
 const navItems: Array<{
   href: string;
   label: string;
-  description: string;
   icon: ComponentType<{ className?: string }>;
   filter?: DueDateFilter;
 }> = [
   {
     href: "/workspace/all-tasks",
     label: "All Tasks",
-    description: "Everything in your current tree.",
     icon: ListTodo,
   },
   {
     href: "/workspace/today",
     label: "Today",
-    description: "Tasks that should get handled today.",
     icon: Calendar,
     filter: "today",
   },
   {
     href: "/workspace/tomorrow",
     label: "Tomorrow",
-    description: "Tomorrow's scheduled work.",
     icon: Sunrise,
     filter: "tomorrow",
   },
   {
     href: "/workspace/this-week",
     label: "This Week",
-    description: "The week-level scheduling view.",
     icon: CalendarDays,
     filter: "this-week",
   },
 ];
 
+function normalizePathname(pathname: string) {
+  return pathname.startsWith("/app") ? pathname.slice(4) || "/" : pathname;
+}
+
 function isItemActive(pathname: string, href: string) {
-  const normalizedPathname = pathname.startsWith("/app") ? pathname.slice(4) || "/" : pathname;
+  const normalizedPathname = normalizePathname(pathname);
   if (href === "/workspace/all-tasks") {
     return normalizedPathname === "/" || normalizedPathname === "/workspace" || normalizedPathname === "/workspace/all-tasks";
   }
   return normalizedPathname === href;
 }
 
-export default function WorkspaceSidebar({ regionOrder, dueDateFilter, viewer }: WorkspaceSidebarProps) {
+export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSidebarProps) {
+  const [isWorkZoneOpen, setIsWorkZoneOpen] = useState(true);
   const location = useLocation();
   const pathname = location.pathname || "/";
+  const isWorkZoneActive = navItems.some((item) => isItemActive(pathname, item.href));
   const initials =
     viewer.name
       ?.split(" ")
@@ -67,146 +78,100 @@ export default function WorkspaceSidebar({ regionOrder, dueDateFilter, viewer }:
       .join("")
       .slice(0, 2)
       .toUpperCase() || viewer.email.slice(0, 2).toUpperCase();
-  const subscriptionTone = viewer.subscription?.isEntitled
-    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-    : viewer.subscription?.requiresBillingMigrationReview
-      ? "border-amber-300/35 bg-amber-300/12 text-amber-100"
-      : "border-slate-700 bg-slate-900/70 text-slate-300";
 
   return (
     <aside
       data-region
       id="sidebar-region"
       data-order={regionOrder}
-      className="border-b border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] text-slate-900 lg:border-b-0 lg:border-r lg:border-slate-200"
+      className="border-b border-border/40 bg-background/70 text-foreground backdrop-blur-xl lg:min-h-screen lg:border-b-0 lg:border-r"
     >
-      <div data-layout="vertical" className="relative flex h-full flex-col p-4 md:p-5">
-        <div
-          data-order="0"
-          className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.08)]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] bg-slate-950 text-white shadow-[0_14px_36px_rgba(15,23,42,0.18)]">
-              <PanelLeft className="h-5 w-5" />
+      <div data-layout="vertical" className="flex h-full flex-col p-3">
+        <div data-order="0" className="px-2 pb-5 pt-3">
+          <div className="flex items-center gap-2">
+            <div className="relative h-8 w-8 overflow-hidden rounded-full">
+              <img src="/media/plan-my-workday/logo.jpg" alt="Plan My Workday Logo" className="h-full w-full object-cover" />
             </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">PlanMyWorkday</p>
-              <h1 className="text-lg font-semibold text-slate-950">Work Zone</h1>
-            </div>
-          </div>
-          <p className="mt-4 text-sm leading-6 text-slate-600">
-            The old navigation shell is back in spirit: grouped date views, clear active state, and keyboard movement that still treats the sidebar as its own region.
-          </p>
-          <div className="mt-5 flex items-center justify-between rounded-[1.2rem] border border-slate-200 bg-slate-50 px-4 py-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Current Plan</p>
-              <p className="mt-1 text-sm font-medium text-slate-900">
-                {viewer.subscription?.label || "Free"}
-              </p>
-            </div>
-            <div
-              className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${subscriptionTone}`}
-            >
-              {viewer.subscription?.status || "none"}
-            </div>
+            <span className="hidden font-semibold lg:block">PMWD</span>
+            <span className="font-semibold lg:hidden">PlanMyWorkday</span>
           </div>
         </div>
 
-        <div data-layout="vertical" data-order="1" className="mt-5">
-          <div className="mb-3 flex items-center justify-between px-2">
-            <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-slate-500">Work Zone</div>
-            <div className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Tab to switch
-            </div>
-          </div>
-          <div data-layout="vertical" className="space-y-1.5 rounded-[1.5rem] border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
-            {navItems.map((item, index) => {
-              const Icon = item.icon;
-              const active = isItemActive(pathname, item.href);
-              const currentView = dueDateFilter === item.filter;
+        <div data-layout="vertical" data-order="1" className="min-w-0 flex-1">
+          <div className="rounded-xl border border-border/40 bg-white/35 p-1 shadow-sm backdrop-blur">
+            <button
+              type="button"
+              data-focusable
+              data-entrypoint-focus
+              data-order="1"
+              aria-expanded={isWorkZoneOpen}
+              onClick={() => setIsWorkZoneOpen((value) => !value)}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-400/40 ${
+                isWorkZoneActive ? "bg-indigo-500/10 text-indigo-700" : "text-slate-700 hover:bg-slate-100/80"
+              }`}
+            >
+              {isWorkZoneOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <FolderOpen className="h-4 w-4" />
+              <span>Work Zone</span>
+            </button>
 
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  data-focusable
-                  data-order={(index + 1).toString()}
-                  className={`group block rounded-[1.15rem] border px-4 py-3 outline-none transition-all duration-200 focus-visible:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-400/30 ${
-                    active
-                      ? "border-indigo-200 bg-[linear-gradient(135deg,#eef2ff_0%,#e0e7ff_100%)] text-slate-950 shadow-[0_10px_30px_rgba(99,102,241,0.12)]"
-                      : "border-transparent bg-transparent text-slate-900 hover:border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-[0.95rem] ${
-                        active ? "bg-white text-indigo-600" : "bg-slate-100 text-slate-500 group-hover:bg-white"
+            {isWorkZoneOpen && (
+              <div data-layout="vertical" className="mt-1 border-l border-border/50 px-2 py-1">
+                {navItems.map((item, index) => {
+                  const Icon = item.icon;
+                  const active = isItemActive(pathname, item.href);
+
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      data-focusable
+                      data-order={(index + 2).toString()}
+                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-400/40 ${
+                        active
+                          ? "border border-indigo-500/20 bg-indigo-500/15 font-medium text-indigo-700"
+                          : "border border-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{item.label}</span>
-                        {currentView && (
-                          <span className="rounded-full bg-indigo-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-700">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <p className={`mt-1 text-sm ${active ? "text-slate-700" : "text-slate-500"}`}>
-                        {item.description}
-                      </p>
-                    </div>
-                    <ChevronRight className={`h-4 w-4 shrink-0 ${active ? "text-indigo-500" : "text-slate-300"}`} />
-                  </div>
-                </Link>
-              );
-            })}
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        <div
-          data-order="2"
-          className="mt-5 rounded-[1.5rem] border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600 shadow-[0_16px_40px_rgba(15,23,42,0.05)]"
-        >
-          <div className="flex items-center gap-2 text-slate-900">
-            <Sparkles className="h-4 w-4 text-indigo-500" />
-            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Keyboard</p>
+        <div data-order="2" className="mt-4 space-y-2">
+          <div className="rounded-xl border border-border/40 bg-white/35 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur">
+            <p className="font-medium text-slate-900">{viewer.subscription?.label || "Free"}</p>
+            <p className="mt-0.5 truncate">{viewer.subscription?.status || "No subscription"}</p>
           </div>
-          <p className="mt-2">
-            Tab moves between the sidebar region and the workspace region. Inside a region, arrow keys still follow the preserved navigation tree.
-          </p>
-          {viewer.subscription?.note && (
-            <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-              {viewer.subscription.note}
-            </p>
-          )}
-        </div>
 
-        <div
-          data-order="3"
-          className="mt-auto rounded-[1.6rem] border border-slate-200 bg-slate-950 p-4 text-slate-100 shadow-[0_24px_50px_rgba(15,23,42,0.18)]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-white/10 text-sm font-semibold text-white">
-              {initials}
+          <div className="rounded-xl border border-border/40 bg-white/35 p-2 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-2 px-1 py-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-xs font-semibold text-white">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-900">{viewer.name || viewer.email}</p>
+                <p className="truncate text-xs text-slate-500">{viewer.email}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{viewer.name || viewer.email}</p>
-              <p className="truncate text-xs text-slate-400">{viewer.email}</p>
-            </div>
+
+            <form action="/api/auth/logout" method="post" className="mt-1">
+              <button
+                type="submit"
+                data-focusable
+                data-order="6"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 outline-none transition hover:bg-slate-100/80 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </button>
+            </form>
           </div>
-          <form action="/api/auth/logout" method="post" className="mt-4">
-            <button
-              type="submit"
-              data-focusable
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.08] px-4 py-3 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/40"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
-          </form>
         </div>
       </div>
     </aside>
