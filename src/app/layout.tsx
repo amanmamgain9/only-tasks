@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import Providers from "./providers";
 import { organizationJsonLd, productJsonLd, seoMetadata, websiteJsonLd } from "@/features/marketing/seo";
+import AuroraBackground from "@/features/marketing/components/AuroraBackground";
 
 export const metadata: Metadata = {
   ...seoMetadata,
@@ -24,11 +25,30 @@ export const viewport: Viewport = {
 };
 
 const gtmId = process.env.NEXT_PUBLIC_GTM_ID_PLANMYWORKDAY || "GTM-NBQHMF6X";
+const themeBootScript = `
+  (function() {
+    try {
+      var theme = localStorage.getItem('planmyworkday-theme') || 'dark';
+      if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.style.colorScheme = 'light';
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+      }
+    } catch (_) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
+    }
+  })();
+`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className="antialiased">
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <AuroraBackground key="stable-aurora" />
         <Script
           id="gtm-script"
           strategy="afterInteractive"

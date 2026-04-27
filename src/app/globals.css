@@ -196,23 +196,23 @@
 }
 
 .article-content h2 {
-  @apply mt-10 text-2xl font-semibold tracking-tight text-slate-950;
+  @apply mt-10 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white;
 }
 
 .article-content h3 {
-  @apply mt-8 text-xl font-semibold text-slate-950;
+  @apply mt-8 text-xl font-semibold text-slate-950 dark:text-white;
 }
 
 .article-content p {
-  @apply mt-4 text-base leading-8 text-slate-700;
+  @apply mt-4 text-base leading-8 text-slate-700 dark:text-slate-300;
 }
 
 .article-content ul {
-  @apply mt-4 list-disc space-y-2 pl-6 text-slate-700;
+  @apply mt-4 list-disc space-y-2 pl-6 text-slate-700 dark:text-slate-300;
 }
 
 .article-content ol {
-  @apply mt-4 list-decimal space-y-2 pl-6 text-slate-700;
+  @apply mt-4 list-decimal space-y-2 pl-6 text-slate-700 dark:text-slate-300;
 }
 
 .article-content li {
@@ -224,13 +224,13 @@
 }
 
 .article-content th {
-  @apply bg-slate-100 px-4 py-3 font-semibold text-slate-900;
+  @apply bg-slate-100 px-4 py-3 font-semibold text-slate-900 dark:bg-slate-800 dark:text-slate-100;
 }
 
 .article-content td {
-  @apply border-t border-slate-200 px-4 py-3 text-slate-700;
+  @apply border-t border-slate-200 px-4 py-3 text-slate-700 dark:border-slate-700 dark:text-slate-300;
 }
 
 .article-content hr {
-  @apply my-10 border-slate-200;
+  @apply my-10 border-slate-200 dark:border-slate-700;
 }

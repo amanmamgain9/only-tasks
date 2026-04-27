@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -36,6 +37,9 @@ export default function MarketingHeader() {
       </div>
 
       <div className="order-3 flex items-center space-x-3">
+        <div className="hidden md:block">
+          <ThemeToggle />
+        </div>
         <Link
           href="/sign-in?next=/app/workspace/all-tasks"
           className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-5 py-2 text-sm font-medium text-foreground transition hover:bg-muted"

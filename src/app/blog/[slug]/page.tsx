@@ -46,15 +46,15 @@ export default async function BlogPostPage({
   }
 
   return (
-    <main className="relative min-h-screen text-slate-950">
-      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-white to-slate-100" />
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(79,70,229,0.15),rgba(255,255,255,0))]" />
+    <main className="relative min-h-screen text-slate-950 dark:text-white">
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800" />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(79,70,229,0.15),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.2),rgba(0,0,0,0))]" />
 
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 sm:px-6 lg:px-8">
         <MarketingHeader />
 
         <article className="pb-16 pt-10">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)] md:p-8">
+          <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)] backdrop-blur dark:border-slate-700 dark:bg-slate-800/55 md:p-8">
             <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
               <span className="inline-flex items-center gap-1.5">
                 <span aria-hidden="true">Date</span>
@@ -66,15 +66,15 @@ export default async function BlogPostPage({
               </span>
             </div>
 
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 md:text-5xl">{post.title}</h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">{post.description}</p>
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-5xl">{post.title}</h1>
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">{post.description}</p>
 
             <div className="mt-8 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-100">
               <img src={post.image} alt={post.title} width={1200} height={720} className="h-auto w-full object-cover" />
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-              <span className="font-medium text-slate-900">{post.author}</span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">{post.author}</span>
               <span className="text-slate-400">/</span>
               <span>{post.authorRole}</span>
             </div>

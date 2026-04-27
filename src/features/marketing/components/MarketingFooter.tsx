@@ -14,15 +14,15 @@ const resourceLinks = [
 
 export default function MarketingFooter() {
   return (
-    <footer className="border-t border-slate-200 py-8">
+    <footer className="border-t border-slate-200 py-8 dark:border-slate-800">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-900">PlanMyWorkday</p>
-          <p className="mt-1 text-sm text-slate-600">Keyboard-first task management for fast planning and focused work.</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">PlanMyWorkday</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Keyboard-first task management for fast planning and focused work.</p>
         </div>
-        <nav className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+        <nav className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
           {resourceLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="transition hover:text-slate-950">
+            <Link key={link.href} href={link.href} className="transition hover:text-slate-950 dark:hover:text-white">
               {link.label}
             </Link>
           ))}
