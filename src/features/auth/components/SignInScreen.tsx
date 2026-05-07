@@ -15,6 +15,29 @@ const errorMessages: Record<string, string> = {
   google_login_failed: "Google sign-in failed before the session could be created.",
 };
 
+function sanitizeNextPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/app/workspace/all-tasks";
+  }
+
+  try {
+    const parsed = new URL(value, "http://local.planmyworkday");
+    if (parsed.pathname === "/sign-in" || parsed.pathname.startsWith("/api/")) {
+      return "/app/workspace/all-tasks";
+    }
+    if (parsed.pathname === "/app" || parsed.pathname.startsWith("/app/")) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    if (["/all-tasks", "/today", "/tomorrow", "/this-week"].includes(parsed.pathname)) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+  } catch {
+    return "/app/workspace/all-tasks";
+  }
+
+  return "/app/workspace/all-tasks";
+}
+
 export default function SignInScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,7 +45,7 @@ export default function SignInScreen() {
   const [devAuthEnabled, setDevAuthEnabled] = useState(false);
   const [recentUsers, setRecentUsers] = useState<DevUser[]>([]);
 
-  const nextPath = searchParams?.get("next") || "/app/workspace/all-tasks";
+  const nextPath = sanitizeNextPath(searchParams?.get("next") || null);
   const errorCode = searchParams?.get("error");
   const errorMessage = errorCode ? errorMessages[errorCode] ?? "Unable to complete sign-in." : null;
 
@@ -79,9 +102,9 @@ export default function SignInScreen() {
 
   const featureCards = useMemo(
     () => [
-      ["Task Tree", "Nested tasks, ordering, and optimistic edits stay in one focused workspace."],
-      ["Keyboard", "Sidebar, workspace, and modal scopes keep the old navigation model."],
-      ["Billing", "Legacy subscription data is preserved and marked for Paddle migration review."],
+      ["Task Tree", "Nested tasks, ordering, and optimistic edits in one workspace."],
+      ["Keyboard", "Sidebar, workspace, and modal scopes keep the fast navigation model."],
+      ["Focus", "Jump into today, this week, or the full tree without extra product noise."],
     ],
     [],
   );
@@ -90,12 +113,12 @@ export default function SignInScreen() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_28%),linear-gradient(180deg,#faf7f0_0%,#f3efe6_48%,#ebe3d4_100%)] px-4 py-8 text-stone-900 sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="rounded-[2rem] border border-stone-300/80 bg-white/70 p-8 shadow-[0_35px_100px_rgba(41,37,36,0.12)] backdrop-blur md:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-700">Only Tasks</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-700">Plan My Workday</p>
           <h1 className="mt-4 max-w-xl text-4xl font-semibold tracking-tight text-stone-950 sm:text-5xl">
-            Focused task management, without the rest of the product noise.
+            Sign in and get back to the workspace.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-stone-600 sm:text-lg">
-            This workspace keeps the task tree, scheduling views, and keyboard scope system intact. Sign in to continue with your migrated projects, tasks, and subscription state.
+            Your task tree, scheduling views, and keyboard scope system are preserved in the rebuilt app.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -119,7 +142,7 @@ export default function SignInScreen() {
                 <h2 className="mt-3 text-2xl font-semibold text-stone-50">Continue into the workspace</h2>
               </div>
               <div className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
-                SQLite + Next.js
+                Workspace
               </div>
             </div>
 
@@ -175,7 +198,7 @@ export default function SignInScreen() {
             </div>
 
             <p className="mt-6 text-xs leading-6 text-stone-500">
-              If a migrated user still has a legacy subscription, the workspace will show that it needs Paddle migration review instead of pretending the billing backend already changed.
+              If you are already signed in, this page redirects straight back to the workspace.
             </p>
           </div>
         </section>

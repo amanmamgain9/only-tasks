@@ -1,5 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isDevelopmentAuthEnabled, SESSION_COOKIE_NAME, signInAsExistingUser } from "@/server/auth";
+import {
+  DEFAULT_AUTH_REDIRECT,
+  isDevelopmentAuthEnabled,
+  sanitizeAuthRedirectPath,
+  SESSION_COOKIE_NAME,
+  signInAsExistingUser,
+} from "@/server/auth";
 import { resolveOrigin, serializeCookie } from "./_helpers";
 
 function getIpAddress(req: NextApiRequest) {
@@ -23,7 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const userId = Number(req.body?.userId);
-  const redirectTo = typeof req.body?.redirectTo === "string" ? req.body.redirectTo : "/app/workspace/all-tasks";
+  const redirectTo = sanitizeAuthRedirectPath(
+    typeof req.body?.redirectTo === "string" ? req.body.redirectTo : DEFAULT_AUTH_REDIRECT,
+  );
 
   if (!Number.isFinite(userId)) {
     res.status(400).json({ success: false, error: "Invalid user ID" });

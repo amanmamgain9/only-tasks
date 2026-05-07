@@ -9,6 +9,7 @@ import { getEffectiveSubscriptionForUser, type SubscriptionSummary } from "./sub
 export const SESSION_COOKIE_NAME = "only_tasks_session";
 export const GOOGLE_STATE_COOKIE_NAME = "only_tasks_google_state";
 export const GOOGLE_REDIRECT_COOKIE_NAME = "only_tasks_google_redirect";
+export const DEFAULT_AUTH_REDIRECT = "/app/workspace/all-tasks";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
@@ -78,6 +79,33 @@ function getGoogleRedirectUri(origin: string) {
     return `${origin}/api/auth/google/callback`;
   }
   return process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL || `${origin}/api/auth/google/callback`;
+}
+
+export function sanitizeAuthRedirectPath(value: string | null | undefined) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  try {
+    const parsed = new URL(value, "http://local.planmyworkday");
+    const pathWithSearch = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+
+    if (parsed.pathname === "/sign-in" || parsed.pathname.startsWith("/api/")) {
+      return DEFAULT_AUTH_REDIRECT;
+    }
+
+    if (parsed.pathname === "/app" || parsed.pathname.startsWith("/app/")) {
+      return pathWithSearch;
+    }
+
+    if (["/all-tasks", "/today", "/tomorrow", "/this-week"].includes(parsed.pathname)) {
+      return pathWithSearch;
+    }
+  } catch {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  return DEFAULT_AUTH_REDIRECT;
 }
 
 export function isGoogleAuthConfigured(origin?: string | null) {
@@ -232,7 +260,7 @@ export async function revokeSessionFromRequest(request: Request) {
   await db.delete(authSessions).where(eq(authSessions.tokenHash, sha256(token)));
 }
 
-export function buildGoogleAuthorizationRequest(origin: string, redirectTo = "/app/workspace/all-tasks") {
+export function buildGoogleAuthorizationRequest(origin: string, redirectTo = DEFAULT_AUTH_REDIRECT) {
   if (!isGoogleAuthConfigured(origin)) {
     throw new Error("Google authentication is not configured.");
   }
@@ -254,7 +282,7 @@ export function buildGoogleAuthorizationRequest(origin: string, redirectTo = "/a
   return {
     authUrl: url.toString(),
     state,
-    redirectTo,
+    redirectTo: sanitizeAuthRedirectPath(redirectTo),
   };
 }
 
@@ -323,7 +351,7 @@ export async function completeGoogleLogin(
   });
 
   return {
-    redirectTo: params.redirectTo || "/app/workspace/all-tasks",
+    redirectTo: sanitizeAuthRedirectPath(params.redirectTo),
     userId: user.id,
     session,
   };
