@@ -1,4 +1,4 @@
-import type { ApiResponse, Project } from "../types";
+import type { ApiResponse, Project, SaveProjectInput } from "../types";
 import type { EnhancedTaskTreeType, OperationBatch } from "../components/MyWorkplaceComponents/TaskTreeComponents/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -54,6 +54,25 @@ export const getProjects = async (queryParams?: QueryParams): Promise<ApiRespons
     console.error("Error fetching projects:", error);
     return null;
   }
+};
+
+export const saveProject = async (projectData: SaveProjectInput): Promise<ApiResponse<Project>> => {
+  const isUpdate = "id" in projectData;
+  const url = isUpdate ? `${API_BASE_URL}/api/projects/${projectData.id}` : `${API_BASE_URL}/api/projects`;
+  const body = isUpdate
+    ? {
+        title: projectData.title,
+        type: projectData.type,
+      }
+    : projectData;
+
+  const response = await fetch(url, {
+    method: isUpdate ? "PUT" : "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  return parseResponse<Project>(response);
 };
 
 export const getProjectTree = async (

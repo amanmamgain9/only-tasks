@@ -1,11 +1,13 @@
 // MyWorkdayTasksComponent.tsx - COMPLETE FILE WITH CHATID SUPPORT
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { MoreVertical, Plus, Calendar, Sunrise, CalendarDays } from "lucide-react";
-import { useProjects } from "../../_hooks/useScheduleManagement";
+import { useProjects, useSaveProjectMutation } from "../../_hooks/useScheduleManagement";
 import TreeMainComponent from "./TaskTreeComponents/TaskTreeMainComponent";
-import { Project } from "../../types";
+import { Project, ProjectFormData, SaveProjectInput, UpdateProjectInput, CreateProjectInput } from "../../types";
+import Modal from "../Modal";
+import ProjectForm from "../ProjectComponents/ProjectForm";
 
 // Helper to get icon and title for due date view
 const getDueDateViewInfo = (dueDateFilter: 'today' | 'tomorrow' | 'this-week') => {
@@ -69,7 +71,7 @@ const ProjectTabs = ({
             <button
               data-focusable
               data-order="2"
-              onClick={(e) => {
+              onClick={() => {
                 onProjectSettings(project.id);
               }}
               className={`p-3 transition-all duration-200 flex-shrink-0 rounded-md m-1 outline-none border-2 border-transparent focus-visible:border-blue-600 focus-visible:shadow-lg ${
@@ -128,12 +130,16 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
 }) => {
   console.log(`[MyDayTasksComponent] Rendering with dueDateFilter=${dueDateFilter}, chatId=${chatId}`);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const modalTriggerRef = useRef<HTMLElement | null>(null);
 
   // Hooks - ✅ UPDATED: Pass chatId to filter projects
   const { data: projectsData, isLoading: projectsLoading } = useProjects({ 
     status: 'active',
     chatId // ✅ NEW: When chatId is present, only get projects for that chat
   });
+  const saveProjectMutation = useSaveProjectMutation();
 
   const allProjects = useMemo(() => projectsData?.data || [], [projectsData?.data]);
 
@@ -143,15 +149,78 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
   // Find the current project
   const currentProject = actualProjectId ? allProjects.find(p => p.id === actualProjectId) || null : null;
 
-  // Project management is intentionally disabled in the first migration slice.
-  const enableProjectManagement = false;
+  const enableProjectManagement = !dueDateFilter && !chatId;
 
   const handleProjectChange = (projectId: number) => {
     setSelectedProjectId(projectId);
   };
 
-  const handleProjectSettings = () => {};
-  const handleAddProject = () => {};
+  const handleProjectSettings = (projectId: number) => {
+    if (!enableProjectManagement) return;
+
+    modalTriggerRef.current = document.activeElement as HTMLElement;
+    const project = allProjects.find((item) => item.id === projectId);
+    if (!project) return;
+
+    setSelectedProject(project);
+    setShowProjectModal(true);
+  };
+
+  const handleAddProject = () => {
+    if (!enableProjectManagement) return;
+
+    modalTriggerRef.current = document.activeElement as HTMLElement;
+    setSelectedProject(null);
+    setShowProjectModal(true);
+  };
+
+  const handleProjectSave = async (submittedProjectData: ProjectFormData) => {
+    if (!submittedProjectData.title?.trim()) {
+      throw new Error('Project title is required');
+    }
+
+    let projectToSave: SaveProjectInput;
+    if (selectedProject) {
+      projectToSave = {
+        id: selectedProject.id,
+        title: submittedProjectData.title,
+        type: submittedProjectData.type,
+      } as UpdateProjectInput;
+    } else {
+      projectToSave = {
+        title: submittedProjectData.title,
+        type: submittedProjectData.type,
+      } as CreateProjectInput;
+    }
+
+    const response = await saveProjectMutation.mutateAsync(projectToSave);
+    if (!selectedProject && response.data?.id) {
+      setSelectedProjectId(response.data.id);
+    }
+  };
+
+  const restoreModalTriggerFocus = () => {
+    const trigger = modalTriggerRef.current;
+    modalTriggerRef.current = null;
+
+    if (trigger && document.contains(trigger)) {
+      requestAnimationFrame(() => trigger.focus());
+    }
+  };
+
+  const handleProjectFormComplete = () => {
+    setShowProjectModal(false);
+    setSelectedProject(null);
+    restoreModalTriggerFocus();
+  };
+
+  const handleModalClose = () => {
+    setShowProjectModal(false);
+    setSelectedProject(null);
+    restoreModalTriggerFocus();
+  };
+
+  const getModalTitle = () => selectedProject ? "Edit Project" : "Create Project";
 
   return (
     <div className="w-full space-y-2">
@@ -249,6 +318,25 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
         </div>
       </div>
 
+      {enableProjectManagement && (
+        <Modal
+          open={showProjectModal}
+          onOpenChange={(open) => {
+            if (!open) handleModalClose();
+          }}
+          title={getModalTitle()}
+        >
+          <ProjectForm
+            key={selectedProject?.id || 'new'}
+            selectedProject={selectedProject}
+            onSave={handleProjectSave}
+            onComplete={handleProjectFormComplete}
+            closeModal={handleModalClose}
+            isLoading={saveProjectMutation.isPending}
+            error={saveProjectMutation.error}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

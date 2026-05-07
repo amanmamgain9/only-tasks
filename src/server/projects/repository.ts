@@ -84,3 +84,17 @@ export async function createProject(input: InsertProject): Promise<Project> {
   const [result] = await db.insert(projects).values(input).returning();
   return result;
 }
+
+export async function updateProjectForUser(
+  projectId: number,
+  userId: number,
+  input: Partial<Pick<Project, "title" | "type" | "status" | "targetDate">> & { updatedAt: string },
+): Promise<Project | null> {
+  const [result] = await db
+    .update(projects)
+    .set(input)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId), isNull(projects.deletedAt)))
+    .returning();
+
+  return result ?? null;
+}

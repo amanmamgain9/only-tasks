@@ -1,12 +1,8 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { ArrowRight, Clock, Keyboard, Play, Star, Zap } from "lucide-react";
 import FeatureImageHomepage from "@/features/marketing/components/FeatureImageHomepage";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
-import { DEFAULT_AUTH_REDIRECT, getCurrentUserFromRequest } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -35,22 +31,7 @@ const testimonials = [
   },
 ];
 
-export default async function HomePage() {
-  noStore();
-  const requestHeaders = await headers();
-  const cookieHeader = requestHeaders.get("cookie") || "";
-  const currentUser = await getCurrentUserFromRequest(
-    new Request("http://local.planmyworkday/", {
-      headers: {
-        cookie: cookieHeader,
-      },
-    }),
-  );
-
-  if (currentUser) {
-    redirect(DEFAULT_AUTH_REDIRECT);
-  }
-
+export default function HomePage() {
   return (
     <>
       <header className="relative z-20 px-4 sm:px-6 lg:px-8">

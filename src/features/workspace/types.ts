@@ -19,6 +19,19 @@ export interface Project {
   createdByChatId?: number | null;
 }
 
+export type ProjectFormData = {
+  title: string;
+  type: Project["type"];
+};
+
+export type CreateProjectInput = ProjectFormData;
+
+export type UpdateProjectInput = Partial<ProjectFormData> & {
+  id: number;
+};
+
+export type SaveProjectInput = CreateProjectInput | UpdateProjectInput;
+
 export interface Task {
   id: number;
   userId: number;

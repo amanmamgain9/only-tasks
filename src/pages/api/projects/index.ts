@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCurrentUserIdFromRequest, UnauthorizedError } from "@/server/auth";
-import { getProjectsForUser, type GetProjectsForUserOptions } from "@/server/projects/service";
+import {
+  createProjectForUser,
+  getProjectsForUser,
+  type GetProjectsForUserOptions,
+} from "@/server/projects/service";
 import type { Project } from "@/server/db/schema/projects";
 import { toWebRequest } from "../auth/_helpers";
 
@@ -25,6 +29,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const userId = await getCurrentUserIdFromRequest(toWebRequest(req));
+    const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+    const isCreateRequest = typeof body.title === "string" || typeof body.type === "string";
+
+    if (isCreateRequest) {
+      const project = await createProjectForUser(userId, {
+        title: body.title,
+        type: body.type,
+      });
+      res.status(201).json({ success: true, data: project });
+      return;
+    }
+
     const status = getQueryValue(req.query.status);
     const type = getQueryValue(req.query.type);
     const chatId = getQueryValue(req.query.chatId);
