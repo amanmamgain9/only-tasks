@@ -11,6 +11,6 @@ type ProjectQueryParams = Record<string, string | number | boolean | undefined |
 export function useProjects(queryParams?: ProjectQueryParams) {
   return useQuery<ApiResponse<Project[]> | null>({
     queryKey: queryParams ? [...projectsKey, queryParams] : projectsKey,
-    queryFn: () => getProjects(),
+    queryFn: () => getProjects(queryParams),
   });
 }

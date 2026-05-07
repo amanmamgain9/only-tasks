@@ -4,6 +4,8 @@ import { projects, type Project } from "../db/schema/projects";
 import { users } from "../db/schema/users";
 import * as projectRepo from "./repository";
 
+export type GetProjectsForUserOptions = projectRepo.FindProjectsByUserIdOptions;
+
 export async function ensureDefaultWorkspace(userId: number): Promise<void> {
   const now = new Date().toISOString();
   const existingUser = await db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -29,7 +31,10 @@ export async function ensureDefaultWorkspace(userId: number): Promise<void> {
   }
 }
 
-export async function getProjectsForUser(userId: number): Promise<Project[]> {
+export async function getProjectsForUser(
+  userId: number,
+  options: GetProjectsForUserOptions = {},
+): Promise<Project[]> {
   await ensureDefaultWorkspace(userId);
-  return projectRepo.findProjectsByUserId(userId);
+  return projectRepo.findProjectsByUserId(userId, options);
 }

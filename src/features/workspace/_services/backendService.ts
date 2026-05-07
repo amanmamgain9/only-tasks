@@ -3,6 +3,9 @@ import type { EnhancedTaskTreeType, OperationBatch } from "../components/MyWorkp
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
+type QueryParamValue = string | number | boolean | string[] | undefined | null;
+type QueryParams = Record<string, QueryParamValue>;
+
 interface ErrorResponse {
   message?: string;
   error?: string;
@@ -22,9 +25,27 @@ const parseResponse = async <T>(response: Response): Promise<ApiResponse<T>> => 
   return (await response.json()) as ApiResponse<T>;
 };
 
-export const getProjects = async (): Promise<ApiResponse<Project[]> | null> => {
+const toQueryString = (queryParams?: QueryParams): string => {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(queryParams || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => searchParams.append(key, item.toString()));
+      return;
+    }
+
+    searchParams.append(key, value.toString());
+  });
+
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : "";
+};
+
+export const getProjects = async (queryParams?: QueryParams): Promise<ApiResponse<Project[]> | null> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects${toQueryString(queryParams)}`, {
       method: "POST",
       cache: "no-store",
     });
