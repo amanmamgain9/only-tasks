@@ -44,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       includeArchived: parseBooleanParam(getQueryValue(req.query.includeArchived)),
       includeDeleted: parseBooleanParam(getQueryValue(req.query.includeDeleted)),
       includeDrafts: parseBooleanParam(getQueryValue(req.query.includeDrafts)),
+      includeChatGenerated: parseBooleanParam(getQueryValue(req.query.includeChatGenerated)),
       status: status as Project["status"] | undefined,
       type: type as Project["type"] | undefined,
       targetDateStart: getQueryValue(req.query.targetDateStart),

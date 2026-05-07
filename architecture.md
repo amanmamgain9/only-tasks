@@ -13,6 +13,43 @@ This app should:
 
 The current `atum` + `atum-fe` split should not be copied as-is. The right move is to extract the task engine into a modular monolith inside one Next.js app.
 
+## Current Migration Decisions
+
+These decisions supersede the earlier PostgreSQL-first recommendation in this document:
+
+- run one Next.js app on the existing EC2 setup
+- keep SQLite as the production database for this focused app until scale proves otherwise
+- keep auth, task data, users, and subscription state in the same SQLite database
+- keep legacy subscription rows, but mark old PayPal/LemonSqueezy rows for Paddle migration review
+- do not port the old multi-product billing surface
+- when Paddle is added, treat Paddle as the source of truth for checkout, receipts, payment method handling, and subscription webhooks
+- keep local invoice/payment rows only if we need an internal ledger for support or entitlement debugging
+
+## Billing And Invoice Save Flow
+
+The old `atum` backend saved invoices only after provider-side payment confirmation.
+
+Old flow:
+
+1. Checkout start created a local `subscriptions` row in `pending` state.
+2. Checkout start also created a local `payments` row with `status = pending` and `invoiceId = null`.
+3. Provider confirmation was handled by `processPayPalSubscription`, PayPal webhook processing, or `processLemonSqueezySubscription`.
+4. The confirmed payment row was marked `completed`.
+5. `createSubscriptionInvoice` created one `invoices` row with `status = paid`.
+6. `createSubscriptionInvoice` also created one `invoiceItems` row for the plan line item.
+7. The payment row was patched with the new `invoiceId`.
+8. Invoice email queuing existed in code, but was commented out.
+
+Important implementation detail: the old invoice write was not transactional. It inserted the invoice first, then inserted invoice items, then separately updated the payment with `invoiceId`. For this app, if we add internal invoice rows, that should be one SQLite transaction so payment, invoice, and invoice item cannot drift.
+
+Paddle direction:
+
+- Paddle should own receipts and customer-facing invoice documents because it is the merchant of record.
+- Our DB should store subscription state, Paddle customer id, Paddle subscription id, Paddle price id, status, period dates, and raw webhook event ids.
+- Optional internal invoice rows should be derived from verified Paddle transaction or subscription events, not from client checkout completion alone.
+- Webhook handling must be idempotent by Paddle event id and must ignore stale subscription updates.
+- A client "checkout complete" call is useful as a fast confirmation path, but the Paddle webhook remains the durable source of truth.
+
 ## High-Level Direction
 
 Use:

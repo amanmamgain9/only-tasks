@@ -7,6 +7,7 @@ export interface FindProjectsByUserIdOptions {
   includeArchived?: boolean;
   includeDeleted?: boolean;
   includeDrafts?: boolean;
+  includeChatGenerated?: boolean;
   status?: Project["status"];
   type?: Project["type"];
   targetDateStart?: string;
@@ -59,6 +60,8 @@ export async function findProjectsByUserId(
 
   if (options.chatId !== undefined) {
     conditions.push(eq(projects.createdByChatId, options.chatId));
+  } else if (options.includeChatGenerated !== true) {
+    conditions.push(isNull(projects.createdByChatId));
   }
 
   return db
