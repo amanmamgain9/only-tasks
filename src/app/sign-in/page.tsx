@@ -2,10 +2,19 @@ import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import SignInScreen from "@/features/auth/components/SignInScreen";
 import { getCurrentUserFromRequest, sanitizeAuthRedirectPath } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Sign In",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 function getSearchValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;

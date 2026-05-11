@@ -4,13 +4,16 @@ import Link from "next/link";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 import { getBlogPosts } from "@/features/marketing/blog-data/posts";
+import { buildMarketingMetadata } from "@/features/marketing/seo";
 
-export const metadata: Metadata = {
-  title: "Blog",
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "Productivity Blog | Plan My Workday",
   description: "Productivity and task-management writing from PlanMyWorkday.",
-};
+  path: "/blog",
+  keywords: ["productivity blog", "ADHD planning", "task management writing", "Plan My Workday blog"],
+});
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 export default function BlogListingPage() {
   const posts = getBlogPosts();

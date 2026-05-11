@@ -1,6 +1,74 @@
 import type { Metadata } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://planmyworkday.com";
+const FALLBACK_SITE_URL = "https://planmyworkday.dev";
+const defaultOgImage = "/media/plan-my-workday/og-image.png";
+
+function normalizeSiteUrl(value: string | undefined) {
+  const candidate = (value || FALLBACK_SITE_URL).replace(/\/+$/, "");
+
+  try {
+    return new URL(candidate).origin;
+  } catch {
+    return FALLBACK_SITE_URL;
+  }
+}
+
+export const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL);
+
+export function absoluteUrl(path: string) {
+  return new URL(path, `${siteUrl}/`).toString();
+}
+
+export function buildMarketingMetadata({
+  title,
+  description,
+  path,
+  image = defaultOgImage,
+  keywords,
+  type = "website",
+}: {
+  title: string;
+  description: string;
+  path: string;
+  image?: string;
+  keywords?: string | string[];
+  type?: "website" | "article";
+}): Metadata {
+  const canonical = absoluteUrl(path);
+  const imageUrl = image.startsWith("http") ? image : absoluteUrl(image);
+
+  return {
+    title,
+    description,
+    keywords,
+    alternates: {
+      canonical,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Plan My Workday",
+      type,
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      creator: "@planmyworkday",
+      site: "@planmyworkday",
+      images: [imageUrl],
+    },
+  };
+}
 
 export const seoMetadata: Metadata = {
   title: {
@@ -72,7 +140,7 @@ export const productJsonLd = {
     priceCurrency: "USD",
   },
   description: "AI-powered work plans that maximize productivity for different working styles",
-  image: `${siteUrl}/media/plan-my-workday/og-image.png`,
+  image: absoluteUrl(defaultOgImage),
   url: siteUrl,
   author: {
     "@type": "Organization",
@@ -92,7 +160,6 @@ export const organizationJsonLd = {
   "@type": "Organization",
   name: "Plan My Workday",
   url: siteUrl,
-  logo: `${siteUrl}/media/plan-my-workday/logo.jpg`,
+  logo: absoluteUrl("/media/plan-my-workday/logo.jpg"),
   sameAs: ["https://twitter.com/planmyworkday"],
 };
-
