@@ -33,12 +33,13 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
   const [isLoadingViewer, setIsLoadingViewer] = useState(!viewer);
 
   useEffect(() => {
-    if (!appRef.current) return;
+    if (isLoadingViewer || !resolvedViewer || !appRef.current) return;
+
     NavigationService.init(appRef.current);
     return () => {
       NavigationService.cleanup();
     };
-  }, []);
+  }, [isLoadingViewer, resolvedViewer?.id]);
 
   useEffect(() => {
     if (viewer) {
