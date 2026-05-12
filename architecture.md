@@ -50,6 +50,16 @@ Paddle direction:
 - Webhook handling must be idempotent by Paddle event id and must ignore stale subscription updates.
 - A client "checkout complete" call is useful as a fast confirmation path, but the Paddle webhook remains the durable source of truth.
 
+Implemented Paddle shape:
+
+- `/pricing` offers `pro_monthly` and `lifetime`.
+- Monthly checkout uses `PADDLE_PRICE_ID_PRO_MONTHLY` with `PADDLE_MONTHLY_TRIAL_DAYS=3` for app copy. The actual 3-day trial must also be configured on the Paddle recurring price.
+- Lifetime checkout uses `PADDLE_PRICE_ID_LIFETIME` and is stored as an active non-renewing entitlement after `transaction.completed`.
+- `/api/billing/checkout` returns Paddle.js checkout options for authenticated users.
+- `/api/billing/webhook` verifies `Paddle-Signature`, records the Paddle event id in `billing_events`, then updates `subscriptions`.
+- `/api/billing/portal` creates a temporary Paddle customer portal link for linked Paddle subscriptions.
+- Workspace enforcement is implemented but gated by `PLANMYWORKDAY_BILLING_ENFORCEMENT=1` so credentials and legacy access can be verified before lockout.
+
 ## High-Level Direction
 
 Use:

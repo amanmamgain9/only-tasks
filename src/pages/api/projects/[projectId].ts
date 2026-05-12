@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getCurrentUserIdFromRequest, UnauthorizedError } from "@/server/auth";
+import { BillingRequiredError } from "@/server/billing/enforcement";
+import { getWorkspaceUserIdFromRequest, UnauthorizedError } from "@/server/auth";
 import { softDeleteProjectForUser, updateProjectForUser } from "@/server/projects/service";
 import { toWebRequest } from "../auth/_helpers";
 
@@ -17,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const userId = await getCurrentUserIdFromRequest(toWebRequest(req));
+    const userId = await getWorkspaceUserIdFromRequest(toWebRequest(req));
 
     if (req.method === "DELETE") {
       const project = await softDeleteProjectForUser(userId, projectId);
@@ -37,6 +38,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    if (error instanceof BillingRequiredError) {
+      res.status(402).json({ success: false, error: "Active plan required" });
       return;
     }
 

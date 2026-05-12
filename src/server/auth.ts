@@ -4,6 +4,7 @@ import { db } from "./db/client";
 import { authSessions } from "./db/schema/sessions";
 import { users } from "./db/schema/users";
 import { ensureDefaultWorkspace } from "./projects/service";
+import { assertWorkspaceBillingAccess } from "./billing/enforcement";
 import { getEffectiveSubscriptionForUser, type SubscriptionSummary } from "./subscriptions/service";
 
 export const SESSION_COOKIE_NAME = "only_tasks_session";
@@ -198,6 +199,18 @@ export async function getCurrentUserFromRequest(request: Request): Promise<Authe
 export async function getCurrentUserIdFromRequest(request: Request): Promise<number> {
   const user = await getCurrentUserFromRequest(request);
   if (!user) throw new UnauthorizedError();
+  return user.id;
+}
+
+export async function getWorkspaceUserFromRequest(request: Request): Promise<AuthenticatedUser> {
+  const user = await getCurrentUserFromRequest(request);
+  if (!user) throw new UnauthorizedError();
+  assertWorkspaceBillingAccess(user);
+  return user;
+}
+
+export async function getWorkspaceUserIdFromRequest(request: Request): Promise<number> {
+  const user = await getWorkspaceUserFromRequest(request);
   return user.id;
 }
 

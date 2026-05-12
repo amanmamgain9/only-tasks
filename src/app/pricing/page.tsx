@@ -1,18 +1,100 @@
 import type { Metadata } from "next";
-import SimpleMarketingPage from "@/features/marketing/components/SimpleMarketingPage";
+import Link from "next/link";
+import { CheckCircle2, Keyboard, ShieldCheck, Zap } from "lucide-react";
+import PaddleCheckoutButtons from "@/features/billing/components/PaddleCheckoutButtons";
+import MarketingFooter from "@/features/marketing/components/MarketingFooter";
+import MarketingHeader from "@/features/marketing/components/MarketingHeader";
+import { listPaddlePlanConfigs } from "@/server/billing/plans";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Plan My Workday pricing and subscription information.",
+  description: "Plan My Workday pricing with monthly Paddle billing and lifetime access.",
 };
 
 export default function PricingPage() {
+  const plans = listPaddlePlanConfigs().map(({ planKey, label, checkoutLabel, priceLabel, description, trialDays, priceId }) => ({
+    planKey,
+    label,
+    checkoutLabel,
+    priceLabel,
+    description,
+    trialDays,
+    configured: Boolean(priceId),
+  }));
+  const monthlyTrialDays = plans.find((plan) => plan.planKey === "pro_monthly")?.trialDays ?? 3;
+
   return (
-    <SimpleMarketingPage
-      eyebrow="Pricing"
-      title="Start free. Upgrade when the workflow proves itself."
-      description="Legacy subscription data is preserved in the migrated app while billing moves toward Paddle."
-      points={["Free local workspace access during migration", "Legacy subscriptions marked for review", "Paddle-ready billing model"]}
-    />
+    <main className="relative min-h-screen text-slate-950 dark:text-white">
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800" />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(79,70,229,0.15),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.2),rgba(0,0,0,0))]" />
+
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 sm:px-6 lg:px-8">
+        <MarketingHeader />
+
+        <section className="py-16 text-center sm:py-20">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-600 dark:text-indigo-300">Pricing</p>
+          <h1 className="mx-auto mt-5 max-w-4xl text-5xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-6xl">
+            One focused workspace. Monthly or lifetime.
+          </h1>
+          <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
+            Monthly includes a {monthlyTrialDays}-day Paddle trial when the monthly price is configured with a trial in Paddle. Lifetime is a one-time Paddle purchase.
+          </p>
+        </section>
+
+        <section className="mx-auto w-full max-w-5xl pb-16">
+          <PaddleCheckoutButtons plans={plans} />
+        </section>
+
+        <section className="mx-auto grid w-full max-w-5xl gap-4 pb-16 md:grid-cols-3">
+          {[
+            {
+              icon: Keyboard,
+              title: "Keyboard-first",
+              text: "The task tree and workspace navigation stay built around speed.",
+            },
+            {
+              icon: Zap,
+              title: "No plan sprawl",
+              text: "Monthly Pro or lifetime access. No multi-product billing baggage.",
+            },
+            {
+              icon: ShieldCheck,
+              title: "Paddle managed",
+              text: "Checkout, receipts, cards, taxes, and subscription management stay in Paddle.",
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="rounded-3xl border border-slate-200/70 bg-white/70 p-6 shadow-lg backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/50">
+                <Icon className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+                <h2 className="mt-4 text-lg font-bold text-slate-950 dark:text-white">{item.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.text}</p>
+              </div>
+            );
+          })}
+        </section>
+
+        <section className="mx-auto mb-16 w-full max-w-5xl rounded-3xl border border-slate-200/70 bg-white/70 p-6 shadow-lg backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/50">
+          <div className="grid gap-4 md:grid-cols-2">
+            {[
+              "Cancel monthly any time from Paddle customer portal.",
+              "Legacy billing rows stay marked for support review before self-serve checkout.",
+              "Webhook events are stored idempotently before entitlement updates.",
+              "Workspace enforcement can be turned on with PLANMYWORKDAY_BILLING_ENFORCEMENT=1.",
+            ].map((point) => (
+              <div key={point} className="flex gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">{point}</p>
+              </div>
+            ))}
+          </div>
+          <Link href="/app/workspace/all-tasks" className="mt-6 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-300">
+            Go to workspace
+          </Link>
+        </section>
+
+        <MarketingFooter />
+      </div>
+    </main>
   );
 }

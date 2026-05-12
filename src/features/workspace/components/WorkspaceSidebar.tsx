@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
+  CreditCard,
   FolderOpen,
   ListTodo,
   LogOut,
@@ -69,6 +70,8 @@ function isItemActive(pathname: string, href: string) {
 
 export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSidebarProps) {
   const [isWorkZoneOpen, setIsWorkZoneOpen] = useState(true);
+  const [billingPortalError, setBillingPortalError] = useState<string | null>(null);
+  const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false);
   const location = useLocation();
   const pathname = location.pathname || "/";
   const isWorkZoneActive = navItems.some((item) => isItemActive(pathname, item.href));
@@ -79,6 +82,33 @@ export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSideb
       .join("")
       .slice(0, 2)
       .toUpperCase() || viewer.email.slice(0, 2).toUpperCase();
+
+  async function openBillingPortal() {
+    setBillingPortalError(null);
+    setIsOpeningBillingPortal(true);
+    try {
+      const response = await fetch("/api/billing/portal", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.status === 401) {
+        window.location.href = `/sign-in?next=${encodeURIComponent(window.location.pathname || "/app")}`;
+        return;
+      }
+
+      const payload = (await response.json()) as { success: boolean; data?: { url?: string }; error?: string };
+      if (!response.ok || !payload.success || !payload.data?.url) {
+        throw new Error(payload.error || "Could not open billing portal.");
+      }
+
+      window.location.href = payload.data.url;
+    } catch (error) {
+      setBillingPortalError(error instanceof Error ? error.message : "Could not open billing portal.");
+    } finally {
+      setIsOpeningBillingPortal(false);
+    }
+  }
 
   return (
     <aside
@@ -148,6 +178,20 @@ export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSideb
           <div className="rounded-xl border border-border/40 bg-white/35 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:bg-slate-900/35 dark:text-slate-400">
             <p className="font-medium text-slate-900 dark:text-slate-100">{viewer.subscription?.label || "Free"}</p>
             <p className="mt-0.5 truncate">{viewer.subscription?.status || "No subscription"}</p>
+            {viewer.subscription?.billingPortalAvailable && (
+              <button
+                type="button"
+                data-focusable
+                data-order="5"
+                onClick={openBillingPortal}
+                disabled={isOpeningBillingPortal}
+                className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium text-indigo-700 outline-none transition hover:bg-indigo-500/10 focus-visible:ring-2 focus-visible:ring-indigo-400/40 disabled:cursor-not-allowed disabled:opacity-60 dark:text-indigo-300"
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                <span>{isOpeningBillingPortal ? "Opening..." : "Manage billing"}</span>
+              </button>
+            )}
+            {billingPortalError && <p className="mt-2 text-[11px] leading-4 text-rose-600 dark:text-rose-300">{billingPortalError}</p>}
           </div>
 
           <div className="rounded-xl border border-border/40 bg-white/35 p-2 shadow-sm backdrop-blur dark:bg-slate-900/35">

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getCurrentUserIdFromRequest, UnauthorizedError } from "@/server/auth";
+import { BillingRequiredError } from "@/server/billing/enforcement";
+import { getWorkspaceUserIdFromRequest, UnauthorizedError } from "@/server/auth";
 import {
   createProjectForUser,
   getProjectsForUser,
@@ -28,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const userId = await getCurrentUserIdFromRequest(toWebRequest(req));
+    const userId = await getWorkspaceUserIdFromRequest(toWebRequest(req));
     const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
     const isCreateRequest = typeof body.title === "string" || typeof body.type === "string";
 
@@ -81,6 +82,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    if (error instanceof BillingRequiredError) {
+      res.status(402).json({ success: false, error: "Active plan required" });
       return;
     }
 

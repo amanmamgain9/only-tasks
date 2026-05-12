@@ -1,6 +1,7 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { SESSION_COOKIE_NAME } from "@/server/auth";
+import { BillingRequiredError } from "@/server/billing/enforcement";
+import { getWorkspaceUserFromRequest, SESSION_COOKIE_NAME, UnauthorizedError } from "@/server/auth";
 
 export async function requireWorkspaceSession(nextPath: string) {
   const cookieStore = await cookies();
@@ -8,5 +9,24 @@ export async function requireWorkspaceSession(nextPath: string) {
 
   if (!sessionToken) {
     redirect(`/sign-in?next=${encodeURIComponent(nextPath)}`);
+  }
+
+  const requestHeaders = await headers();
+  try {
+    await getWorkspaceUserFromRequest(
+      new Request("http://local.planmyworkday/app", {
+        headers: {
+          cookie: requestHeaders.get("cookie") || "",
+        },
+      }),
+    );
+  } catch (error) {
+    if (error instanceof BillingRequiredError) {
+      redirect(`/pricing?next=${encodeURIComponent(nextPath)}`);
+    }
+    if (error instanceof UnauthorizedError) {
+      redirect(`/sign-in?next=${encodeURIComponent(nextPath)}`);
+    }
+    throw error;
   }
 }
