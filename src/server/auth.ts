@@ -52,12 +52,17 @@ function normalizeEmail(value: string) {
 
 function resolveGoogleCredentials(origin?: string | null) {
   const normalizedOrigin = origin?.toLowerCase() || "";
+  const genericCredentials = {
+    clientId: process.env.GOOGLE_CLIENT_ID || null,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || null,
+  };
+  const planMyWorkdayCredentials = {
+    clientId: process.env.PLANMYWORKDAY_GOOGLE_CLIENT_ID || null,
+    clientSecret: process.env.PLANMYWORKDAY_GOOGLE_CLIENT_SECRET || null,
+  };
 
   if (normalizedOrigin.includes("planmyworkday")) {
-    return {
-      clientId: process.env.PLANMYWORKDAY_GOOGLE_CLIENT_ID || null,
-      clientSecret: process.env.PLANMYWORKDAY_GOOGLE_CLIENT_SECRET || null,
-    };
+    return planMyWorkdayCredentials;
   }
 
   if (normalizedOrigin.includes("painpulse")) {
@@ -67,10 +72,11 @@ function resolveGoogleCredentials(origin?: string | null) {
     };
   }
 
-  return {
-    clientId: process.env.GOOGLE_CLIENT_ID || null,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || null,
-  };
+  if (genericCredentials.clientId && genericCredentials.clientSecret) {
+    return genericCredentials;
+  }
+
+  return planMyWorkdayCredentials;
 }
 
 function getGoogleRedirectUri(origin: string) {
@@ -78,7 +84,29 @@ function getGoogleRedirectUri(origin: string) {
   if (normalizedOrigin.includes("planmyworkday") || normalizedOrigin.includes("painpulse")) {
     return `${origin}/api/auth/google/callback`;
   }
-  return process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL || `${origin}/api/auth/google/callback`;
+
+  const configuredRedirect = process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL;
+  if (!configuredRedirect) {
+    return `${origin}/api/auth/google/callback`;
+  }
+
+  try {
+    const configuredUrl = new URL(configuredRedirect);
+    const originUrl = new URL(origin);
+    if (configuredUrl.origin === originUrl.origin) {
+      return configuredRedirect;
+    }
+
+    const isLocalOrigin = ["localhost", "127.0.0.1", "::1"].includes(originUrl.hostname);
+    const isConfiguredLocal = ["localhost", "127.0.0.1", "::1"].includes(configuredUrl.hostname);
+    if (isLocalOrigin && isConfiguredLocal) {
+      return `${origin}/api/auth/google/callback`;
+    }
+  } catch {
+    return `${origin}/api/auth/google/callback`;
+  }
+
+  return configuredRedirect;
 }
 
 export function sanitizeAuthRedirectPath(value: string | null | undefined) {

@@ -9,8 +9,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
+  const googleEnabled = isGoogleAuthConfigured(resolveOrigin(req));
+
   if (!isDevelopmentAuthEnabled()) {
-    res.status(404).json({ success: false, error: "Not found" });
+    res.status(200).json({
+      success: true,
+      data: {
+        googleEnabled,
+        devAuthEnabled: false,
+        users: [],
+      },
+    });
     return;
   }
 
@@ -18,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.status(200).json({
     success: true,
     data: {
-      googleEnabled: isGoogleAuthConfigured(resolveOrigin(req)),
+      googleEnabled,
       devAuthEnabled: true,
       users: users.map((user) => ({
         id: user.id,

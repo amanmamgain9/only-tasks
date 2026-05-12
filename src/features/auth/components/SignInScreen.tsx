@@ -43,7 +43,7 @@ function sanitizeNextPath(value: string | null) {
 export default function SignInScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
   const [devAuthEnabled, setDevAuthEnabled] = useState(false);
   const [recentUsers, setRecentUsers] = useState<DevUser[]>([]);
 
@@ -73,7 +73,7 @@ export default function SignInScreen() {
       if (!devUsersResponse.ok) {
         if (!cancelled) {
           setRecentUsers([]);
-          setGoogleEnabled(false);
+          setGoogleEnabled(null);
           setDevAuthEnabled(false);
         }
         return;
@@ -148,7 +148,7 @@ export default function SignInScreen() {
               ))}
             </div>
 
-            {googleEnabled ? (
+            {googleEnabled !== false ? (
               <form action="/api/auth/google" method="post" className="mx-auto mb-6 w-full max-w-xs">
                 <input type="hidden" name="next" value={nextPath} />
                 <button
@@ -168,7 +168,7 @@ export default function SignInScreen() {
               </form>
             ) : (
               <div className="mx-auto mb-6 max-w-xs rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
-                Google auth is not configured for this host.
+                Google sign-in is not available for this host.
               </div>
             )}
 
