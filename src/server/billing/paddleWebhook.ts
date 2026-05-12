@@ -21,6 +21,7 @@ export type PaddleSubscriptionSnapshot = {
   currentPeriodEndsAt: string | null;
   nextBilledAt: string | null;
   canceledAt: string | null;
+  scheduledChangeAction: string | null;
   updatedAt: string | null;
 };
 
@@ -110,6 +111,7 @@ export function extractPaddleSubscriptionSnapshot(event: PaddleWebhookEvent): Pa
   const data = event.data;
   const customData = extractCustomData(data);
   const currentPeriod = asRecord(getValue(data, "current_billing_period", "currentBillingPeriod"));
+  const scheduledChange = asRecord(getValue(data, "scheduled_change", "scheduledChange"));
   const priceId = extractPriceId(data);
   const customPlanKey = parsePaddlePlanKey(getString(customData, "planKey", "plan"));
 
@@ -127,6 +129,7 @@ export function extractPaddleSubscriptionSnapshot(event: PaddleWebhookEvent): Pa
     currentPeriodEndsAt: getString(currentPeriod, "ends_at", "endsAt"),
     nextBilledAt: getString(data, "next_billed_at", "nextBilledAt"),
     canceledAt: getString(data, "canceled_at", "canceledAt"),
+    scheduledChangeAction: getString(scheduledChange, "action"),
     updatedAt: getString(data, "updated_at", "updatedAt"),
   };
 }

@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "../db/client";
+import { cancelPaddleSubscription } from "../billing/paddle";
 import { billingEvents } from "../db/schema/billingEvents";
 import { subscriptions, type Subscription } from "../db/schema/subscriptions";
 import type { PaddleLifetimePurchaseSnapshot, PaddleSubscriptionSnapshot } from "../billing/paddleWebhook";
@@ -166,7 +167,15 @@ export async function listSubscriptionsForUser(userId: number) {
 
 export async function getEffectiveSubscriptionForUser(userId: number) {
   const rows = await listSubscriptionsForUser(userId);
-  return summarizeSubscription(pickEffectiveSubscription(rows));
+  const summary = summarizeSubscription(pickEffectiveSubscription(rows));
+  if (!summary) return null;
+
+  return {
+    ...summary,
+    billingPortalAvailable:
+      summary.billingPortalAvailable ||
+      rows.some((row) => Boolean(row.paddleCustomerId && row.paddleSubscriptionId)),
+  };
 }
 
 export async function getPaddleBillingContextForUser(userId: number) {
@@ -186,6 +195,48 @@ export async function getPaddleBillingContextForUser(userId: number) {
   return {
     paddleCustomerId,
     subscriptionIds,
+  };
+}
+
+function subscriptionCanBeAutoCanceledAfterLifetime(subscription: Subscription) {
+  if (subscription.provider !== "paddle" || subscription.planKey !== "pro_monthly") return false;
+  if (!subscription.paddleSubscriptionId) return false;
+  if (subscription.autoRenew !== 1) return false;
+  const status = normalizeStatus(subscription.status);
+  return status === "active" || status === "trialing" || status === "trial" || status === "paused";
+}
+
+async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
+  const candidates = rows.filter(subscriptionCanBeAutoCanceledAfterLifetime);
+  const canceledSubscriptionIds: string[] = [];
+  const failedSubscriptionIds: string[] = [];
+
+  for (const subscription of candidates) {
+    const subscriptionId = subscription.paddleSubscriptionId;
+    if (!subscriptionId) continue;
+
+    try {
+      await cancelPaddleSubscription(subscriptionId, "next_billing_period");
+      canceledSubscriptionIds.push(subscriptionId);
+      await db
+        .update(subscriptions)
+        .set({
+          autoRenew: 0,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(subscriptions.id, subscription.id));
+    } catch (error) {
+      failedSubscriptionIds.push(subscriptionId);
+      console.error("Failed to schedule Paddle monthly cancellation after lifetime purchase", {
+        subscriptionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return {
+    canceledSubscriptionIds,
+    failedSubscriptionIds,
   };
 }
 
@@ -307,7 +358,7 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
     currentPeriodEndsAt: snapshot.currentPeriodEndsAt,
     nextBilledAt: snapshot.nextBilledAt,
     canceledAt: snapshot.canceledAt,
-    autoRenew: snapshot.canceledAt ? 0 : 1,
+    autoRenew: snapshot.canceledAt || snapshot.scheduledChangeAction === "cancel" ? 0 : 1,
     paddleCustomerId: snapshot.customerId,
     paddleSubscriptionId: snapshot.subscriptionId,
     paddlePriceId: snapshot.priceId,
@@ -348,7 +399,8 @@ export async function recordPaddleLifetimePurchase(snapshot: PaddleLifetimePurch
   const rows = await listSubscriptionsForUser(userId);
   const existingLifetime = rows.find((row) => row.planKey === "lifetime" && row.provider === "paddle");
   if (existingLifetime?.paddleTransactionId) {
-    return { processed: false, reason: "lifetime_access_already_active" };
+    const cancellation = await scheduleMonthlyCancellationAfterLifetime(rows);
+    return { processed: false, reason: "lifetime_access_already_active", ...cancellation };
   }
   const values = {
     userId,
@@ -372,7 +424,8 @@ export async function recordPaddleLifetimePurchase(snapshot: PaddleLifetimePurch
 
   if (existingLifetime) {
     await db.update(subscriptions).set(values).where(eq(subscriptions.id, existingLifetime.id));
-    return { processed: true, id: existingLifetime.id };
+    const cancellation = await scheduleMonthlyCancellationAfterLifetime(rows);
+    return { processed: true, id: existingLifetime.id, ...cancellation };
   }
 
   const [created] = await db
@@ -383,5 +436,6 @@ export async function recordPaddleLifetimePurchase(snapshot: PaddleLifetimePurch
     })
     .returning();
 
-  return { processed: true, id: created.id };
+  const cancellation = await scheduleMonthlyCancellationAfterLifetime(rows);
+  return { processed: true, id: created.id, ...cancellation };
 }

@@ -119,3 +119,15 @@ export async function createPaddleCustomerPortalSession(customerId: string, subs
   }
   return url;
 }
+
+export async function cancelPaddleSubscription(
+  subscriptionId: string,
+  effectiveFrom: "next_billing_period" | "immediately" = "next_billing_period",
+) {
+  await paddleApi<{ data?: unknown }>(`/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({
+      effective_from: effectiveFrom,
+    }),
+  });
+}
