@@ -1,10 +1,9 @@
 "use client";
 
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import MyDayTasksComponent from "./MyWorkdayTasksComponent";
 import WorkspaceSidebar from "../WorkspaceSidebar";
-import { NavigationService } from "../../_services/navigationService";
 import type { AuthenticatedUser } from "@/server/auth";
 
 interface MyWorkplaceComponentProps {
@@ -27,19 +26,9 @@ const SkeletonMyWorkplaceComponent = () => {
 };
 
 const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
-  const appRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const [resolvedViewer, setResolvedViewer] = useState<AuthenticatedUser | null>(viewer ?? null);
   const [isLoadingViewer, setIsLoadingViewer] = useState(!viewer);
-
-  useEffect(() => {
-    if (isLoadingViewer || !resolvedViewer || !appRef.current) return;
-
-    NavigationService.init(appRef.current);
-    return () => {
-      NavigationService.cleanup();
-    };
-  }, [isLoadingViewer, resolvedViewer?.id]);
 
   useEffect(() => {
     if (viewer) {
@@ -94,8 +83,6 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
 
   return (
     <div
-      ref={appRef}
-      data-scope
       className="relative min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(79,70,229,0.12),rgba(255,255,255,0)),linear-gradient(135deg,#f8fafc_0%,#ffffff_48%,#f1f5f9_100%)] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.18),rgba(0,0,0,0)),linear-gradient(135deg,#020617_0%,#0f172a_48%,#1e293b_100%)]"
     >
       <div className="min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">

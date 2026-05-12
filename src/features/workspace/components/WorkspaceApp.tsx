@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import MyWorkplaceComponent from "./MyWorkplaceComponents/MyWorkplaceComponent";
+import { NavigationService } from "../_services/navigationService";
 
 function WorkspaceShellFallback() {
   return (
@@ -17,27 +18,39 @@ function WorkspaceShellFallback() {
 }
 
 export default function WorkspaceApp() {
+  const appRef = useRef<HTMLDivElement>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!isMounted || !appRef.current) return;
+
+    NavigationService.init(appRef.current);
+    return () => {
+      NavigationService.cleanup();
+    };
+  }, [isMounted]);
+
   if (!isMounted) {
     return <WorkspaceShellFallback />;
   }
 
   return (
-    <BrowserRouter basename="/app">
-      <Routes>
-        <Route path="/" element={<Navigate to="/workspace/all-tasks" replace />} />
-        <Route path="/workspace" element={<Navigate to="/workspace/all-tasks" replace />} />
-        <Route path="/workspace/all-tasks" element={<MyWorkplaceComponent regionOrder={1} />} />
-        <Route path="/workspace/today" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="today" />} />
-        <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" />} />
-        <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" />} />
-        <Route path="*" element={<Navigate to="/workspace/all-tasks" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <div ref={appRef} data-scope>
+      <BrowserRouter basename="/app">
+        <Routes>
+          <Route path="/" element={<Navigate to="/workspace/all-tasks" replace />} />
+          <Route path="/workspace" element={<Navigate to="/workspace/all-tasks" replace />} />
+          <Route path="/workspace/all-tasks" element={<MyWorkplaceComponent regionOrder={1} />} />
+          <Route path="/workspace/today" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="today" />} />
+          <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" />} />
+          <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" />} />
+          <Route path="*" element={<Navigate to="/workspace/all-tasks" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
   );
 }
