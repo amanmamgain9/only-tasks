@@ -7,8 +7,10 @@ import * as projectRepo from "./repository";
 export type GetProjectsForUserOptions = projectRepo.FindProjectsByUserIdOptions;
 
 type ProjectType = Project["type"];
+type ProjectStatus = Project["status"];
 
 const projectTypes: ProjectType[] = ["main", "side_project", "chore"];
+const projectStatuses: ProjectStatus[] = ["active", "completed", "on_hold", "cancelled", "archived"];
 
 function normalizeProjectType(value: unknown): ProjectType {
   if (typeof value === "string" && projectTypes.includes(value as ProjectType)) {
@@ -28,6 +30,26 @@ function normalizeProjectTitle(value: unknown): string {
   }
 
   return title;
+}
+
+function normalizeProjectStatus(value: unknown): ProjectStatus {
+  if (typeof value === "string" && projectStatuses.includes(value as ProjectStatus)) {
+    return value as ProjectStatus;
+  }
+  throw new Error("Invalid project status.");
+}
+
+function normalizeTargetDate(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== "string") {
+    throw new Error("Invalid target date.");
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/.test(value)) {
+    throw new Error("Target date must be YYYY-MM-DD, ISO date, or null.");
+  }
+
+  return value;
 }
 
 export async function ensureDefaultWorkspace(userId: number): Promise<void> {
@@ -92,6 +114,8 @@ export async function updateProjectForUser(
   input: {
     title?: unknown;
     type?: unknown;
+    status?: unknown;
+    targetDate?: unknown;
   },
 ): Promise<Project> {
   const updates: Parameters<typeof projectRepo.updateProjectForUser>[2] = {
@@ -106,10 +130,44 @@ export async function updateProjectForUser(
     updates.type = normalizeProjectType(input.type);
   }
 
+  if (input.status !== undefined) {
+    updates.status = normalizeProjectStatus(input.status);
+  }
+
+  if (input.targetDate !== undefined) {
+    updates.targetDate = normalizeTargetDate(input.targetDate);
+  }
+
   const project = await projectRepo.updateProjectForUser(projectId, userId, updates);
   if (!project) {
     throw new Error("Project not found.");
   }
 
   return project;
+}
+
+export async function softDeleteProjectForUser(userId: number, projectId: number): Promise<Project> {
+  const project = await projectRepo.softDeleteProjectForUser(projectId, userId);
+  if (!project) {
+    throw new Error("Project not found.");
+  }
+
+  return project;
+}
+
+export async function restoreProjectForUser(userId: number, projectId: number): Promise<Project> {
+  const project = await projectRepo.restoreProjectForUser(projectId, userId);
+  if (!project) {
+    throw new Error("Project not found.");
+  }
+
+  return project;
+}
+
+export function archiveProjectForUser(userId: number, projectId: number): Promise<Project> {
+  return updateProjectForUser(userId, projectId, { status: "archived" });
+}
+
+export function unarchiveProjectForUser(userId: number, projectId: number): Promise<Project> {
+  return updateProjectForUser(userId, projectId, { status: "active" });
 }

@@ -63,6 +63,8 @@ export const saveProject = async (projectData: SaveProjectInput): Promise<ApiRes
     ? {
         title: projectData.title,
         type: projectData.type,
+        status: projectData.status,
+        targetDate: projectData.targetDate,
       }
     : projectData;
 
@@ -70,6 +72,38 @@ export const saveProject = async (projectData: SaveProjectInput): Promise<ApiRes
     method: isUpdate ? "PUT" : "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+
+  return parseResponse<Project>(response);
+};
+
+export const deleteProject = async (projectId: number): Promise<ApiResponse<Project>> => {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
+    method: "DELETE",
+  });
+
+  return parseResponse<Project>(response);
+};
+
+export const archiveProject = async (projectId: number): Promise<ApiResponse<Project>> => {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/archive`, {
+    method: "POST",
+  });
+
+  return parseResponse<Project>(response);
+};
+
+export const unarchiveProject = async (projectId: number): Promise<ApiResponse<Project>> => {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/unarchive`, {
+    method: "POST",
+  });
+
+  return parseResponse<Project>(response);
+};
+
+export const restoreProject = async (projectId: number): Promise<ApiResponse<Project>> => {
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/restore`, {
+    method: "POST",
   });
 
   return parseResponse<Project>(response);

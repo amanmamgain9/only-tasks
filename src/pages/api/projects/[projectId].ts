@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCurrentUserIdFromRequest, UnauthorizedError } from "@/server/auth";
-import { updateProjectForUser } from "@/server/projects/service";
+import { softDeleteProjectForUser, updateProjectForUser } from "@/server/projects/service";
 import { toWebRequest } from "../auth/_helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "PUT") {
-    res.setHeader("Allow", "PUT");
+  if (req.method !== "PUT" && req.method !== "DELETE") {
+    res.setHeader("Allow", "PUT, DELETE");
     res.status(405).json({ success: false, error: "Method not allowed" });
     return;
   }
@@ -18,10 +18,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const userId = await getCurrentUserIdFromRequest(toWebRequest(req));
+
+    if (req.method === "DELETE") {
+      const project = await softDeleteProjectForUser(userId, projectId);
+      res.status(200).json({ success: true, data: project });
+      return;
+    }
+
     const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
     const project = await updateProjectForUser(userId, projectId, {
       title: body.title,
       type: body.type,
+      status: body.status,
+      targetDate: body.targetDate,
     });
 
     res.status(200).json({ success: true, data: project });

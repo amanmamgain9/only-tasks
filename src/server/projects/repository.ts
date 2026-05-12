@@ -98,3 +98,30 @@ export async function updateProjectForUser(
 
   return result ?? null;
 }
+
+export async function softDeleteProjectForUser(projectId: number, userId: number): Promise<Project | null> {
+  const now = new Date().toISOString();
+  const [result] = await db
+    .update(projects)
+    .set({
+      deletedAt: now,
+      updatedAt: now,
+    })
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId), isNull(projects.deletedAt)))
+    .returning();
+
+  return result ?? null;
+}
+
+export async function restoreProjectForUser(projectId: number, userId: number): Promise<Project | null> {
+  const [result] = await db
+    .update(projects)
+    .set({
+      deletedAt: null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
+    .returning();
+
+  return result ?? null;
+}

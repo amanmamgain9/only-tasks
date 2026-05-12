@@ -2,7 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { startTransition } from "react";
-import { getProjects, saveProject } from "../_services/backendService";
+import {
+  archiveProject,
+  deleteProject,
+  getProjects,
+  restoreProject,
+  saveProject,
+  unarchiveProject,
+} from "../_services/backendService";
 import type { ApiResponse, Project, SaveProjectInput } from "../types";
 
 export const projectsKey = ["projects"];
@@ -27,4 +34,33 @@ export function useSaveProjectMutation() {
       });
     },
   });
+}
+
+function useProjectLifecycleMutation(mutationFn: (projectId: number) => Promise<ApiResponse<Project>>) {
+  const queryClient = useQueryClient();
+
+  return useMutation<ApiResponse<Project>, Error, number>({
+    mutationFn,
+    onSuccess: () => {
+      startTransition(() => {
+        queryClient.invalidateQueries({ queryKey: projectsKey });
+      });
+    },
+  });
+}
+
+export function useDeleteProjectMutation() {
+  return useProjectLifecycleMutation(deleteProject);
+}
+
+export function useArchiveProjectMutation() {
+  return useProjectLifecycleMutation(archiveProject);
+}
+
+export function useUnarchiveProjectMutation() {
+  return useProjectLifecycleMutation(unarchiveProject);
+}
+
+export function useRestoreProjectMutation() {
+  return useProjectLifecycleMutation(restoreProject);
 }

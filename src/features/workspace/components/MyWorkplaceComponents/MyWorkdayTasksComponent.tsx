@@ -3,9 +3,15 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import { MoreVertical, Plus, Calendar, Sunrise, CalendarDays } from "lucide-react";
-import { useProjects, useSaveProjectMutation } from "../../_hooks/useScheduleManagement";
+import {
+  useArchiveProjectMutation,
+  useDeleteProjectMutation,
+  useProjects,
+  useSaveProjectMutation,
+  useUnarchiveProjectMutation,
+} from "../../_hooks/useScheduleManagement";
 import TreeMainComponent from "./TaskTreeComponents/TaskTreeMainComponent";
-import { Project, ProjectFormData, SaveProjectInput, UpdateProjectInput, CreateProjectInput } from "../../types";
+import { Project, ProjectFormData, SaveProjectInput, UpdateProjectInput, CreateProjectInput, ProjectStatus } from "../../types";
 import Modal from "../Modal";
 import ProjectForm from "../ProjectComponents/ProjectForm";
 
@@ -140,11 +146,16 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
     chatId // ✅ NEW: When chatId is present, only get projects for that chat
   });
   const saveProjectMutation = useSaveProjectMutation();
+  const deleteProjectMutation = useDeleteProjectMutation();
+  const archiveProjectMutation = useArchiveProjectMutation();
+  const unarchiveProjectMutation = useUnarchiveProjectMutation();
 
   const allProjects = useMemo(() => projectsData?.data || [], [projectsData?.data]);
 
   // Get the actual project ID to use (selected or default to first)
-  const actualProjectId = selectedProjectId || (allProjects.length > 0 ? allProjects[0].id : null);
+  const actualProjectId = selectedProjectId && allProjects.some(project => project.id === selectedProjectId)
+    ? selectedProjectId
+    : (allProjects.length > 0 ? allProjects[0].id : null);
 
   // Find the current project
   const currentProject = actualProjectId ? allProjects.find(p => p.id === actualProjectId) || null : null;
@@ -198,6 +209,52 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
       setSelectedProjectId(response.data.id);
     }
   };
+
+  const handleProjectStatusChange = async (status: ProjectStatus) => {
+    if (!selectedProject) return;
+
+    await saveProjectMutation.mutateAsync({
+      id: selectedProject.id,
+      status,
+    });
+
+    if (status !== "active") {
+      setSelectedProjectId(null);
+    }
+  };
+
+  const handleProjectArchive = async () => {
+    if (!selectedProject) return;
+
+    await archiveProjectMutation.mutateAsync(selectedProject.id);
+    setSelectedProjectId(null);
+  };
+
+  const handleProjectUnarchive = async () => {
+    if (!selectedProject) return;
+
+    await unarchiveProjectMutation.mutateAsync(selectedProject.id);
+    setSelectedProjectId(selectedProject.id);
+  };
+
+  const handleProjectDelete = async () => {
+    if (!selectedProject) return;
+
+    await deleteProjectMutation.mutateAsync(selectedProject.id);
+    setSelectedProjectId(null);
+  };
+
+  const isLifecycleLoading =
+    archiveProjectMutation.isPending ||
+    deleteProjectMutation.isPending ||
+    unarchiveProjectMutation.isPending ||
+    (saveProjectMutation.isPending && selectedProject !== null);
+
+  const lifecycleError =
+    archiveProjectMutation.error ||
+    deleteProjectMutation.error ||
+    unarchiveProjectMutation.error ||
+    null;
 
   const restoreModalTriggerFocus = () => {
     const trigger = modalTriggerRef.current;
@@ -330,10 +387,16 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
             key={selectedProject?.id || 'new'}
             selectedProject={selectedProject}
             onSave={handleProjectSave}
+            onStatusChange={handleProjectStatusChange}
+            onArchive={handleProjectArchive}
+            onUnarchive={handleProjectUnarchive}
+            onDelete={handleProjectDelete}
             onComplete={handleProjectFormComplete}
             closeModal={handleModalClose}
             isLoading={saveProjectMutation.isPending}
+            isLifecycleLoading={isLifecycleLoading}
             error={saveProjectMutation.error}
+            lifecycleError={lifecycleError}
           />
         </Modal>
       )}

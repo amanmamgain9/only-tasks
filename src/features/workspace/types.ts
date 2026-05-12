@@ -28,9 +28,12 @@ export type CreateProjectInput = ProjectFormData;
 
 export type UpdateProjectInput = Partial<ProjectFormData> & {
   id: number;
+  status?: Project["status"];
+  targetDate?: string | null;
 };
 
 export type SaveProjectInput = CreateProjectInput | UpdateProjectInput;
+export type ProjectStatus = Project["status"];
 
 export interface Task {
   id: number;
