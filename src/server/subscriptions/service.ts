@@ -6,7 +6,6 @@ import {
   removePaddleSubscriptionScheduledChange,
   resumePaddleSubscription,
 } from "../billing/paddle";
-import { isAppManagedTrialEnabled } from "../billing/plans";
 import { billingEvents } from "../db/schema/billingEvents";
 import { subscriptions, type Subscription } from "../db/schema/subscriptions";
 import type { PaddleLifetimePurchaseSnapshot, PaddleSubscriptionSnapshot } from "../billing/paddleWebhook";
@@ -266,28 +265,6 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
   };
 }
 
-async function scheduleAppManagedTrialPause(snapshot: PaddleSubscriptionSnapshot, subscriptionId: number) {
-  if (!isAppManagedTrialEnabled()) return null;
-  if (snapshot.planKey !== "pro_monthly") return null;
-  if (normalizeStatus(snapshot.status) !== "trialing") return null;
-  if (snapshot.scheduledChangeAction === "pause" || snapshot.scheduledChangeAction === "cancel") return null;
-  if (!snapshot.subscriptionId) return null;
-
-  await pausePaddleSubscription(snapshot.subscriptionId);
-  await db
-    .update(subscriptions)
-    .set({
-      autoRenew: 0,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(subscriptions.id, subscriptionId));
-
-  return {
-    scheduledTrialPause: true,
-    paddleSubscriptionId: snapshot.subscriptionId,
-  };
-}
-
 export async function continuePaddleMonthlyForUser(userId: number) {
   const rows = await listSubscriptionsForUser(userId);
   const row = rows.find((subscription) => {
@@ -494,8 +471,7 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
 
   if (existing) {
     await db.update(subscriptions).set(values).where(eq(subscriptions.id, existing.id));
-    const trialPause = await scheduleAppManagedTrialPause(snapshot, existing.id);
-    return { processed: true, id: existing.id, ...trialPause };
+    return { processed: true, id: existing.id };
   }
 
   const [created] = await db
@@ -506,8 +482,7 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
     })
     .returning();
 
-  const trialPause = await scheduleAppManagedTrialPause(snapshot, created.id);
-  return { processed: true, id: created.id, ...trialPause };
+  return { processed: true, id: created.id };
 }
 
 export async function recordPaddleLifetimePurchase(snapshot: PaddleLifetimePurchaseSnapshot) {

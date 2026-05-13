@@ -43,10 +43,6 @@ export function getPaddleTrialDays() {
   );
 }
 
-export function isAppManagedTrialEnabled() {
-  return process.env.PLANMYWORKDAY_APP_MANAGED_TRIAL !== "0" && process.env.PLANMYWORKDAY_APP_MANAGED_TRIAL !== "false";
-}
-
 export function parsePaddlePlanKey(input: unknown): PaddlePlanKey | null {
   if (input === "monthly") return "pro_monthly";
   if (input === "pro_monthly" || input === "lifetime") return input;
