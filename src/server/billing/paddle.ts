@@ -131,3 +131,31 @@ export async function cancelPaddleSubscription(
     }),
   });
 }
+
+export async function pausePaddleSubscription(subscriptionId: string) {
+  await paddleApi<{ data?: unknown }>(`/subscriptions/${encodeURIComponent(subscriptionId)}/pause`, {
+    method: "POST",
+    body: JSON.stringify({
+      effective_from: "next_billing_period",
+    }),
+  });
+}
+
+export async function resumePaddleSubscription(subscriptionId: string) {
+  await paddleApi<{ data?: unknown }>(`/subscriptions/${encodeURIComponent(subscriptionId)}/resume`, {
+    method: "POST",
+    body: JSON.stringify({
+      effective_from: "immediately",
+      on_resume: "start_new_billing_period",
+    }),
+  });
+}
+
+export async function removePaddleSubscriptionScheduledChange(subscriptionId: string) {
+  await paddleApi<{ data?: unknown }>(`/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      scheduled_change: null,
+    }),
+  });
+}

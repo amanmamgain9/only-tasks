@@ -40,10 +40,16 @@ type CheckoutResponse = {
   success: boolean;
   error?: string;
   code?: string;
-  data?: {
-    checkout: PaddleCheckoutOptions;
-    environment: "sandbox" | "production";
-  };
+  data?:
+    | {
+        kind: "subscription_updated";
+        action?: string;
+        message?: string;
+      }
+    | {
+        checkout: PaddleCheckoutOptions;
+        environment: "sandbox" | "production";
+      };
 };
 
 declare global {
@@ -123,6 +129,16 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
       const payload = (await response.json()) as CheckoutResponse;
       if (!response.ok || !payload.success || !payload.data) {
         throw new Error(payload.error || "Could not start checkout.");
+      }
+
+      if ("kind" in payload.data && payload.data.kind === "subscription_updated") {
+        setError(payload.data.message || "Subscription updated.");
+        window.location.href = "/app/workspace/all-tasks";
+        return;
+      }
+
+      if (!("checkout" in payload.data)) {
+        throw new Error("Checkout details were not returned.");
       }
 
       initializePaddle(payload.data.environment);

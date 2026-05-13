@@ -1,6 +1,12 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { cancelPaddleSubscription } from "../billing/paddle";
+import {
+  cancelPaddleSubscription,
+  pausePaddleSubscription,
+  removePaddleSubscriptionScheduledChange,
+  resumePaddleSubscription,
+} from "../billing/paddle";
+import { isAppManagedTrialEnabled } from "../billing/plans";
 import { billingEvents } from "../db/schema/billingEvents";
 import { subscriptions, type Subscription } from "../db/schema/subscriptions";
 import type { PaddleLifetimePurchaseSnapshot, PaddleSubscriptionSnapshot } from "../billing/paddleWebhook";
@@ -59,6 +65,7 @@ function getEntitlementRank(subscription: Subscription, now: number) {
 
   switch (normalizeStatus(subscription.status)) {
     case "pending":
+      if (subscription.requiresBillingMigrationReview === 1) return 0;
       return 2;
     case "past_due":
     case "paused":
@@ -69,7 +76,7 @@ function getEntitlementRank(subscription: Subscription, now: number) {
 }
 
 export function pickEffectiveSubscription(rows: Subscription[], now = Date.now()) {
-  return [...rows].sort((left, right) => {
+  const sorted = [...rows].sort((left, right) => {
     const entitlementDiff = getEntitlementRank(right, now) - getEntitlementRank(left, now);
     if (entitlementDiff !== 0) return entitlementDiff;
 
@@ -80,7 +87,10 @@ export function pickEffectiveSubscription(rows: Subscription[], now = Date.now()
     const rightUpdated = parseDateMs(right.updatedAt) ?? parseDateMs(right.createdAt) ?? 0;
     const leftUpdated = parseDateMs(left.updatedAt) ?? parseDateMs(left.createdAt) ?? 0;
     return rightUpdated - leftUpdated;
-  })[0] ?? null;
+  });
+  const best = sorted[0] ?? null;
+  if (!best || getEntitlementRank(best, now) === 0) return null;
+  return best;
 }
 
 function getPlanLabel(planKey: string | null | undefined) {
@@ -198,11 +208,21 @@ export async function getPaddleBillingContextForUser(userId: number) {
   };
 }
 
+export function hasConsumedTrial(rows: Subscription[]) {
+  return rows.some((row) => {
+    if (row.planKey === "lifetime") return true;
+    if (row.provider === "trial" || row.planKey === "trial") return true;
+    if (row.provider === "paddle" && row.planKey === "pro_monthly") return true;
+    return normalizeStatus(row.status) === "trial" || normalizeStatus(row.status) === "trialing";
+  });
+}
+
 function subscriptionCanBeAutoCanceledAfterLifetime(subscription: Subscription) {
   if (subscription.provider !== "paddle" || subscription.planKey !== "pro_monthly") return false;
   if (!subscription.paddleSubscriptionId) return false;
-  if (subscription.autoRenew !== 1) return false;
   const status = normalizeStatus(subscription.status);
+  if (status === "paused") return true;
+  if (subscription.autoRenew !== 1) return false;
   return status === "active" || status === "trialing" || status === "trial" || status === "paused";
 }
 
@@ -216,7 +236,13 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
     if (!subscriptionId) continue;
 
     try {
-      await cancelPaddleSubscription(subscriptionId, "next_billing_period");
+      if (normalizeStatus(subscription.status) === "trialing") {
+        await pausePaddleSubscription(subscriptionId);
+      } else if (normalizeStatus(subscription.status) === "paused") {
+        await cancelPaddleSubscription(subscriptionId, "immediately");
+      } else {
+        await cancelPaddleSubscription(subscriptionId, "next_billing_period");
+      }
       canceledSubscriptionIds.push(subscriptionId);
       await db
         .update(subscriptions)
@@ -237,6 +263,86 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
   return {
     canceledSubscriptionIds,
     failedSubscriptionIds,
+  };
+}
+
+async function scheduleAppManagedTrialPause(snapshot: PaddleSubscriptionSnapshot, subscriptionId: number) {
+  if (!isAppManagedTrialEnabled()) return null;
+  if (snapshot.planKey !== "pro_monthly") return null;
+  if (normalizeStatus(snapshot.status) !== "trialing") return null;
+  if (snapshot.scheduledChangeAction === "pause" || snapshot.scheduledChangeAction === "cancel") return null;
+  if (!snapshot.subscriptionId) return null;
+
+  await pausePaddleSubscription(snapshot.subscriptionId);
+  await db
+    .update(subscriptions)
+    .set({
+      autoRenew: 0,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(subscriptions.id, subscriptionId));
+
+  return {
+    scheduledTrialPause: true,
+    paddleSubscriptionId: snapshot.subscriptionId,
+  };
+}
+
+export async function continuePaddleMonthlyForUser(userId: number) {
+  const rows = await listSubscriptionsForUser(userId);
+  const row = rows.find((subscription) => {
+    if (subscription.provider !== "paddle" || subscription.planKey !== "pro_monthly") return false;
+    if (!subscription.paddleSubscriptionId) return false;
+    const status = normalizeStatus(subscription.status);
+    return status === "trialing" || status === "active" || status === "paused";
+  });
+
+  if (!row?.paddleSubscriptionId) {
+    return { handled: false as const };
+  }
+
+  const status = normalizeStatus(row.status);
+  const now = new Date().toISOString();
+
+  if (status === "paused") {
+    await resumePaddleSubscription(row.paddleSubscriptionId);
+    await db
+      .update(subscriptions)
+      .set({
+        status: "active",
+        autoRenew: 1,
+        updatedAt: now,
+      })
+      .where(eq(subscriptions.id, row.id));
+
+    return {
+      handled: true as const,
+      action: "resumed_monthly",
+      message: "Monthly billing resumed.",
+    };
+  }
+
+  if (row.autoRenew === 0) {
+    await removePaddleSubscriptionScheduledChange(row.paddleSubscriptionId);
+    await db
+      .update(subscriptions)
+      .set({
+        autoRenew: 1,
+        updatedAt: now,
+      })
+      .where(eq(subscriptions.id, row.id));
+
+    return {
+      handled: true as const,
+      action: "monthly_continues",
+      message: status === "trialing" ? "Monthly billing will continue after the trial." : "Monthly billing will continue.",
+    };
+  }
+
+  return {
+    handled: true as const,
+    action: "monthly_already_active",
+    message: status === "trialing" ? "Your monthly trial is already set to continue." : "Monthly billing is already active.",
   };
 }
 
@@ -262,7 +368,25 @@ export async function beginBillingEvent(event: {
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message.toLowerCase().includes("unique")) return false;
+    if (message.toLowerCase().includes("unique")) {
+      const existing = await db
+        .select()
+        .from(billingEvents)
+        .where(eq(billingEvents.eventId, event.eventId))
+        .limit(1);
+      if (existing[0]?.processingStatus === "failed") {
+        await db
+          .update(billingEvents)
+          .set({
+            processingStatus: "received",
+            errorMessage: null,
+            updatedAt: now,
+          })
+          .where(eq(billingEvents.eventId, event.eventId));
+        return true;
+      }
+      return false;
+    }
     throw error;
   }
 }
@@ -358,7 +482,7 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
     currentPeriodEndsAt: snapshot.currentPeriodEndsAt,
     nextBilledAt: snapshot.nextBilledAt,
     canceledAt: snapshot.canceledAt,
-    autoRenew: snapshot.canceledAt || snapshot.scheduledChangeAction === "cancel" ? 0 : 1,
+    autoRenew: snapshot.canceledAt || snapshot.scheduledChangeAction === "cancel" || snapshot.scheduledChangeAction === "pause" ? 0 : 1,
     paddleCustomerId: snapshot.customerId,
     paddleSubscriptionId: snapshot.subscriptionId,
     paddlePriceId: snapshot.priceId,
@@ -370,7 +494,8 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
 
   if (existing) {
     await db.update(subscriptions).set(values).where(eq(subscriptions.id, existing.id));
-    return { processed: true, id: existing.id };
+    const trialPause = await scheduleAppManagedTrialPause(snapshot, existing.id);
+    return { processed: true, id: existing.id, ...trialPause };
   }
 
   const [created] = await db
@@ -381,7 +506,8 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
     })
     .returning();
 
-  return { processed: true, id: created.id };
+  const trialPause = await scheduleAppManagedTrialPause(snapshot, created.id);
+  return { processed: true, id: created.id, ...trialPause };
 }
 
 export async function recordPaddleLifetimePurchase(snapshot: PaddleLifetimePurchaseSnapshot) {

@@ -62,6 +62,7 @@ Implemented Paddle shape:
 - Workspace enforcement is implemented but gated by `PLANMYWORKDAY_BILLING_ENFORCEMENT=1` so credentials and legacy access can be verified before lockout.
 - Lifetime can be bought while a Paddle monthly trial/subscription exists. After the verified lifetime webhook is processed, the app schedules the monthly subscription to cancel at `next_billing_period` so trial users are not charged later and paid monthly users stop renewing.
 - If a lifetime row is the effective entitlement but an older Paddle subscription still exists, the sidebar still exposes Manage billing so the user can inspect or cancel the old subscription in Paddle.
+- The intended trial model is card-first, app-managed trial. Checkout starts the Paddle monthly trial to collect the payment method, then the webhook immediately schedules a pause at the trial boundary (`PLANMYWORKDAY_APP_MANAGED_TRIAL=1`). If the user explicitly chooses monthly, the app removes that scheduled change so billing continues. If the user chooses lifetime, lifetime wins and the monthly subscription remains non-renewing/paused.
 
 ## High-Level Direction
 

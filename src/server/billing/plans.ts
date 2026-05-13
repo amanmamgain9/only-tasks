@@ -43,6 +43,10 @@ export function getPaddleTrialDays() {
   );
 }
 
+export function isAppManagedTrialEnabled() {
+  return process.env.PLANMYWORKDAY_APP_MANAGED_TRIAL !== "0" && process.env.PLANMYWORKDAY_APP_MANAGED_TRIAL !== "false";
+}
+
 export function parsePaddlePlanKey(input: unknown): PaddlePlanKey | null {
   if (input === "monthly") return "pro_monthly";
   if (input === "pro_monthly" || input === "lifetime") return input;
@@ -86,6 +90,24 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
 
 export function getPaddlePriceId(planKey: PaddlePlanKey) {
   return firstEnvValue(getPaddlePlanConfig(planKey).priceEnvVars);
+}
+
+export function getPaddlePriceIdForCheckout(
+  planKey: PaddlePlanKey,
+  options?: {
+    trialEligible?: boolean;
+  },
+) {
+  if (planKey !== "pro_monthly") {
+    return getPaddlePriceId(planKey);
+  }
+
+  const config = getPaddlePlanConfig(planKey);
+  if (config.trialDays > 0 && options?.trialEligible !== false) {
+    return firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY", "PADDLE_PRICE_ID_MONTHLY"]);
+  }
+
+  return firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY_NO_TRIAL"]) ?? firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY", "PADDLE_PRICE_ID_MONTHLY"]);
 }
 
 export function getPaddlePlanKeyForPrice(priceId: string | null | undefined): PaddlePlanKey | null {

@@ -1,8 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCurrentUserFromRequest } from "@/server/auth";
 import { getPaddleClientToken, getPublicPaddleEnvironment, isPaddleCheckoutConfigured } from "@/server/billing/paddle";
-import { getPaddlePlanConfig, getPaddlePriceId, parsePaddlePlanKey } from "@/server/billing/plans";
-import { getPaddleBillingContextForUser } from "@/server/subscriptions/service";
+import { getPaddlePlanConfig, getPaddlePriceIdForCheckout, parsePaddlePlanKey } from "@/server/billing/plans";
+import {
+  continuePaddleMonthlyForUser,
+  getPaddleBillingContextForUser,
+  hasConsumedTrial,
+  listSubscriptionsForUser,
+} from "@/server/subscriptions/service";
 import { resolveOrigin, toWebRequest } from "../auth/_helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -32,8 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const priceId = getPaddlePriceId(planKey);
   const planConfig = getPaddlePlanConfig(planKey);
+  const subscriptionRows = await listSubscriptionsForUser(user.id);
+  const trialEligible = !hasConsumedTrial(subscriptionRows);
+  const priceId = getPaddlePriceIdForCheckout(planKey, { trialEligible });
   if (!priceId) {
     res.status(503).json({
       success: false,
@@ -61,13 +68,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  if (planKey === "pro_monthly" && subscription?.isEntitled && subscription.provider === "paddle" && subscription.planKey === "pro_monthly") {
-    res.status(409).json({
-      success: false,
-      code: "billing_portal_required",
-      error: "This account already has an active Paddle subscription. Use Manage billing instead.",
-    });
-    return;
+  if (planKey === "pro_monthly") {
+    const continuedMonthly = await continuePaddleMonthlyForUser(user.id);
+    if (continuedMonthly.handled) {
+      res.status(200).json({
+        success: true,
+        data: {
+          kind: "subscription_updated",
+          action: continuedMonthly.action,
+          message: continuedMonthly.message,
+        },
+      });
+      return;
+    }
   }
 
   const origin = resolveOrigin(req);
@@ -87,6 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     data: {
       planKey,
       priceId,
+      trialEligible,
       environment: getPublicPaddleEnvironment(),
       clientTokenConfigured: Boolean(getPaddleClientToken()),
       checkout: {
