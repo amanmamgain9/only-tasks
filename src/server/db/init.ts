@@ -113,7 +113,6 @@ export function initializeDatabase(sqlite: Database.Database) {
       auto_renew INTEGER NOT NULL DEFAULT 1,
       paddle_customer_id TEXT,
       paddle_subscription_id TEXT,
-      paddle_transaction_id TEXT,
       paddle_price_id TEXT,
       paddle_updated_at TEXT,
       legacy_paypal_subscription_id TEXT,
@@ -157,11 +156,5 @@ export function initializeDatabase(sqlite: Database.Database) {
   ensureColumn(sqlite, "users", "auth_provider", "auth_provider TEXT NOT NULL DEFAULT 'google'");
   ensureColumn(sqlite, "users", "last_login_at", "last_login_at TEXT");
   ensureColumn(sqlite, "users", "is_admin", "is_admin INTEGER NOT NULL DEFAULT 0");
-  ensureColumn(sqlite, "subscriptions", "paddle_transaction_id", "paddle_transaction_id TEXT");
   ensureColumn(sqlite, "subscriptions", "paddle_updated_at", "paddle_updated_at TEXT");
-  sqlite.exec(`
-    CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_paddle_transaction_id_unique
-    ON subscriptions(paddle_transaction_id)
-    WHERE paddle_transaction_id IS NOT NULL;
-  `);
 }

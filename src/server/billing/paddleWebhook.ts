@@ -25,18 +25,6 @@ export type PaddleSubscriptionSnapshot = {
   updatedAt: string | null;
 };
 
-export type PaddleLifetimePurchaseSnapshot = {
-  eventId: string;
-  eventType: string;
-  occurredAt: string | null;
-  userId: number | null;
-  transactionId: string;
-  customerId: string | null;
-  status: string | null;
-  priceId: string | null;
-  updatedAt: string | null;
-};
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
@@ -130,33 +118,6 @@ export function extractPaddleSubscriptionSnapshot(event: PaddleWebhookEvent): Pa
     nextBilledAt: getString(data, "next_billed_at", "nextBilledAt"),
     canceledAt: getString(data, "canceled_at", "canceledAt"),
     scheduledChangeAction: getString(scheduledChange, "action"),
-    updatedAt: getString(data, "updated_at", "updatedAt"),
-  };
-}
-
-export function extractPaddleLifetimePurchaseSnapshot(event: PaddleWebhookEvent): PaddleLifetimePurchaseSnapshot | null {
-  if (event.eventType !== "transaction.completed") return null;
-
-  const data = event.data;
-  const priceId = extractPriceId(data);
-  const planKey = getPaddlePlanKeyForPrice(priceId);
-  const customData = extractCustomData(data);
-  const customPlan = getString(customData, "planKey", "plan");
-  const transactionId = getString(data, "id");
-
-  if (!transactionId || (planKey !== "lifetime" && customPlan !== "lifetime")) {
-    return null;
-  }
-
-  return {
-    eventId: event.eventId,
-    eventType: event.eventType,
-    occurredAt: event.occurredAt,
-    userId: getNumberFromCustomData(customData, "userId", "user_id"),
-    transactionId,
-    customerId: getString(data, "customer_id", "customerId"),
-    status: normalizeStatus(getString(data, "status")),
-    priceId,
     updatedAt: getString(data, "updated_at", "updatedAt"),
   };
 }

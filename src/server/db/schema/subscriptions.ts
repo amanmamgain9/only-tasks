@@ -18,7 +18,6 @@ export const subscriptions = sqliteTable("subscriptions", {
   autoRenew: integer("auto_renew").notNull().default(1),
   paddleCustomerId: text("paddle_customer_id"),
   paddleSubscriptionId: text("paddle_subscription_id"),
-  paddleTransactionId: text("paddle_transaction_id"),
   paddlePriceId: text("paddle_price_id"),
   paddleUpdatedAt: text("paddle_updated_at"),
   legacyPaypalSubscriptionId: text("legacy_paypal_subscription_id"),

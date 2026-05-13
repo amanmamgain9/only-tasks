@@ -53,14 +53,15 @@ Paddle direction:
 Implemented Paddle shape:
 
 - `/pricing` offers `pro_monthly` and `lifetime`.
-- Monthly checkout uses `PADDLE_PRICE_ID_PRO_MONTHLY` with `PADDLE_MONTHLY_TRIAL_DAYS=3` for app copy. The actual 3-day trial must also be configured on the Paddle recurring price.
-- To remove the 3-day trial, set `PADDLE_MONTHLY_TRIAL_ENABLED=0` and provide `PADDLE_PRICE_ID_PRO_MONTHLY_NO_TRIAL`. The app will switch checkout to the no-trial monthly price and update pricing copy/buttons.
-- Lifetime checkout uses `PADDLE_PRICE_ID_LIFETIME` and is stored as an active non-renewing entitlement after `transaction.completed`.
+- Monthly checkout uses `PADDLE_PRICE_ID_PRO_MONTHLY`; the actual 3-day trial must also be configured on the Paddle recurring price.
+- Trial copy and checkout selection use `PADDLE_TRIAL_DAYS=3`. To remove the trial, set `PADDLE_TRIAL_ENABLED=0` and provide the no-trial Paddle price ids. The old `PADDLE_MONTHLY_TRIAL_*` names still work as compatibility fallbacks.
+- Lifetime checkout uses `PADDLE_PRICE_ID_LIFETIME_10_YEAR`, a recurring Paddle price with a 10-year billing cycle. It is handled through `subscription.*` webhooks, not one-time `transaction.completed` webhooks.
 - `/api/billing/checkout` returns Paddle.js checkout options for authenticated users.
 - `/api/billing/webhook` verifies `Paddle-Signature`, records the Paddle event id in `billing_events`, then updates `subscriptions`.
 - `/api/billing/portal` creates a temporary Paddle customer portal link for linked Paddle subscriptions.
 - Workspace enforcement is implemented but gated by `PLANMYWORKDAY_BILLING_ENFORCEMENT=1` so credentials and legacy access can be verified before lockout.
-- Lifetime can be bought while a Paddle monthly trial/subscription exists. After the verified lifetime webhook is processed, the app schedules the monthly subscription to cancel at `next_billing_period` so trial users are not charged later and paid monthly users stop renewing.
+- Lifetime can be bought while a Paddle monthly trial/subscription exists. After the verified lifetime subscription webhook is processed, the app schedules the monthly subscription to cancel at `next_billing_period` so trial users are not charged later and paid monthly users stop renewing.
+- After lifetime activates as paid access, the app schedules that 10-year Paddle subscription to cancel at the next billing period so it does not renew in ten years.
 - If a lifetime row is the effective entitlement but an older Paddle subscription still exists, the sidebar still exposes Manage billing so the user can inspect or cancel the old subscription in Paddle.
 - Trial entry should follow the path the user chose. Monthly trial checkout collects card details and converts to monthly after 3 days unless the user cancels during the trial. If a trial is canceled and the user comes back, they can choose monthly again or choose lifetime. Choosing lifetime while monthly/trial exists makes lifetime win and stops the monthly renewal path.
 

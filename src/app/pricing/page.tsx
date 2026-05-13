@@ -21,7 +21,7 @@ export default function PricingPage() {
     trialDays,
     configured: Boolean(priceId),
   }));
-  const monthlyTrialDays = plans.find((plan) => plan.planKey === "pro_monthly")?.trialDays ?? 3;
+  const trialDays = plans.find((plan) => plan.planKey === "pro_monthly")?.trialDays ?? 3;
 
   return (
     <main className="relative min-h-screen text-slate-950 dark:text-white">
@@ -37,9 +37,9 @@ export default function PricingPage() {
             One focused workspace. Monthly or lifetime.
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
-            {monthlyTrialDays > 0
-              ? `Monthly includes a ${monthlyTrialDays}-day Paddle trial when the monthly price is configured with a trial in Paddle. Lifetime is a one-time Paddle purchase.`
-              : "Monthly starts paid access immediately. Lifetime is a one-time Paddle purchase."}
+            {trialDays > 0
+              ? `Monthly and lifetime can start with a ${trialDays}-day Paddle trial when the configured Paddle prices include a trial.`
+              : "Monthly starts paid access immediately. Lifetime uses a 10-year Paddle subscription price."}
           </p>
         </section>
 

@@ -8,7 +8,7 @@ import {
 } from "../billing/paddle";
 import { billingEvents } from "../db/schema/billingEvents";
 import { subscriptions, type Subscription } from "../db/schema/subscriptions";
-import type { PaddleLifetimePurchaseSnapshot, PaddleSubscriptionSnapshot } from "../billing/paddleWebhook";
+import type { PaddleSubscriptionSnapshot } from "../billing/paddleWebhook";
 
 export type SubscriptionSummary = {
   id: number;
@@ -265,6 +265,40 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
   };
 }
 
+async function scheduleLifetimeNonRenewalAfterActivation(subscription: Subscription) {
+  if (subscription.provider !== "paddle" || subscription.planKey !== "lifetime") {
+    return { lifetimeNonRenewalScheduled: false as const };
+  }
+  if (!subscription.paddleSubscriptionId || subscription.autoRenew !== 1) {
+    return { lifetimeNonRenewalScheduled: false as const };
+  }
+  if (normalizeStatus(subscription.status) !== "active") {
+    return { lifetimeNonRenewalScheduled: false as const };
+  }
+
+  try {
+    await cancelPaddleSubscription(subscription.paddleSubscriptionId, "next_billing_period");
+    await db
+      .update(subscriptions)
+      .set({
+        autoRenew: 0,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(subscriptions.id, subscription.id));
+
+    return { lifetimeNonRenewalScheduled: true as const };
+  } catch (error) {
+    console.error("Failed to schedule Paddle lifetime non-renewal", {
+      subscriptionId: subscription.paddleSubscriptionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return {
+      lifetimeNonRenewalScheduled: false as const,
+      lifetimeNonRenewalFailed: true as const,
+    };
+  }
+}
+
 export async function continuePaddleMonthlyForUser(userId: number) {
   const rows = await listSubscriptionsForUser(userId);
   const row = rows.find((subscription) => {
@@ -390,15 +424,6 @@ async function getSubscriptionByPaddleSubscriptionId(subscriptionId: string) {
   return rows[0] ?? null;
 }
 
-async function getSubscriptionByPaddleTransactionId(transactionId: string) {
-  const rows = await db
-    .select()
-    .from(subscriptions)
-    .where(eq(subscriptions.paddleTransactionId, transactionId))
-    .limit(1);
-  return rows[0] ?? null;
-}
-
 async function getSubscriptionsByPaddleCustomerId(customerId: string) {
   return db.select().from(subscriptions).where(eq(subscriptions.paddleCustomerId, customerId));
 }
@@ -471,7 +496,16 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
 
   if (existing) {
     await db.update(subscriptions).set(values).where(eq(subscriptions.id, existing.id));
-    return { processed: true, id: existing.id };
+    const updated = {
+      ...existing,
+      ...values,
+      id: existing.id,
+      createdAt: existing.createdAt,
+    };
+    const cancellation =
+      planKey === "lifetime" ? await scheduleMonthlyCancellationAfterLifetime(await listSubscriptionsForUser(userId)) : {};
+    const lifetimeNonRenewal = await scheduleLifetimeNonRenewalAfterActivation(updated);
+    return { processed: true, id: existing.id, ...cancellation, ...lifetimeNonRenewal };
   }
 
   const [created] = await db
@@ -482,61 +516,8 @@ export async function upsertPaddleSubscription(snapshot: PaddleSubscriptionSnaps
     })
     .returning();
 
-  return { processed: true, id: created.id };
-}
-
-export async function recordPaddleLifetimePurchase(snapshot: PaddleLifetimePurchaseSnapshot) {
-  const existingTransaction = await getSubscriptionByPaddleTransactionId(snapshot.transactionId);
-  if (existingTransaction) {
-    return { processed: false, reason: "duplicate_lifetime_transaction" };
-  }
-
-  const userId = await resolveUserIdFromPaddleSnapshot(snapshot);
-  if (!userId) {
-    throw new Error("Could not resolve user for Paddle lifetime purchase webhook");
-  }
-
-  const now = new Date().toISOString();
-  const rows = await listSubscriptionsForUser(userId);
-  const existingLifetime = rows.find((row) => row.planKey === "lifetime" && row.provider === "paddle");
-  if (existingLifetime?.paddleTransactionId) {
-    const cancellation = await scheduleMonthlyCancellationAfterLifetime(rows);
-    return { processed: false, reason: "lifetime_access_already_active", ...cancellation };
-  }
-  const values = {
-    userId,
-    status: snapshot.status === "completed" || !snapshot.status ? "active" : snapshot.status,
-    provider: "paddle",
-    planKey: "lifetime",
-    currentPeriodStartsAt: snapshot.occurredAt,
-    currentPeriodEndsAt: null,
-    nextBilledAt: null,
-    canceledAt: null,
-    autoRenew: 0,
-    paddleCustomerId: snapshot.customerId,
-    paddleSubscriptionId: null,
-    paddleTransactionId: snapshot.transactionId,
-    paddlePriceId: snapshot.priceId,
-    paddleUpdatedAt: snapshot.updatedAt ?? snapshot.occurredAt,
-    requiresBillingMigrationReview: 0,
-    source: "paddle_webhook",
-    updatedAt: now,
-  };
-
-  if (existingLifetime) {
-    await db.update(subscriptions).set(values).where(eq(subscriptions.id, existingLifetime.id));
-    const cancellation = await scheduleMonthlyCancellationAfterLifetime(rows);
-    return { processed: true, id: existingLifetime.id, ...cancellation };
-  }
-
-  const [created] = await db
-    .insert(subscriptions)
-    .values({
-      ...values,
-      createdAt: now,
-    })
-    .returning();
-
-  const cancellation = await scheduleMonthlyCancellationAfterLifetime(rows);
-  return { processed: true, id: created.id, ...cancellation };
+  const cancellation =
+    planKey === "lifetime" ? await scheduleMonthlyCancellationAfterLifetime(await listSubscriptionsForUser(userId)) : {};
+  const lifetimeNonRenewal = await scheduleLifetimeNonRenewalAfterActivation(created);
+  return { processed: true, id: created.id, ...cancellation, ...lifetimeNonRenewal };
 }

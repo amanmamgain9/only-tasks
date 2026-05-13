@@ -1,16 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getPaddleWebhookSecret, verifyPaddleWebhookSignature } from "@/server/billing/paddle";
-import {
-  extractPaddleLifetimePurchaseSnapshot,
-  extractPaddleSubscriptionSnapshot,
-  parsePaddleWebhookEvent,
-} from "@/server/billing/paddleWebhook";
-import {
-  beginBillingEvent,
-  finishBillingEvent,
-  recordPaddleLifetimePurchase,
-  upsertPaddleSubscription,
-} from "@/server/subscriptions/service";
+import { extractPaddleSubscriptionSnapshot, parsePaddleWebhookEvent } from "@/server/billing/paddleWebhook";
+import { beginBillingEvent, finishBillingEvent, upsertPaddleSubscription } from "@/server/subscriptions/service";
 
 export const config = {
   api: {
@@ -77,14 +68,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const lifetimePurchase = extractPaddleLifetimePurchaseSnapshot(event);
-    if (lifetimePurchase) {
-      const result = await recordPaddleLifetimePurchase(lifetimePurchase);
-      await finishBillingEvent(event.eventId, result.processed ? "processed" : "ignored", "reason" in result ? result.reason : null);
-      res.status(200).json({ success: true, result });
-      return;
-    }
-
     const subscription = extractPaddleSubscriptionSnapshot(event);
     if (subscription) {
       const result = await upsertPaddleSubscription(subscription);

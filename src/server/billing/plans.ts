@@ -27,18 +27,22 @@ function parsePositiveInteger(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function isDisabledFlag(value: string | undefined) {
+  return value === "0" || value?.toLowerCase() === "false";
+}
+
 export function getPaddleTrialDays() {
-  if (
-    process.env.PADDLE_MONTHLY_TRIAL_ENABLED === "0" ||
-    process.env.PADDLE_MONTHLY_TRIAL_ENABLED === "false" ||
-    process.env.PLANMYWORKDAY_ENABLE_MONTHLY_TRIAL === "0" ||
-    process.env.PLANMYWORKDAY_ENABLE_MONTHLY_TRIAL === "false"
-  ) {
+  const enabledValue =
+    process.env.PADDLE_TRIAL_ENABLED ??
+    process.env.PADDLE_MONTHLY_TRIAL_ENABLED ??
+    process.env.PLANMYWORKDAY_ENABLE_MONTHLY_TRIAL;
+
+  if (isDisabledFlag(enabledValue)) {
     return 0;
   }
 
   return parsePositiveInteger(
-    process.env.PADDLE_MONTHLY_TRIAL_DAYS ?? process.env.FREE_PRO_PLUS_TRIAL_DAYS,
+    process.env.PADDLE_TRIAL_DAYS ?? process.env.PADDLE_MONTHLY_TRIAL_DAYS ?? process.env.FREE_PRO_PLUS_TRIAL_DAYS,
     3,
   );
 }
@@ -53,15 +57,19 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
   const trialDays = getPaddleTrialDays();
 
   if (planKey === "lifetime") {
+    const trialPriceEnvVars = ["PADDLE_PRICE_ID_LIFETIME_10_YEAR"] as const;
+    const noTrialPriceEnvVars = ["PADDLE_PRICE_ID_LIFETIME_10_YEAR_NO_TRIAL"] as const;
+    const priceEnvVars = trialDays > 0 ? trialPriceEnvVars : noTrialPriceEnvVars;
+
     return {
       planKey,
       label: "Lifetime",
-      checkoutLabel: "Buy lifetime",
-      priceLabel: process.env.PLANMYWORKDAY_LIFETIME_PRICE_LABEL || "One-time",
-      description: "Pay once and keep access to the focused task workspace.",
-      priceEnvVars: ["PADDLE_PRICE_ID_LIFETIME", "PADDLE_PRICE_ID_PRO_LIFETIME"],
-      matchingPriceEnvVars: ["PADDLE_PRICE_ID_LIFETIME", "PADDLE_PRICE_ID_PRO_LIFETIME"],
-      trialDays: 0,
+      checkoutLabel: trialDays > 0 ? `Start ${trialDays}-day lifetime trial` : "Buy lifetime",
+      priceLabel: process.env.PLANMYWORKDAY_LIFETIME_PRICE_LABEL || "$99",
+      description: "10-year lifetime-style access through Paddle subscription billing.",
+      priceEnvVars,
+      matchingPriceEnvVars: [...trialPriceEnvVars, ...noTrialPriceEnvVars],
+      trialDays,
     };
   }
 
@@ -94,16 +102,25 @@ export function getPaddlePriceIdForCheckout(
     trialEligible?: boolean;
   },
 ) {
-  if (planKey !== "pro_monthly") {
-    return getPaddlePriceId(planKey);
-  }
-
   const config = getPaddlePlanConfig(planKey);
-  if (config.trialDays > 0 && options?.trialEligible !== false) {
+
+  if (planKey === "pro_monthly" && config.trialDays > 0 && options?.trialEligible !== false) {
     return firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY", "PADDLE_PRICE_ID_MONTHLY"]);
   }
 
-  return firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY_NO_TRIAL"]) ?? firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY", "PADDLE_PRICE_ID_MONTHLY"]);
+  if (planKey === "pro_monthly") {
+    return firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY_NO_TRIAL"]) ?? firstEnvValue(["PADDLE_PRICE_ID_PRO_MONTHLY", "PADDLE_PRICE_ID_MONTHLY"]);
+  }
+
+  if (planKey === "lifetime" && config.trialDays > 0 && options?.trialEligible !== false) {
+    return firstEnvValue(["PADDLE_PRICE_ID_LIFETIME_10_YEAR"]);
+  }
+
+  if (planKey === "lifetime") {
+    return firstEnvValue(["PADDLE_PRICE_ID_LIFETIME_10_YEAR_NO_TRIAL"]) ?? firstEnvValue(["PADDLE_PRICE_ID_LIFETIME_10_YEAR"]);
+  }
+
+  return getPaddlePriceId(planKey);
 }
 
 export function getPaddlePlanKeyForPrice(priceId: string | null | undefined): PaddlePlanKey | null {
