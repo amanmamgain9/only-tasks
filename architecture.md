@@ -54,6 +54,7 @@ Implemented Paddle shape:
 
 - `/pricing` offers `pro_monthly` and `lifetime`.
 - Monthly checkout uses `PADDLE_PRICE_ID_PRO_MONTHLY` with `PADDLE_MONTHLY_TRIAL_DAYS=3` for app copy. The actual 3-day trial must also be configured on the Paddle recurring price.
+- To remove the 3-day trial, set `PADDLE_MONTHLY_TRIAL_ENABLED=0` and provide `PADDLE_PRICE_ID_PRO_MONTHLY_NO_TRIAL`. The app will switch checkout to the no-trial monthly price and update pricing copy/buttons.
 - Lifetime checkout uses `PADDLE_PRICE_ID_LIFETIME` and is stored as an active non-renewing entitlement after `transaction.completed`.
 - `/api/billing/checkout` returns Paddle.js checkout options for authenticated users.
 - `/api/billing/webhook` verifies `Paddle-Signature`, records the Paddle event id in `billing_events`, then updates `subscriptions`.

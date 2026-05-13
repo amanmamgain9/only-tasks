@@ -153,7 +153,7 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
                 : "border-slate-200/70 dark:border-slate-700/70"
             }`}
           >
-            {plan.planKey === "pro_monthly" && (
+            {plan.planKey === "pro_monthly" && plan.trialDays > 0 && (
               <div className="absolute right-5 top-5 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                 {plan.trialDays}-day trial
               </div>

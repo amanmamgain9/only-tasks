@@ -9,6 +9,7 @@ type PaddlePlanConfig = {
   priceLabel: string;
   description: string;
   priceEnvVars: readonly string[];
+  matchingPriceEnvVars: readonly string[];
   trialDays: number;
 };
 
@@ -27,6 +28,15 @@ function parsePositiveInteger(value: string | undefined, fallback: number) {
 }
 
 export function getPaddleTrialDays() {
+  if (
+    process.env.PADDLE_MONTHLY_TRIAL_ENABLED === "0" ||
+    process.env.PADDLE_MONTHLY_TRIAL_ENABLED === "false" ||
+    process.env.PLANMYWORKDAY_ENABLE_MONTHLY_TRIAL === "0" ||
+    process.env.PLANMYWORKDAY_ENABLE_MONTHLY_TRIAL === "false"
+  ) {
+    return 0;
+  }
+
   return parsePositiveInteger(
     process.env.PADDLE_MONTHLY_TRIAL_DAYS ?? process.env.FREE_PRO_PLUS_TRIAL_DAYS,
     3,
@@ -50,17 +60,26 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
       priceLabel: process.env.PLANMYWORKDAY_LIFETIME_PRICE_LABEL || "One-time",
       description: "Pay once and keep access to the focused task workspace.",
       priceEnvVars: ["PADDLE_PRICE_ID_LIFETIME", "PADDLE_PRICE_ID_PRO_LIFETIME"],
+      matchingPriceEnvVars: ["PADDLE_PRICE_ID_LIFETIME", "PADDLE_PRICE_ID_PRO_LIFETIME"],
       trialDays: 0,
     };
   }
+
+  const trialPriceEnvVars = ["PADDLE_PRICE_ID_PRO_MONTHLY", "PADDLE_PRICE_ID_MONTHLY"] as const;
+  const noTrialPriceEnvVars = ["PADDLE_PRICE_ID_PRO_MONTHLY_NO_TRIAL"] as const;
+  const priceEnvVars = trialDays > 0 ? trialPriceEnvVars : noTrialPriceEnvVars;
 
   return {
     planKey,
     label: "Pro",
     checkoutLabel: trialDays > 0 ? `Start ${trialDays}-day trial` : "Start monthly",
     priceLabel: process.env.PLANMYWORKDAY_MONTHLY_PRICE_LABEL || "$4/mo",
-    description: "Monthly access with Paddle-hosted billing and cancellation.",
-    priceEnvVars: ["PADDLE_PRICE_ID_PRO_MONTHLY", "PADDLE_PRICE_ID_MONTHLY"],
+    description:
+      trialDays > 0
+        ? "Monthly access with a Paddle-hosted trial and cancellation."
+        : "Monthly access with Paddle-hosted billing and cancellation.",
+    priceEnvVars,
+    matchingPriceEnvVars: [...trialPriceEnvVars, ...noTrialPriceEnvVars],
     trialDays,
   };
 }
@@ -73,7 +92,10 @@ export function getPaddlePlanKeyForPrice(priceId: string | null | undefined): Pa
   if (!priceId) return null;
 
   for (const planKey of PADDLE_PLAN_KEYS) {
-    if (getPaddlePriceId(planKey) === priceId) return planKey;
+    const config = getPaddlePlanConfig(planKey);
+    for (const envVar of config.matchingPriceEnvVars) {
+      if (process.env[envVar] === priceId) return planKey;
+    }
   }
 
   return null;

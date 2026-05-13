@@ -37,7 +37,9 @@ export default function PricingPage() {
             One focused workspace. Monthly or lifetime.
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
-            Monthly includes a {monthlyTrialDays}-day Paddle trial when the monthly price is configured with a trial in Paddle. Lifetime is a one-time Paddle purchase.
+            {monthlyTrialDays > 0
+              ? `Monthly includes a ${monthlyTrialDays}-day Paddle trial when the monthly price is configured with a trial in Paddle. Lifetime is a one-time Paddle purchase.`
+              : "Monthly starts paid access immediately. Lifetime is a one-time Paddle purchase."}
           </p>
         </section>
 
