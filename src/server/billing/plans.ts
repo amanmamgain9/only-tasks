@@ -21,6 +21,12 @@ function firstEnvValue(names: readonly string[]) {
   return null;
 }
 
+function getPriceLabel(envName: string, fallback: string) {
+  const value = process.env[envName]?.trim();
+  if (!value || value.startsWith("/")) return fallback;
+  return value;
+}
+
 function parsePositiveInteger(value: string | undefined, fallback: number) {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -65,7 +71,7 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
       planKey,
       label: "Lifetime",
       checkoutLabel: trialDays > 0 ? `Start ${trialDays}-day lifetime trial` : "Buy lifetime",
-      priceLabel: process.env.PLANMYWORKDAY_LIFETIME_PRICE_LABEL || "$99",
+      priceLabel: getPriceLabel("PLANMYWORKDAY_LIFETIME_PRICE_LABEL", "$99"),
       description: "10-year lifetime-style access through Paddle subscription billing.",
       priceEnvVars,
       matchingPriceEnvVars: [...trialPriceEnvVars, ...noTrialPriceEnvVars],
@@ -81,7 +87,7 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
     planKey,
     label: "Pro",
     checkoutLabel: trialDays > 0 ? `Start ${trialDays}-day trial` : "Start monthly",
-    priceLabel: process.env.PLANMYWORKDAY_MONTHLY_PRICE_LABEL || "$4/mo",
+    priceLabel: getPriceLabel("PLANMYWORKDAY_MONTHLY_PRICE_LABEL", "$4/mo"),
     description:
       trialDays > 0
         ? "Monthly access with a Paddle-hosted trial and cancellation."
