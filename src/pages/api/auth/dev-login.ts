@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   DEFAULT_AUTH_REDIRECT,
   isDevelopmentAuthEnabled,
+  resolvePostLoginRedirectForUserId,
   sanitizeAuthRedirectPath,
   SESSION_COOKIE_NAME,
   signInAsExistingUser,
@@ -43,6 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
       ipAddress: getIpAddress(req),
     });
+    const postLoginRedirect = await resolvePostLoginRedirectForUserId(userId, redirectTo);
 
     res.setHeader(
       "Set-Cookie",
@@ -54,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         path: "/",
       }),
     );
-    res.redirect(302, `${resolveOrigin(req)}${redirectTo}`);
+    res.redirect(302, `${resolveOrigin(req)}${postLoginRedirect}`);
   } catch (error) {
     res.status(400).json({
       success: false,

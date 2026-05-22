@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import SignInScreen from "@/features/auth/components/SignInScreen";
-import { getCurrentUserFromRequest, sanitizeAuthRedirectPath } from "@/server/auth";
+import { getCurrentUserFromRequest, resolvePostLoginRedirectForUser, sanitizeAuthRedirectPath } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export default async function SignInPage({
   );
 
   if (currentUser) {
-    redirect(nextPath);
+    redirect(resolvePostLoginRedirectForUser(currentUser, nextPath));
   }
 
   return (

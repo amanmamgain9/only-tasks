@@ -137,6 +137,32 @@ export function sanitizeAuthRedirectPath(value: string | null | undefined) {
   return DEFAULT_AUTH_REDIRECT;
 }
 
+export function isWorkspaceRedirectPath(value: string) {
+  try {
+    const parsed = new URL(value, "http://local.planmyworkday");
+    return parsed.pathname === "/app" || parsed.pathname.startsWith("/app/");
+  } catch {
+    return false;
+  }
+}
+
+export function getBillingRedirectPath(nextPath: string) {
+  return `/pricing?next=${encodeURIComponent(nextPath)}`;
+}
+
+export function resolvePostLoginRedirectForUser(user: Pick<AuthenticatedUser, "subscription">, redirectTo: string | null | undefined) {
+  const nextPath = sanitizeAuthRedirectPath(redirectTo);
+  if (isWorkspaceRedirectPath(nextPath) && !user.subscription?.isEntitled) {
+    return getBillingRedirectPath(nextPath);
+  }
+  return nextPath;
+}
+
+export async function resolvePostLoginRedirectForUserId(userId: number, redirectTo: string | null | undefined) {
+  const subscription = await getEffectiveSubscriptionForUser(userId);
+  return resolvePostLoginRedirectForUser({ subscription }, redirectTo);
+}
+
 export function isGoogleAuthConfigured(origin?: string | null) {
   const credentials = resolveGoogleCredentials(origin || process.env.GOOGLE_AUTH_ORIGIN || null);
   return Boolean(credentials.clientId && credentials.clientSecret);
@@ -392,7 +418,7 @@ export async function completeGoogleLogin(
   });
 
   return {
-    redirectTo: sanitizeAuthRedirectPath(params.redirectTo),
+    redirectTo: await resolvePostLoginRedirectForUserId(user.id, params.redirectTo),
     userId: user.id,
     session,
   };

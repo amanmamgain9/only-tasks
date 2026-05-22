@@ -11,6 +11,15 @@ type DevUser = {
   email: string;
 };
 
+type MeResponse = {
+  success: boolean;
+  data?: {
+    subscription?: {
+      isEntitled?: boolean;
+    } | null;
+  };
+};
+
 const errorMessages: Record<string, string> = {
   missing_google_code: "Google returned without the required authorization code.",
   invalid_google_state: "The Google sign-in flow expired or failed state verification. Try again.",
@@ -40,6 +49,22 @@ function sanitizeNextPath(value: string | null) {
   return "/app/workspace/all-tasks";
 }
 
+function isWorkspacePath(value: string) {
+  try {
+    const parsed = new URL(value, "http://local.planmyworkday");
+    return parsed.pathname === "/app" || parsed.pathname.startsWith("/app/");
+  } catch {
+    return false;
+  }
+}
+
+function getPostLoginRedirect(nextPath: string, payload: MeResponse) {
+  if (isWorkspacePath(nextPath) && !payload.data?.subscription?.isEntitled) {
+    return `/pricing?next=${encodeURIComponent(nextPath)}`;
+  }
+  return nextPath;
+}
+
 export default function SignInScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,7 +86,8 @@ export default function SignInScreen() {
       });
 
       if (meResponse.ok) {
-        router.replace(nextPath);
+        const payload = (await meResponse.json()) as MeResponse;
+        router.replace(getPostLoginRedirect(nextPath, payload));
         return;
       }
 

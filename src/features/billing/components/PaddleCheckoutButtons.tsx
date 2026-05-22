@@ -52,6 +52,13 @@ type CheckoutResponse = {
       };
 };
 
+type PaddleEvent = {
+  name?: string;
+  code?: string;
+  detail?: string;
+  documentation_url?: string;
+};
+
 declare global {
   interface Window {
     Paddle?: {
@@ -63,12 +70,17 @@ declare global {
         checkout?: {
           settings?: Record<string, unknown>;
         };
+        eventCallback?: (event: PaddleEvent) => void;
+      }): void;
+      Update?(config: {
+        eventCallback?: (event: PaddleEvent) => void;
       }): void;
       Checkout?: {
         open(options: PaddleCheckoutOptions): void;
       };
     };
     __pmwdPaddleInitialized?: boolean;
+    __pmwdPaddleEventHandler?: (event: PaddleEvent) => void;
   }
 }
 
@@ -77,6 +89,11 @@ const PADDLE_CLIENT_TOKEN = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || "";
 function getCheckoutTheme(): "light" | "dark" {
   if (typeof document === "undefined") return "light";
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function formatPaddleError(event: PaddleEvent) {
+  const code = event.code ? ` (${event.code})` : "";
+  return event.detail ? `${event.detail}${code}` : `Paddle checkout failed${code}.`;
 }
 
 function initializePaddle(environment: "sandbox" | "production") {
@@ -92,6 +109,15 @@ function initializePaddle(environment: "sandbox" | "production") {
     window.Paddle.Environment?.set("sandbox");
   }
 
+  const eventCallback = (event: PaddleEvent) => {
+    window.__pmwdPaddleEventHandler?.(event);
+  };
+
+  if (window.__pmwdPaddleInitialized) {
+    window.Paddle.Update?.({ eventCallback });
+    return;
+  }
+
   window.Paddle.Initialize({
     token: PADDLE_CLIENT_TOKEN,
     checkout: {
@@ -99,6 +125,7 @@ function initializePaddle(environment: "sandbox" | "production") {
         displayMode: "overlay",
       },
     },
+    eventCallback,
   });
   window.__pmwdPaddleInitialized = true;
 }
@@ -112,6 +139,12 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
     setError(null);
 
     try {
+      window.__pmwdPaddleEventHandler = (event) => {
+        if (event.name !== "checkout.error") return;
+        console.error("Paddle checkout error", event);
+        setError(formatPaddleError(event));
+      };
+
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: {

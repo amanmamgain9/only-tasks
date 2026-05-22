@@ -10,8 +10,15 @@ type CookieOptions = {
 };
 
 export function resolveOrigin(req: NextApiRequest) {
-  const proto = typeof req.headers["x-forwarded-proto"] === "string" ? req.headers["x-forwarded-proto"] : "http";
-  const host = req.headers.host;
+  const forwardedHost = typeof req.headers["x-forwarded-host"] === "string" ? req.headers["x-forwarded-host"] : null;
+  const host = forwardedHost || req.headers.host;
+  const normalizedHost = host?.toLowerCase() || "";
+  const proto =
+    normalizedHost.includes("planmyworkday.dev")
+      ? "https"
+      : typeof req.headers["x-forwarded-proto"] === "string"
+        ? req.headers["x-forwarded-proto"]
+        : "http";
   return `${proto}://${host}`;
 }
 
