@@ -38,7 +38,7 @@ export default function PricingPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
             {trialDays > 0
-              ? `Monthly and lifetime can start with a ${trialDays}-day Paddle trial when the configured Paddle prices include a trial.`
+              ? `Monthly can start with a ${trialDays}-day Paddle trial when the configured Paddle price includes a trial.`
               : "Monthly starts paid access immediately. Lifetime uses a 10-year Paddle subscription price."}
           </p>
         </section>

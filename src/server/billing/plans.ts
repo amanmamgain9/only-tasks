@@ -65,17 +65,16 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
   if (planKey === "lifetime") {
     const trialPriceEnvVars = ["PADDLE_PRICE_ID_LIFETIME_10_YEAR"] as const;
     const noTrialPriceEnvVars = ["PADDLE_PRICE_ID_LIFETIME_10_YEAR_NO_TRIAL"] as const;
-    const priceEnvVars = trialDays > 0 ? trialPriceEnvVars : noTrialPriceEnvVars;
 
     return {
       planKey,
       label: "Lifetime",
-      checkoutLabel: trialDays > 0 ? `Start ${trialDays}-day lifetime trial` : "Buy lifetime",
+      checkoutLabel: "Buy lifetime",
       priceLabel: getPriceLabel("PLANMYWORKDAY_LIFETIME_PRICE_LABEL", "$99"),
       description: "10-year lifetime-style access through Paddle subscription billing.",
-      priceEnvVars,
+      priceEnvVars: noTrialPriceEnvVars,
       matchingPriceEnvVars: [...trialPriceEnvVars, ...noTrialPriceEnvVars],
-      trialDays,
+      trialDays: 0,
     };
   }
 
