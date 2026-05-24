@@ -79,10 +79,10 @@ export default function PricingPage() {
         <section className="mx-auto mb-16 w-full max-w-5xl rounded-3xl border border-slate-200/70 bg-white/70 p-6 shadow-lg backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/50">
           <div className="grid gap-4 md:grid-cols-2">
             {[
-              "Cancel monthly any time from the customer portal.",
-              "Legacy billing rows stay marked for support review before self-serve checkout.",
-              "Webhook events are stored idempotently before entitlement updates.",
-              "Workspace enforcement can be turned on with PLANMYWORKDAY_BILLING_ENFORCEMENT=1.",
+              "Cancel monthly any time before your next renewal.",
+              "Keep every project, task, and schedule in one focused workspace.",
+              "Switch from monthly to lifetime whenever lifetime access is available.",
+              "Secure checkout includes receipts, card updates, and tax handling.",
             ].map((point) => (
               <div key={point} className="flex gap-3">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
