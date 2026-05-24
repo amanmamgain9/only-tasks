@@ -225,6 +225,11 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
               {busyPlan === plan.planKey ? "Opening checkout..." : plan.checkoutLabel}
               <ArrowRight className="h-4 w-4" />
             </button>
+            {plan.planKey === "pro_monthly" && plan.trialDays > 0 && (
+              <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                New Paddle subscribers are charged after the {plan.trialDays}-day trial. Cancel any time from the Paddle customer portal.
+              </p>
+            )}
             {!plan.configured && (
               <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Price ID missing in environment.</p>
             )}

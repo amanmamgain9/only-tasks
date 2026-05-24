@@ -209,10 +209,12 @@ export async function getPaddleBillingContextForUser(userId: number) {
 
 export function hasConsumedTrial(rows: Subscription[]) {
   return rows.some((row) => {
+    if (row.provider !== "paddle") return false;
     if (row.planKey === "lifetime") return true;
-    if (row.provider === "trial" || row.planKey === "trial") return true;
-    if (row.provider === "paddle" && row.planKey === "pro_monthly") return true;
-    return normalizeStatus(row.status) === "trial" || normalizeStatus(row.status) === "trialing";
+    if (row.planKey === "pro_monthly") return true;
+
+    const status = normalizeStatus(row.status);
+    return status === "trial" || status === "trialing";
   });
 }
 
