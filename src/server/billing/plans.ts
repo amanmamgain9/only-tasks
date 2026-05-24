@@ -71,7 +71,7 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
       label: "Lifetime",
       checkoutLabel: "Buy lifetime",
       priceLabel: getPriceLabel("PLANMYWORKDAY_LIFETIME_PRICE_LABEL", "$99"),
-      description: "10-year lifetime-style access through Paddle subscription billing.",
+      description: "10 years of full workspace access for a single upfront payment.",
       priceEnvVars: noTrialPriceEnvVars,
       matchingPriceEnvVars: [...trialPriceEnvVars, ...noTrialPriceEnvVars],
       trialDays: 0,
@@ -89,8 +89,8 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
     priceLabel: getPriceLabel("PLANMYWORKDAY_MONTHLY_PRICE_LABEL", "$4/mo"),
     description:
       trialDays > 0
-        ? "Monthly access with a Paddle-hosted trial and cancellation."
-        : "Monthly access with Paddle-hosted billing and cancellation.",
+        ? "Monthly access with a free trial and easy cancellation."
+        : "Monthly access with easy cancellation.",
     priceEnvVars,
     matchingPriceEnvVars: [...trialPriceEnvVars, ...noTrialPriceEnvVars],
     trialDays,

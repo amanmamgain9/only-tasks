@@ -93,15 +93,15 @@ function getCheckoutTheme(): "light" | "dark" {
 
 function formatPaddleError(event: PaddleEvent) {
   const code = event.code ? ` (${event.code})` : "";
-  return event.detail ? `${event.detail}${code}` : `Paddle checkout failed${code}.`;
+  return event.detail ? `${event.detail}${code}` : `Checkout failed${code}.`;
 }
 
 function initializePaddle(environment: "sandbox" | "production") {
   if (!PADDLE_CLIENT_TOKEN) {
-    throw new Error("Paddle checkout is not configured.");
+    throw new Error("Checkout is not configured.");
   }
   if (!window.Paddle?.Initialize || !window.Paddle.Checkout?.open) {
-    throw new Error("Paddle.js is still loading. Try again in a moment.");
+    throw new Error("Checkout is still loading. Try again in a moment.");
   }
   if (window.__pmwdPaddleInitialized) return;
 
@@ -227,7 +227,7 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
             </button>
             {plan.planKey === "pro_monthly" && plan.trialDays > 0 && (
               <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                New Paddle subscribers are charged after the {plan.trialDays}-day trial. Cancel any time from the Paddle customer portal.
+                New subscribers are charged after the {plan.trialDays}-day trial. Cancel any time from the customer portal.
               </p>
             )}
             {!plan.configured && (

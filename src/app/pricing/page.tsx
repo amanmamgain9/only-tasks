@@ -8,7 +8,7 @@ import { listPaddlePlanConfigs } from "@/server/billing/plans";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Plan My Workday pricing with monthly Paddle billing and lifetime access.",
+  description: "Plan My Workday pricing with monthly billing and lifetime access.",
 };
 
 export default function PricingPage() {
@@ -38,8 +38,8 @@ export default function PricingPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
             {trialDays > 0
-              ? `Monthly can start with a ${trialDays}-day Paddle trial when the configured Paddle price includes a trial.`
-              : "Monthly starts paid access immediately. Lifetime uses a 10-year Paddle subscription price."}
+              ? `Monthly can start with a ${trialDays}-day free trial. Lifetime is a single upfront payment.`
+              : "Monthly starts paid access immediately. Lifetime is a single upfront payment."}
           </p>
         </section>
 
@@ -61,8 +61,8 @@ export default function PricingPage() {
             },
             {
               icon: ShieldCheck,
-              title: "Paddle managed",
-              text: "Checkout, receipts, cards, taxes, and subscription management stay in Paddle.",
+              title: "Secure checkout",
+              text: "Checkout, receipts, cards, taxes, and subscription management are handled securely.",
             },
           ].map((item) => {
             const Icon = item.icon;
@@ -79,7 +79,7 @@ export default function PricingPage() {
         <section className="mx-auto mb-16 w-full max-w-5xl rounded-3xl border border-slate-200/70 bg-white/70 p-6 shadow-lg backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/50">
           <div className="grid gap-4 md:grid-cols-2">
             {[
-              "Cancel monthly any time from Paddle customer portal.",
+              "Cancel monthly any time from the customer portal.",
               "Legacy billing rows stay marked for support review before self-serve checkout.",
               "Webhook events are stored idempotently before entitlement updates.",
               "Workspace enforcement can be turned on with PLANMYWORKDAY_BILLING_ENFORCEMENT=1.",
