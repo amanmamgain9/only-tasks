@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isDevelopmentAuthEnabled, isGoogleAuthConfigured, listRecentUsers } from "@/server/auth";
-import { resolveOrigin } from "./_helpers";
+import { resolveOrigin } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {

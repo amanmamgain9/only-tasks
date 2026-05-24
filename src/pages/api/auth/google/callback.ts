@@ -7,7 +7,7 @@ import {
   SESSION_COOKIE_NAME,
   UnauthorizedError,
 } from "@/server/auth";
-import { expireCookie, resolveOrigin, serializeCookie, toWebRequest } from "../_helpers";
+import { expireCookie, resolveOrigin, serializeCookie, toWebRequest } from "@/server/api/helpers";
 
 function getIpAddress(req: NextApiRequest) {
   const header = req.headers["x-forwarded-for"];

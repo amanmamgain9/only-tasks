@@ -8,7 +8,7 @@ import {
   hasConsumedTrial,
   listSubscriptionsForUser,
 } from "@/server/subscriptions/service";
-import { resolveOrigin, toWebRequest } from "../auth/_helpers";
+import { resolveOrigin, toWebRequest } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getCurrentUserFromRequest } from "@/server/auth";
 import { createPaddleCustomerPortalSession, isPaddlePortalConfigured } from "@/server/billing/paddle";
 import { getPaddleBillingContextForUser } from "@/server/subscriptions/service";
-import { toWebRequest } from "../auth/_helpers";
+import { toWebRequest } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

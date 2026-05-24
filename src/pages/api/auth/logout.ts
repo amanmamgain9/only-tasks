@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { revokeSessionFromRequest, SESSION_COOKIE_NAME } from "@/server/auth";
-import { expireCookie, resolveOrigin, toWebRequest } from "./_helpers";
+import { expireCookie, resolveOrigin, toWebRequest } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

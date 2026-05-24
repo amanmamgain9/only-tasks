@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCurrentUserFromRequest } from "@/server/auth";
-import { toWebRequest } from "./_helpers";
+import { toWebRequest } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {

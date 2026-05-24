@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { BillingRequiredError } from "@/server/billing/enforcement";
 import { getWorkspaceUserIdFromRequest, UnauthorizedError } from "@/server/auth";
 import { unarchiveProjectForUser } from "@/server/projects/service";
-import { toWebRequest } from "../../auth/_helpers";
+import { toWebRequest } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

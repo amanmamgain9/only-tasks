@@ -4,7 +4,7 @@ import { BillingRequiredError } from "@/server/billing/enforcement";
 import { getWorkspaceUserIdFromRequest, UnauthorizedError } from "@/server/auth";
 import { operationBatchSchema } from "@/server/tasks/contracts";
 import { applyOperationBatch } from "@/server/tasks/operations";
-import { toWebRequest } from "../../auth/_helpers";
+import { toWebRequest } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

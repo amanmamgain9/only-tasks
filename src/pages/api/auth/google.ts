@@ -4,7 +4,7 @@ import {
   GOOGLE_REDIRECT_COOKIE_NAME,
   GOOGLE_STATE_COOKIE_NAME,
 } from "@/server/auth";
-import { resolveOrigin, serializeCookie } from "./_helpers";
+import { resolveOrigin, serializeCookie } from "@/server/api/helpers";
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

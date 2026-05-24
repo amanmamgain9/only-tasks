@@ -7,7 +7,7 @@ import {
   type GetProjectsForUserOptions,
 } from "@/server/projects/service";
 import type { Project } from "@/server/db/schema/projects";
-import { toWebRequest } from "../auth/_helpers";
+import { toWebRequest } from "@/server/api/helpers";
 
 const projectStatuses: Project["status"][] = ["active", "completed", "on_hold", "cancelled", "archived"];
 const projectTypes: Project["type"][] = ["main", "side_project", "chore"];

@@ -7,7 +7,7 @@ import {
   SESSION_COOKIE_NAME,
   signInAsExistingUser,
 } from "@/server/auth";
-import { resolveOrigin, serializeCookie } from "./_helpers";
+import { resolveOrigin, serializeCookie } from "@/server/api/helpers";
 
 function getIpAddress(req: NextApiRequest) {
   const header = req.headers["x-forwarded-for"];
