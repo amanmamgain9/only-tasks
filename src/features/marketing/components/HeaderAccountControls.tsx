@@ -65,7 +65,7 @@ export default function HeaderAccountControls() {
   return (
     <div className="flex items-center gap-2">
       <Link
-        href="/app/workspace/all-tasks"
+        href="/account"
         className="hidden max-w-44 truncate rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted sm:block"
         title={authState.email}
       >

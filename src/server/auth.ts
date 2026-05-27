@@ -127,6 +127,10 @@ export function sanitizeAuthRedirectPath(value: string | null | undefined) {
       return pathWithSearch;
     }
 
+    if (parsed.pathname === "/account") {
+      return pathWithSearch;
+    }
+
     if (["/all-tasks", "/today", "/tomorrow", "/this-week"].includes(parsed.pathname)) {
       return pathWithSearch;
     }
