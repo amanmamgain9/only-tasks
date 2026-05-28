@@ -188,7 +188,7 @@ export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSideb
                 className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium text-indigo-700 outline-none transition hover:bg-indigo-500/10 focus-visible:ring-2 focus-visible:ring-indigo-400/40 disabled:cursor-not-allowed disabled:opacity-60 dark:text-indigo-300"
               >
                 <CreditCard className="size-3.5" />
-                <span>{isOpeningBillingPortal ? "Opening..." : "Manage billing"}</span>
+                <span>{isOpeningBillingPortal ? "Opening" : "Manage billing"}</span>
               </button>
             )}
             {billingPortalError && <p className="mt-2 text-[11px] leading-4 text-rose-600 dark:text-rose-300">{billingPortalError}</p>}

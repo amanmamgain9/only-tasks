@@ -23,11 +23,12 @@ function getSearchValue(value: string | string[] | undefined) {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ next?: string | string[] }>;
+  searchParams?: Promise<{ next?: string | string[]; error?: string | string[] }>;
 }) {
   noStore();
   const resolvedSearchParams = await searchParams;
   const nextPath = sanitizeAuthRedirectPath(getSearchValue(resolvedSearchParams?.next));
+  const errorCode = getSearchValue(resolvedSearchParams?.error) ?? null;
   const requestHeaders = await headers();
   const cookieHeader = requestHeaders.get("cookie") || "";
   const currentUser = await getCurrentUserFromRequest(
@@ -44,7 +45,7 @@ export default async function SignInPage({
 
   return (
     <Suspense fallback={null}>
-      <SignInScreen />
+      <SignInScreen nextPath={nextPath} errorCode={errorCode} />
     </Suspense>
   );
 }

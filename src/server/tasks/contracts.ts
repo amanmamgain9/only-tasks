@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const subtreeNodeSchema: z.ZodSchema<{
+const subtreeNodeSchema: z.ZodSchema<{
   clientId: string;
   title: string;
   position: string;
@@ -22,7 +22,7 @@ export const subtreeNodeSchema: z.ZodSchema<{
   }),
 );
 
-export const operationSchema = z.discriminatedUnion("type", [
+const operationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("UPDATE_TITLE"),
     clientId: z.string(),

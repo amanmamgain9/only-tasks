@@ -92,7 +92,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
         position: 'fixed',
         top: `${position.top}px`,
         left: `${position.left}px`,
-        zIndex: 9999,
+        zIndex: 50,
       }}
       data-scope
     >
@@ -101,6 +101,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
         id="menu-region"
         className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[150px]"
         role="menu"
+        tabIndex={-1}
         onKeyDown={handleMenuKeyDown}
       >
         <div data-layout="vertical">

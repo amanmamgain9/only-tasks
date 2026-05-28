@@ -1,4 +1,4 @@
-export const PADDLE_PLAN_KEYS = ["pro_monthly", "lifetime"] as const;
+const PADDLE_PLAN_KEYS = ["pro_monthly", "lifetime"] as const;
 
 export type PaddlePlanKey = (typeof PADDLE_PLAN_KEYS)[number];
 
@@ -37,7 +37,7 @@ function isDisabledFlag(value: string | undefined) {
   return value === "0" || value?.toLowerCase() === "false";
 }
 
-export function getPaddleTrialDays() {
+function getPaddleTrialDays() {
   const enabledValue =
     process.env.PADDLE_TRIAL_ENABLED ??
     process.env.PADDLE_MONTHLY_TRIAL_ENABLED ??
@@ -97,7 +97,7 @@ export function getPaddlePlanConfig(planKey: PaddlePlanKey): PaddlePlanConfig {
   };
 }
 
-export function getPaddlePriceId(planKey: PaddlePlanKey) {
+function getPaddlePriceId(planKey: PaddlePlanKey) {
   return firstEnvValue(getPaddlePlanConfig(planKey).priceEnvVars);
 }
 

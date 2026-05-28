@@ -144,6 +144,15 @@
   }
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 .plan-my-workday {
   /* Modified: Softer white background with slight gray tint */
   --background: #f9f9fb;

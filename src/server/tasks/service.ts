@@ -83,19 +83,20 @@ export async function getScheduledTasks(
   }
 
   const descendantPaths = scheduledTasks.map((task) => `${task.path}${task.id}/`);
-  const descendants = await Promise.all(
-    descendantPaths.map((pathPrefix) =>
-      taskRepo.findTasksByUserId(userId, {
-        projectId: options.projectId,
-        includeCompleted: true,
-        includeDeleted: false,
-        includeArchived: false,
-        pathStartsWith: pathPrefix,
-      }),
+  const [descendants, ancestors] = await Promise.all([
+    Promise.all(
+      descendantPaths.map((pathPrefix) =>
+        taskRepo.findTasksByUserId(userId, {
+          projectId: options.projectId,
+          includeCompleted: true,
+          includeDeleted: false,
+          includeArchived: false,
+          pathStartsWith: pathPrefix,
+        }),
+      ),
     ),
-  );
-
-  const ancestors = await taskRepo.findTasksByIds(userId, Array.from(ancestorIds));
+    taskRepo.findTasksByIds(userId, Array.from(ancestorIds)),
+  ]);
 
   const taskMap = new Map<number, (typeof scheduledTasks)[number]>();
   scheduledTasks.forEach((task) => taskMap.set(task.id, task));

@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Theme = "light" | "dark";
 
@@ -29,17 +29,19 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(initialTheme);
   }, []);
 
-  const setTheme = (nextTheme: Theme) => {
+  const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
     window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
-  };
+  }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
-  };
+  }, [setTheme, theme]);
 
-  return <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>{children}</ThemeContext.Provider>;
+  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [setTheme, theme, toggleTheme]);
+
+  return <ThemeContext value={value}>{children}</ThemeContext>;
 }
 
 export function useTheme() {

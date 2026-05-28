@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 import { getAllBlogSlugs, getBlogPost } from "@/features/marketing/blog-data/posts";
@@ -161,7 +162,9 @@ export default async function BlogPostPage({
 
         <MarketingFooter />
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <Script id={`schema-blog-${post.slug}`} type="application/ld+json">
+        {JSON.stringify(articleSchema)}
+      </Script>
     </main>
   );
 }

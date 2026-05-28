@@ -74,8 +74,8 @@ function getEntitlementRank(subscription: Subscription, now: number) {
   }
 }
 
-export function pickEffectiveSubscription(rows: Subscription[], now = Date.now()) {
-  const sorted = [...rows].sort((left, right) => {
+function pickEffectiveSubscription(rows: Subscription[], now = Date.now()) {
+  const sorted = rows.toSorted((left, right) => {
     const entitlementDiff = getEntitlementRank(right, now) - getEntitlementRank(left, now);
     if (entitlementDiff !== 0) return entitlementDiff;
 
@@ -145,7 +145,7 @@ function buildSubscriptionNote(subscription: Subscription, now: number) {
   return null;
 }
 
-export function summarizeSubscription(subscription: Subscription | null, now = Date.now()): SubscriptionSummary | null {
+function summarizeSubscription(subscription: Subscription | null, now = Date.now()): SubscriptionSummary | null {
   if (!subscription) return null;
 
   const status = normalizeStatus(subscription.status) ?? "inactive";

@@ -116,7 +116,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-950/50 flex items-center justify-center z-50 p-4">
       <dialog
         ref={modalRef}
         open
@@ -241,7 +241,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
                   className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
                   {isImporting && <Loader2 className="size-4 animate-spin" />}
-                  {isImporting ? 'Importing...' : `Import ${parsedData?.length || 0} Tasks`}
+                  {isImporting ? 'Importing' : `Import ${parsedData?.length || 0} Tasks`}
                 </button>
               </div>
             </div>

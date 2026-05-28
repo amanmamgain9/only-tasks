@@ -1,10 +1,11 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import MyDayTasksComponent from "./MyWorkdayTasksComponent";
 import WorkspaceSidebar from "../WorkspaceSidebar";
 import type { AuthenticatedUser } from "@/server/auth";
+import { useCurrentUserQuery } from "@/features/auth/hooks/useAuthQueries";
 
 interface MyWorkplaceComponentProps {
   regionOrder: number;
@@ -27,55 +28,15 @@ const SkeletonMyWorkplaceComponent = () => {
 
 const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
   const routerLocation = useLocation();
-  const [resolvedViewer, setResolvedViewer] = useState<AuthenticatedUser | null>(viewer ?? null);
-  const [isLoadingViewer, setIsLoadingViewer] = useState(!viewer);
+  const viewerQuery = useCurrentUserQuery<AuthenticatedUser>(!viewer);
+  const resolvedViewer = viewer ?? viewerQuery.data ?? null;
+  const isLoadingViewer = !viewer && viewerQuery.isLoading;
 
   useEffect(() => {
-    if (viewer) {
-      setResolvedViewer(viewer);
-      setIsLoadingViewer(false);
-      return;
+    if (!viewer && viewerQuery.isError) {
+      window.location.href = `/sign-in?next=${encodeURIComponent(routerLocation.pathname || "/app")}`;
     }
-
-    let cancelled = false;
-
-    async function loadViewer() {
-      try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-          cache: "no-store",
-        });
-
-        if (response.status === 401) {
-          window.location.href = `/sign-in?next=${encodeURIComponent(window.location.pathname || "/app")}`;
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error("Failed to load current user.");
-        }
-
-        const payload = (await response.json()) as { success: boolean; data?: AuthenticatedUser };
-        if (!cancelled) {
-          setResolvedViewer(payload.data ?? null);
-        }
-      } catch {
-        if (!cancelled) {
-          window.location.href = `/sign-in?next=${encodeURIComponent(window.location.pathname || "/app")}`;
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingViewer(false);
-        }
-      }
-    }
-
-    void loadViewer();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [routerLocation.pathname, viewer]);
+  }, [routerLocation.pathname, viewer, viewerQuery.isError]);
 
   if (isLoadingViewer || !resolvedViewer) {
     return <SkeletonMyWorkplaceComponent />;

@@ -61,7 +61,7 @@ export const findParentTask = (
 // SERIALIZATION
 // ========================================================================
 
-export const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
+const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
   return {
     clientId: task.clientId,
     title: task.title || '',
@@ -69,7 +69,7 @@ export const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
     isCompleted: task.isCompleted ?? false,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
-    subtasks: task.subtasks?.filter(t => !t.isEphemeral).map(serializeSubtree)
+    subtasks: task.subtasks?.flatMap((subtask) => (subtask.isEphemeral ? [] : [serializeSubtree(subtask)]))
   };
 };
 
@@ -94,7 +94,7 @@ const removeTaskFromTree = (tasks: EnhancedTaskTreeType[], clientId: string): bo
 // EMPTY NODE MANAGEMENT
 // ========================================================================
 
-export const createEmptyTask = (
+const createEmptyTask = (
   draft: EditorState, 
   parentTaskClientId: string | null
 ): EnhancedTaskTreeType => {
@@ -116,7 +116,7 @@ export const createEmptyTask = (
   };
 };
 
-export const ensureTrailingEmptyTask = (
+const ensureTrailingEmptyTask = (
   draft: EditorState, 
   parentTaskClientId: string | null
 ): void => {

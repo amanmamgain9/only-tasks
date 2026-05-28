@@ -71,7 +71,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
     return '//';
   };
 
-  const [dateValue, setDateValue] = useState(getInitialDateValue());
+  const [dateValue, setDateValue] = useState(() => getInitialDateValue());
   const [isEmpty, setIsEmpty] = useState(!initialDueDate);
 
   useEffect(() => {
@@ -239,7 +239,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-slate-950/50 flex items-center justify-center z-50"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

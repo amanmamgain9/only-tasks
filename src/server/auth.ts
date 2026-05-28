@@ -141,7 +141,7 @@ export function sanitizeAuthRedirectPath(value: string | null | undefined) {
   return DEFAULT_AUTH_REDIRECT;
 }
 
-export function isWorkspaceRedirectPath(value: string) {
+function isWorkspaceRedirectPath(value: string) {
   try {
     const parsed = new URL(value, "http://local.planmyworkday");
     return parsed.pathname === "/app" || parsed.pathname.startsWith("/app/");
@@ -150,7 +150,7 @@ export function isWorkspaceRedirectPath(value: string) {
   }
 }
 
-export function getBillingRedirectPath(nextPath: string) {
+function getBillingRedirectPath(nextPath: string) {
   return `/pricing?next=${encodeURIComponent(nextPath)}`;
 }
 
@@ -226,7 +226,7 @@ export async function getCurrentUserFromRequest(request: Request): Promise<Authe
   };
 }
 
-export async function getCurrentUserIdFromRequest(request: Request): Promise<number> {
+async function getCurrentUserIdFromRequest(request: Request): Promise<number> {
   const user = await getCurrentUserFromRequest(request);
   if (!user) throw new UnauthorizedError();
   return user.id;

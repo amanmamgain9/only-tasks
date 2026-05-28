@@ -256,7 +256,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
               ? 'line-through text-gray-500 dark:text-gray-400'
               : 'text-gray-700 dark:text-gray-300'
               } placeholder-gray-400 dark:placeholder-gray-500`}
-            placeholder="Enter task title..."
+            placeholder="Enter task title"
             rows={1}
             style={{
               minHeight: '24px',

@@ -70,7 +70,7 @@ export async function findProjectsByUserId(
     .where(and(...conditions));
 }
 
-export async function findProjectById(projectId: number): Promise<Project | null> {
+async function findProjectById(projectId: number): Promise<Project | null> {
   const results = await db
     .select()
     .from(projects)

@@ -107,7 +107,7 @@ export default function ProjectForm({
   }, [handleCancel]);
 
   const submitLabel = useMemo(() => {
-    if (isLoading) return isEditMode ? "Updating..." : "Creating...";
+    if (isLoading) return isEditMode ? "Updating" : "Creating";
     return isEditMode ? "Update Project" : "Create Project";
   }, [isEditMode, isLoading]);
 

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 import {
@@ -139,7 +140,7 @@ export default async function UseCaseDetailPage({
                   <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">How it helps</h2>
                   <div className="mt-5 grid gap-3">
                     {useCase.benefits.map((benefit) => (
-                      <div key={benefit} className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm leading-6 text-slate-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-slate-200">
+                      <div key={benefit} className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm leading-6 text-indigo-950 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-50">
                         {benefit}
                       </div>
                     ))}
@@ -176,7 +177,9 @@ export default async function UseCaseDetailPage({
 
         <MarketingFooter />
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
+      <Script id={`schema-use-case-${useCase.slug}`} type="application/ld+json">
+        {JSON.stringify(schemas)}
+      </Script>
     </main>
   );
 }

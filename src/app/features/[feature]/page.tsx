@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 import {
@@ -138,7 +139,7 @@ export default async function FeatureDetailPage({
                 </div>
               </section>
 
-              <blockquote className="mt-10 rounded-[1.5rem] border border-indigo-200 bg-indigo-50 p-6 text-base leading-8 text-slate-700 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-slate-200">
+              <blockquote className="mt-10 rounded-[1.5rem] border border-indigo-200 bg-indigo-50 p-6 text-base leading-8 text-indigo-950 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-50">
                 <p>&quot;{featureData.testimonial.quote}&quot;</p>
                 <footer className="mt-4 text-sm font-semibold text-slate-950 dark:text-white">
                   {featureData.testimonial.author}, {featureData.testimonial.role}
@@ -150,7 +151,9 @@ export default async function FeatureDetailPage({
 
         <MarketingFooter />
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <Script id={`schema-feature-${featureData.slug}`} type="application/ld+json">
+        {JSON.stringify(schema)}
+      </Script>
     </main>
   );
 }

@@ -272,7 +272,7 @@ export default function TreeMain({ project, dueDateFilter, chatId }: Props) { //
     return (
       <div className="w-full bg-white dark:bg-gray-900 p-6">
         <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400">Loading project tree...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading project tree</p>
         </div>
       </div>
     );

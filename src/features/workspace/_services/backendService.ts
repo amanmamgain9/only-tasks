@@ -101,14 +101,6 @@ export const unarchiveProject = async (projectId: number): Promise<ApiResponse<P
   return parseResponse<Project>(response);
 };
 
-export const restoreProject = async (projectId: number): Promise<ApiResponse<Project>> => {
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/restore`, {
-    method: "POST",
-  });
-
-  return parseResponse<Project>(response);
-};
-
 export const getProjectTree = async (
   projectId: number,
   params?: {

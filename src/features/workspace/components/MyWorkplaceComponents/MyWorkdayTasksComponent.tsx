@@ -284,17 +284,6 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
 
   return (
     <div className="w-full space-y-2">
-      {/* Add custom CSS for hiding scrollbar */}
-      <style jsx>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-
       {/* Date Filter Header - only show when dueDateFilter is provided */}
       {dueDateFilter && (() => {
         const viewInfo = getDueDateViewInfo(dueDateFilter);

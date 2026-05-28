@@ -67,7 +67,7 @@ export default function ConfirmModal({
   return (
     <div 
       role="presentation"
-      className="fixed inset-0 backdrop-blur-sm bg-black/20 dark:bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-200"
+      className="fixed inset-0 backdrop-blur-sm bg-slate-950/20 dark:bg-slate-950/40 flex items-center justify-center z-50 animate-in fade-in duration-200"
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel();
       }}

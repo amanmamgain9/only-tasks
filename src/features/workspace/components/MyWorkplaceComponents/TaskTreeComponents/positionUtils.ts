@@ -4,15 +4,15 @@ import { generateKeyBetween } from 'fractional-indexing';
 
 export const INITIAL_POSITION = generateKeyBetween(null, null); // 'a0'
 
-export const createPositionAfter = (lastPosition: string | null): string => {
+const createPositionAfter = (lastPosition: string | null): string => {
   return generateKeyBetween(lastPosition, null);
 };
 
-export const createPositionBetween = (a: string | null, b: string | null): string => {
+const createPositionBetween = (a: string | null, b: string | null): string => {
   return generateKeyBetween(a, b);
 };
 
-export const createPositionBefore = (position: string): string => {
+const createPositionBefore = (position: string): string => {
   return generateKeyBetween(null, position);
 };
 
@@ -26,7 +26,7 @@ export const generatePosition = (siblings: Array<{ position?: string }>): string
 /**
  * Calculate position for inserting an item at a specific index
  */
-export const calculatePositionAtIndex = (
+const calculatePositionAtIndex = (
   siblings: Array<{ position?: string }>,
   index: number
 ): string => {

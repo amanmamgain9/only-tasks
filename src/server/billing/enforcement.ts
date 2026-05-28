@@ -7,7 +7,7 @@ export class BillingRequiredError extends Error {
   }
 }
 
-export function isBillingEnforcementEnabled() {
+function isBillingEnforcementEnabled() {
   return process.env.PLANMYWORKDAY_BILLING_ENFORCEMENT === "1" || process.env.PLANMYWORKDAY_BILLING_ENFORCEMENT === "true";
 }
 

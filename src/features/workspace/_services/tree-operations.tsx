@@ -35,7 +35,7 @@ export type SpatialDirection = 'up' | 'down' | 'left' | 'right';
 export type SemanticDirection = 'forward' | 'backward';
 export type Direction = SpatialDirection | SemanticDirection;
 
-export function parseLayoutOrder(order: string): number[] {
+function parseLayoutOrder(order: string): number[] {
   return order.split('.').map(n => parseInt(n, 10));
 }
 
@@ -52,15 +52,15 @@ export function compareLayoutOrder(a: string, b: string): number {
   return 0;
 }
 
-export function getLayoutAttribute(element: HTMLElement): string {
+function getLayoutAttribute(element: HTMLElement): string {
   return element.getAttribute('data-layout') || 'vertical';
 }
 
-export function getWrapAttribute(element: HTMLElement): boolean {
+function getWrapAttribute(element: HTMLElement): boolean {
   return element.hasAttribute('data-wrap');
 }
 
-export function isFocusable(element: Element): boolean {
+function isFocusable(element: Element): boolean {
   if (!(element instanceof HTMLElement)) return false;
   if (element.hasAttribute('data-layout')) return false;
 
@@ -100,7 +100,7 @@ function _findEntrypointIndex(children: FocusNode[]): number | null {
   return null;
 }
 
-export function buildTree({ element, parent }: { element: HTMLElement; parent: Node | null }): Node | null {
+function buildTree({ element, parent }: { element: HTMLElement; parent: Node | null }): Node | null {
   if (element.hasAttribute('data-scope')) {
     if (parent !== null) return null;
     const node: ScopeNode = { type: 'scope', element, regions: [] };
@@ -172,7 +172,7 @@ export function buildTree({ element, parent }: { element: HTMLElement; parent: N
   return null;
 }
 
-export function buildScopeTree(root: HTMLElement): ScopeNode | null {
+function buildScopeTree(root: HTMLElement): ScopeNode | null {
   if (root.hasAttribute('data-scope')) {
     const result = buildTree({ element: root, parent: null });
     return result?.type === 'scope' ? result : null;
@@ -337,10 +337,17 @@ export const TraversalTreeService = {
       const layoutMatches = directionMatchesLayout(parent.layout, spatialDir);
 
       if (isSemantic || layoutMatches) {
-        const index = parent.children.indexOf(current);
+        const childCount = parent.children.length;
+        let index = -1;
+        for (let childIndex = 0; childIndex < childCount; childIndex++) {
+          if (parent.children[childIndex] === current) {
+            index = childIndex;
+            break;
+          }
+        }
         const nextIndex = forward ? index + 1 : index - 1;
 
-        if (nextIndex >= 0 && nextIndex < parent.children.length) {
+        if (nextIndex >= 0 && nextIndex < childCount) {
           const sibling = parent.children[nextIndex];
           if (sibling.type === 'focusable') {
             return sibling.element;
@@ -356,7 +363,7 @@ export const TraversalTreeService = {
         }
 
         if (parent.wrap) {
-          const wrapIndex = forward ? 0 : parent.children.length - 1;
+          const wrapIndex = forward ? 0 : childCount - 1;
           const wrapped = parent.children[wrapIndex];
           if (wrapped.type === 'focusable') {
             return wrapped.element;

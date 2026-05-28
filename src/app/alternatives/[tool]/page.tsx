@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 import {
@@ -144,7 +145,9 @@ export default async function AlternativeDetailPage({
 
         <MarketingFooter />
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <Script id={`schema-alternative-${alternative.slug}`} type="application/ld+json">
+        {JSON.stringify(schema)}
+      </Script>
     </main>
   );
 }
