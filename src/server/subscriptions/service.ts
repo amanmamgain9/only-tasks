@@ -229,12 +229,10 @@ function subscriptionCanBeAutoCanceledAfterLifetime(subscription: Subscription) 
 
 async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
   const candidates = rows.filter(subscriptionCanBeAutoCanceledAfterLifetime);
-  const canceledSubscriptionIds: string[] = [];
-  const failedSubscriptionIds: string[] = [];
 
-  for (const subscription of candidates) {
+  const results = await Promise.all(candidates.map(async (subscription) => {
     const subscriptionId = subscription.paddleSubscriptionId;
-    if (!subscriptionId) continue;
+    if (!subscriptionId) return { canceledSubscriptionId: null, failedSubscriptionId: null };
 
     try {
       if (normalizeStatus(subscription.status) === "trialing") {
@@ -244,7 +242,6 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
       } else {
         await cancelPaddleSubscription(subscriptionId, "next_billing_period");
       }
-      canceledSubscriptionIds.push(subscriptionId);
       await db
         .update(subscriptions)
         .set({
@@ -252,18 +249,23 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
           updatedAt: new Date().toISOString(),
         })
         .where(eq(subscriptions.id, subscription.id));
+      return { canceledSubscriptionId: subscriptionId, failedSubscriptionId: null };
     } catch (error) {
-      failedSubscriptionIds.push(subscriptionId);
       console.error("Failed to schedule Paddle monthly cancellation after lifetime purchase", {
         subscriptionId,
         error: error instanceof Error ? error.message : String(error),
       });
+      return { canceledSubscriptionId: null, failedSubscriptionId: subscriptionId };
     }
-  }
+  }));
 
   return {
-    canceledSubscriptionIds,
-    failedSubscriptionIds,
+    canceledSubscriptionIds: results.flatMap((result) =>
+      result.canceledSubscriptionId ? [result.canceledSubscriptionId] : [],
+    ),
+    failedSubscriptionIds: results.flatMap((result) =>
+      result.failedSubscriptionId ? [result.failedSubscriptionId] : [],
+    ),
   };
 }
 

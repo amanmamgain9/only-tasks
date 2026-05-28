@@ -69,7 +69,7 @@ export default function HomePage() {
               <h1 className="mb-8 text-5xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-6xl lg:text-7xl xl:text-8xl">
                 Finally.{" "}
                 <span className="relative">
-                  <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                  <span className="text-indigo-600 dark:text-indigo-400">
                     Task management
                   </span>
                   <span className="absolute -inset-1 -z-10 bg-gradient-to-r from-indigo-600/20 via-blue-600/20 to-purple-700/20 blur-xl dark:from-indigo-400/20 dark:via-blue-500/20 dark:to-purple-600/20" />
@@ -109,7 +109,7 @@ export default function HomePage() {
             <div className="mb-20 text-center">
               <h2 className="mb-6 text-4xl font-bold text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
                 Stop{" "}
-                <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                <span className="text-indigo-600 dark:text-indigo-400">
                   fighting your tools.
                 </span>
               </h2>
@@ -173,7 +173,7 @@ export default function HomePage() {
             <div className="mb-20 text-center">
               <h2 className="mb-6 text-4xl font-bold text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
                 People actually{" "}
-                <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                <span className="text-indigo-600 dark:text-indigo-400">
                   use this stuff
                 </span>
               </h2>
@@ -217,7 +217,7 @@ export default function HomePage() {
             <div className="relative">
               <h2 className="mb-8 text-4xl font-bold text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
                 Ready to stop{" "}
-                <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                <span className="text-indigo-600 dark:text-indigo-400">
                   disappointing yourself?
                 </span>
               </h2>

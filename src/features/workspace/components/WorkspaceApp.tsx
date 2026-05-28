@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import MyWorkplaceComponent from "./MyWorkplaceComponents/MyWorkplaceComponent";
 import { NavigationService } from "../_services/navigationService";
+import type { AuthenticatedUser } from "@/server/auth";
 
 function WorkspaceShellFallback() {
   return (
@@ -17,24 +18,32 @@ function WorkspaceShellFallback() {
   );
 }
 
-export default function WorkspaceApp() {
+const subscribeToHydration = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+function useIsHydrated() {
+  return useSyncExternalStore(subscribeToHydration, getClientSnapshot, getServerSnapshot);
+}
+
+type WorkspaceAppProps = {
+  viewer: AuthenticatedUser;
+};
+
+export default function WorkspaceApp({ viewer }: WorkspaceAppProps) {
   const appRef = useRef<HTMLDivElement>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const isHydrated = useIsHydrated();
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted || !appRef.current) return;
+    if (!isHydrated || !appRef.current) return;
 
     NavigationService.init(appRef.current);
     return () => {
       NavigationService.cleanup();
     };
-  }, [isMounted]);
+  }, [isHydrated]);
 
-  if (!isMounted) {
+  if (!isHydrated) {
     return <WorkspaceShellFallback />;
   }
 
@@ -44,10 +53,10 @@ export default function WorkspaceApp() {
         <Routes>
           <Route path="/" element={<Navigate to="/workspace/all-tasks" replace />} />
           <Route path="/workspace" element={<Navigate to="/workspace/all-tasks" replace />} />
-          <Route path="/workspace/all-tasks" element={<MyWorkplaceComponent regionOrder={1} />} />
-          <Route path="/workspace/today" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="today" />} />
-          <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" />} />
-          <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" />} />
+          <Route path="/workspace/all-tasks" element={<MyWorkplaceComponent regionOrder={1} viewer={viewer} />} />
+          <Route path="/workspace/today" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="today" viewer={viewer} />} />
+          <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" viewer={viewer} />} />
+          <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" viewer={viewer} />} />
           <Route path="*" element={<Navigate to="/workspace/all-tasks" replace />} />
         </Routes>
       </BrowserRouter>

@@ -33,6 +33,11 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
   const copyMenuItemRef = useRef<HTMLButtonElement>(null);
   const makeRootMenuItemRef = useRef<HTMLButtonElement>(null);
   const deleteMenuItemRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen && menuContainerRef.current) {
@@ -60,13 +65,13 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
         !menuContainerRef.current.contains(e.target as Node) &&
         !menuButtonRef.current?.contains(e.target as Node)
       ) {
-        onClose();
+        onCloseRef.current();
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, onClose, menuButtonRef]);
+  }, [isOpen, menuButtonRef]);
 
   const handleMenuKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {

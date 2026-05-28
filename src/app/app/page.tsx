@@ -15,6 +15,6 @@ export const metadata: Metadata = {
 
 export default async function AppHomePage() {
   noStore();
-  await requireWorkspaceSession("/app");
-  return <WorkspaceApp />;
+  const viewer = await requireWorkspaceSession("/app");
+  return <WorkspaceApp viewer={viewer} />;
 }

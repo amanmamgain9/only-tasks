@@ -1,9 +1,9 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { BillingRequiredError } from "@/server/billing/enforcement";
-import { getWorkspaceUserFromRequest, SESSION_COOKIE_NAME, UnauthorizedError } from "@/server/auth";
+import { getWorkspaceUserFromRequest, SESSION_COOKIE_NAME, UnauthorizedError, type AuthenticatedUser } from "@/server/auth";
 
-export async function requireWorkspaceSession(nextPath: string) {
+export async function requireWorkspaceSession(nextPath: string): Promise<AuthenticatedUser> {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -15,7 +15,7 @@ export async function requireWorkspaceSession(nextPath: string) {
   let redirectPath: string | null = null;
 
   try {
-    await getWorkspaceUserFromRequest(
+    return await getWorkspaceUserFromRequest(
       new Request("http://local.planmyworkday/app", {
         headers: {
           cookie: requestHeaders.get("cookie") || "",
@@ -35,4 +35,6 @@ export async function requireWorkspaceSession(nextPath: string) {
   if (redirectPath) {
     redirect(redirectPath);
   }
+
+  throw new Error("Workspace session could not be resolved.");
 }

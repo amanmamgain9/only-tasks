@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   ChevronRight,
   ChevronDown,
@@ -60,30 +60,31 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   const calendarButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  const [localTitle, setLocalTitle] = useState(node.title || '');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-
-  useEffect(() => {
-    setLocalTitle(node.title || '');
-  }, [node.title]);
 
   const showMakeRootButton = node.nodeType === 'task' && (node.title || '').trim().length > 0;
   const showDeleteButton = node.nodeType === 'task' && !node.isEphemeral;
 
-  useEffect(() => {
-    if (isMenuOpen && menuButtonRef.current) {
-      const rect = menuButtonRef.current.getBoundingClientRect();
+  const openMenu = useCallback(() => {
+    const rect = menuButtonRef.current?.getBoundingClientRect();
+    if (rect) {
       const menuWidth = 150;
-
       setMenuPosition({
         top: rect.bottom + 4,
         left: rect.right - menuWidth,
       });
     }
-  }, [isMenuOpen]);
+    setIsMenuOpen(true);
+  }, []);
 
- 
+  const toggleMenu = useCallback(() => {
+    if (isMenuOpen) {
+      setIsMenuOpen(false);
+    } else {
+      openMenu();
+    }
+  }, [isMenuOpen, openMenu]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const focused = document.activeElement;
@@ -111,15 +112,14 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
       }
       if (focused === menuButtonRef.current) {
         e.preventDefault();
-        setIsMenuOpen(!isMenuOpen);
+        toggleMenu();
         return;
       }
     }
-  }, [node, nodeIndex, onToggleExpansion, onToggleCompletion, onMakeRoot, onCalendarClick, isMenuOpen]);
+  }, [node, nodeIndex, onToggleExpansion, onToggleCompletion, onMakeRoot, onCalendarClick, toggleMenu]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newTitle = e.target.value;
-    setLocalTitle(newTitle);
     onUpdateTitle(node, newTitle);
 
     const target = e.target;
@@ -149,8 +149,8 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
 
   const handleMenuClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsMenuOpen(!isMenuOpen);
-  }, [isMenuOpen]);
+    toggleMenu();
+  }, [toggleMenu]);
 
   const handleAddChildClick = useCallback(() => {
     setIsMenuOpen(false);
@@ -248,7 +248,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
           <textarea
             ref={titleInputRef}
             aria-label="Task title"
-            value={localTitle}
+            value={node.title || ''}
             onChange={handleInputChange}
             data-entrypoint-focus
             data-focusable

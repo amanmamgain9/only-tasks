@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import Script from "next/script";
+import parse from "html-react-parser";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 import { getAllBlogSlugs, getBlogPost } from "@/features/marketing/blog-data/posts";
@@ -95,6 +96,14 @@ function buildArticleSchema(post: NonNullable<ReturnType<typeof getBlogPost>>) {
   };
 }
 
+function BlogArticleContent({ content }: { content?: string }) {
+  if (!content) {
+    return <p>No content available.</p>;
+  }
+
+  return <>{parse(content)}</>;
+}
+
 export default async function BlogPostPage({
   params,
 }: {
@@ -143,7 +152,9 @@ export default async function BlogPostPage({
               <span>{post.authorRole}</span>
             </div>
 
-            <div className="article-content mt-10" dangerouslySetInnerHTML={{ __html: post.content || "<p>No content available.</p>" }} />
+            <div className="article-content mt-10">
+              <BlogArticleContent content={post.content} />
+            </div>
 
             <div className="mt-10 border-t border-slate-200 pt-6">
               <div className="flex flex-wrap gap-2">

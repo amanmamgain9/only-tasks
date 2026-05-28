@@ -45,6 +45,8 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
   
   const modalRef = useRef<HTMLDialogElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const handleCloseRef = useRef<() => void>(() => {});
+  const isImportingRef = useRef(isImporting);
 
   useEffect(() => {
     if (isOpen && modalRef.current) {
@@ -100,18 +102,23 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
   }, [isImporting, onClose]);
 
   useEffect(() => {
+    handleCloseRef.current = handleClose;
+    isImportingRef.current = isImporting;
+  }, [handleClose, isImporting]);
+
+  useEffect(() => {
     if (!isOpen) return;
 
     const handleDocumentKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isImporting) {
+      if (event.key === 'Escape' && !isImportingRef.current) {
         event.preventDefault();
-        handleClose();
+        handleCloseRef.current();
       }
     };
 
     document.addEventListener('keydown', handleDocumentKeyDown);
     return () => document.removeEventListener('keydown', handleDocumentKeyDown);
-  }, [handleClose, isImporting, isOpen]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

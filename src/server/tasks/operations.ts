@@ -139,9 +139,9 @@ async function createSubtree(
   });
 
   if (node.subtasks?.length) {
-    for (const subtask of node.subtasks) {
-      await createSubtree(subtask, userId, projectId, createdTask.id, timestamp);
-    }
+    await Promise.all(
+      node.subtasks.map((subtask) => createSubtree(subtask, userId, projectId, createdTask.id, timestamp)),
+    );
   }
 
   return createdTask.id;
@@ -165,30 +165,40 @@ async function handleImportTasks(
 }
 
 export async function applyOperationBatch(batch: OperationBatch, userId: number) {
-  for (const operation of batch.operations) {
+  const applyOperation = async (operation: Operation) => {
     switch (operation.type) {
       case "UPDATE_TITLE":
         await handleUpdateTitle(operation, userId);
-        break;
+        return;
       case "TOGGLE_COMPLETE":
         await handleToggleComplete(operation, userId);
-        break;
+        return;
       case "UPDATE_METADATA":
         await handleUpdateMetadata(operation, userId);
-        break;
+        return;
       case "DELETE_TASK":
         await handleDeleteTask(operation, userId);
-        break;
+        return;
       case "CREATE_TASK":
         await handleCreateTask(operation, userId, batch.projectId);
-        break;
+        return;
       case "IMPORT_TASKS":
         await handleImportTasks(operation, userId, batch.projectId);
-        break;
+        return;
       default:
-        break;
+        return;
     }
-  }
+  };
+
+  const applyOperationsSequentially = async (index: number): Promise<void> => {
+    const operation = batch.operations[index];
+    if (!operation) return;
+
+    await applyOperation(operation);
+    await applyOperationsSequentially(index + 1);
+  };
+
+  await applyOperationsSequentially(0);
 
   return taskService.getUserTasks(userId, {
     projectId: batch.projectId,
