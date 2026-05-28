@@ -194,7 +194,7 @@ export default function AuroraBackground({
     >
       <canvas
         ref={canvasRef}
-        className="absolute left-0 top-0 h-full w-full"
+        className="absolute left-0 top-0 size-full"
         style={{ width: canvasSize.width, height: canvasSize.height }}
       />
     </div>

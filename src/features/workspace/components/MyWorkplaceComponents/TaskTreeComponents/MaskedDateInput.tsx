@@ -9,6 +9,7 @@ interface MaskedDateInputProps {
   onTab?: (shiftKey: boolean) => void;
   className?: string;
   isEmpty?: boolean;
+  ariaLabel?: string;
 }
 
 export interface MaskedDateInputRef {
@@ -16,7 +17,7 @@ export interface MaskedDateInputRef {
 }
 
 const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
-  ({ value, onChange, onUserEdit, onEnter, onTab, className = '', isEmpty = false }, ref) => {
+  ({ value, onChange, onUserEdit, onEnter, onTab, className = '', isEmpty = false, ariaLabel = 'Date' }, ref) => {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const yearRef = useRef<HTMLInputElement>(null);
     const monthRef = useRef<HTMLInputElement>(null);
@@ -138,6 +139,7 @@ const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
           ref={yearRef}
           type="text"
           inputMode="numeric"
+          aria-label={`${ariaLabel} year`}
           value={year}
           placeholder="YYYY"
           onInput={(e) => handleInput(e, 'year', 4, monthRef.current)}
@@ -150,6 +152,7 @@ const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
           ref={monthRef}
           type="text"
           inputMode="numeric"
+          aria-label={`${ariaLabel} month`}
           value={month}
           placeholder="MM"
           onInput={(e) => handleInput(e, 'month', 2, dayRef.current)}
@@ -162,6 +165,7 @@ const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
           ref={dayRef}
           type="text"
           inputMode="numeric"
+          aria-label={`${ariaLabel} day`}
           value={day}
           placeholder="DD"
           onInput={(e) => handleInput(e, 'day', 2)}

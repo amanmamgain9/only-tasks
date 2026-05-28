@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
@@ -44,7 +44,7 @@ export default function BlogListingPage() {
               className="group grid gap-6 rounded-[1.8rem] border border-slate-200 bg-white/85 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(15,23,42,0.10)] dark:border-slate-700 dark:bg-slate-800/55 md:grid-cols-[260px_minmax(0,1fr)] md:p-6"
             >
               <div className="relative overflow-hidden rounded-[1.3rem] border border-slate-200 bg-slate-100">
-                <img src={post.image} alt={post.title} width={640} height={420} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                <Image src={post.image} alt={post.title} width={640} height={420} className="size-full object-cover transition duration-300 group-hover:scale-[1.02]" />
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">

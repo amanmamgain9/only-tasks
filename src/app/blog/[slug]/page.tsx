@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
@@ -133,7 +133,7 @@ export default async function BlogPostPage({
             <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">{post.description}</p>
 
             <div className="mt-8 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-100">
-              <img src={post.image} alt={post.title} width={1200} height={720} className="h-auto w-full object-cover" />
+              <Image src={post.image} alt={post.title} width={1200} height={720} className="h-auto w-full object-cover" />
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-slate-600">

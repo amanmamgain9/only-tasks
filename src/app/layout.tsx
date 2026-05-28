@@ -68,6 +68,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
             height="0"
             width="0"
+            sandbox=""
             style={{ display: "none", visibility: "hidden" }}
           />
         </noscript>

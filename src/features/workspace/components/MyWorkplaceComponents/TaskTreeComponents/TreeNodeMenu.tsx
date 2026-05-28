@@ -105,6 +105,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
       >
         <div data-layout="vertical">
           <button
+            type="button"
             ref={addChildMenuItemRef}
             onClick={onAddChild}
             data-focusable
@@ -115,6 +116,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
             Add Child
           </button>
           <button
+            type="button"
             ref={copyMenuItemRef}
             onClick={onCopy}
             data-focusable
@@ -126,6 +128,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
           </button>
           {showMakeRoot && (
             <button
+              type="button"
               ref={makeRootMenuItemRef}
               onClick={onMakeRoot!}
               data-focusable
@@ -138,6 +141,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
           )}
           {showDelete && (
             <button
+              type="button"
               ref={deleteMenuItemRef}
               onClick={onDelete!}
               data-focusable

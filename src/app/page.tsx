@@ -1,10 +1,16 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ArrowRight, Clock, Keyboard, Play, Star, Zap } from "lucide-react";
 import FeatureImageHomepage from "@/features/marketing/components/FeatureImageHomepage";
 import MarketingFooter from "@/features/marketing/components/MarketingFooter";
 import MarketingHeader from "@/features/marketing/components/MarketingHeader";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Plan My Workday",
+  description: "A keyboard-first task manager for fast planning, focus, and daily execution.",
+};
 
 const feature = {
   title: "Keyboard-First Power",
@@ -47,7 +53,7 @@ export default function HomePage() {
             <div className="absolute right-1/6 top-1/4 h-20 w-36 -rotate-6 rounded-lg border border-white/30 bg-white/20 opacity-40 backdrop-blur-sm">
               <div className="space-y-2 p-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-400/60" />
+                  <div className="size-2 rounded-full bg-green-400/60" />
                   <div className="h-2 w-20 rounded-full bg-slate-400/25" />
                 </div>
                 <div className="h-1.5 w-16 rounded-full bg-slate-400/20" />
@@ -81,14 +87,14 @@ export default function HomePage() {
                   className="group inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl"
                 >
                   Try it free
-                  <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                  <ArrowRight className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
                 </Link>
 
                 <button
                   type="button"
                   className="group inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:from-slate-800 hover:via-slate-900 hover:to-black hover:shadow-xl"
                 >
-                  <Play className="h-5 w-5" />
+                  <Play className="size-5" />
                   Watch Demo
                 </button>
               </div>
@@ -116,8 +122,8 @@ export default function HomePage() {
               <div className="space-y-12">
                 <div className="group">
                   <div className="mb-4 flex items-start gap-4">
-                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} shadow-lg`}>
-                      <Keyboard className="h-6 w-6 text-white" />
+                    <div className={`flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} shadow-lg`}>
+                      <Keyboard className="size-6 text-white" />
                     </div>
                     <div>
                       <h3 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Blazing Fast</h3>
@@ -130,8 +136,8 @@ export default function HomePage() {
 
                 <div className="group">
                   <div className="mb-4 flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-teal-600 to-cyan-700 shadow-lg">
-                      <Clock className="h-6 w-6 text-white" />
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-teal-600 to-cyan-700 shadow-lg">
+                      <Clock className="size-6 text-white" />
                     </div>
                     <div>
                       <h3 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Timer Built In</h3>
@@ -144,8 +150,8 @@ export default function HomePage() {
 
                 <div className="group">
                   <div className="mb-4 flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 via-emerald-600 to-teal-700 shadow-lg">
-                      <Zap className="h-6 w-6 text-white" />
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 via-emerald-600 to-teal-700 shadow-lg">
+                      <Zap className="size-6 text-white" />
                     </div>
                     <div>
                       <h3 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Zero Friction</h3>
@@ -181,7 +187,7 @@ export default function HomePage() {
                 <div key={testimonial.name} className="group">
                   <div className="rounded-3xl border border-slate-200/50 bg-white/70 p-8 shadow-xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl dark:border-slate-700/50 dark:bg-slate-800/50">
                     <div className="mb-6 flex items-center">
-                      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${testimonial.gradient} text-lg font-bold text-white shadow-lg`}>
+                      <div className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${testimonial.gradient} text-lg font-bold text-white shadow-lg`}>
                         {testimonial.avatar}
                       </div>
                       <div className="ml-4">
@@ -192,7 +198,7 @@ export default function HomePage() {
 
                     <div className="mb-6 flex gap-1">
                       {Array.from({ length: testimonial.rating }).map((_, index) => (
-                        <Star key={index} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                        <Star key={index} className="size-5 fill-yellow-400 text-yellow-400" />
                       ))}
                     </div>
 
@@ -225,7 +231,7 @@ export default function HomePage() {
                   className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl"
                 >
                   Try it free
-                  <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+                  <ArrowRight className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
                 </Link>
                 <p className="text-slate-500 dark:text-slate-400">No credit card. Takes 30 seconds.</p>
               </div>

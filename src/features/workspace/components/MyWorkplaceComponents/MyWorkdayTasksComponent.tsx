@@ -61,6 +61,7 @@ const ProjectTabs = ({
           data-order={`${index + 1}`}
         >
           <button
+            type="button"
             data-focusable
             data-order="1"
             onClick={() => onSwitch(project.id)}
@@ -75,6 +76,7 @@ const ProjectTabs = ({
 
           {enableProjectManagement && (
             <button
+              type="button"
               data-focusable
               data-order="2"
               onClick={() => {
@@ -87,7 +89,7 @@ const ProjectTabs = ({
               }`}
               aria-label={`Project settings for ${project.title}`}
             >
-              <MoreVertical className="w-4 h-4" />
+              <MoreVertical className="size-4" />
             </button>
           )}
         </div>
@@ -97,13 +99,14 @@ const ProjectTabs = ({
     {/* Add Project Button - direct child of main layout */}
     {enableProjectManagement && (
       <button
+        type="button"
         data-focusable
         data-order={`${projects.length + 1}`}
         onClick={onAddProject}
         className="relative flex items-center gap-2 px-4 py-3 border-l border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 flex-shrink-0 outline-none border-2 focus-visible:border-blue-600 focus-visible:shadow-[inset_0_0_0_1px_rgb(37,99,235)]"
         title="Add Project"
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="size-4" />
         <span className="font-medium">Add</span>
       </button>
     )}
@@ -116,7 +119,7 @@ const LoadingState = () => {
     <div className="space-y-3">
       {[1, 2, 3, 4].map((i) => (
         <div key={i} className="flex items-center gap-3 py-2 px-3">
-          <div className="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+          <div className="size-4 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
           <div className="flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
         </div>
       ))}
@@ -300,7 +303,7 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-2">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700 ${viewInfo.color}`}>
-                <ViewIcon className="w-5 h-5" />
+                <ViewIcon className="size-5" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -357,6 +360,7 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
               </p>
               {enableProjectManagement && (
                 <button
+                  type="button"
                   data-focusable
                   onClick={handleAddProject}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:shadow-md active:scale-95 transition-all duration-200 outline-none focus-visible:ring-4 focus-visible:ring-blue-500/50"

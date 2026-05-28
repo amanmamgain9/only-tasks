@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
 
 type Theme = "light" | "dark";
 
@@ -43,7 +43,7 @@ function ThemeProvider({ children }: { children: ReactNode }) {
 }
 
 export function useTheme() {
-  const value = useContext(ThemeContext);
+  const value = use(ThemeContext);
   if (!value) {
     throw new Error("useTheme must be used inside Providers.");
   }

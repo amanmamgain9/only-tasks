@@ -1,5 +1,5 @@
 // ImportTasksModal.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { X, FileJson, Loader2 } from 'lucide-react';
 import { PendingImportTask, RawImportTask } from './types';
 import { NavigationService } from '../../../_services/navigationService';
@@ -10,7 +10,11 @@ interface ImportTasksModalProps {
   onCommit: (tasks: PendingImportTask[]) => Promise<void>;
 }
 
-const TreePreview: React.FC<{ item: PendingImportTask; depth: number }> = ({ item, depth }) => {
+function getPreviewKey(item: PendingImportTask, path: string) {
+  return `${path}:${item.title}:${item.subtasks?.length ?? 0}`;
+}
+
+const TreePreview: React.FC<{ item: PendingImportTask; depth: number; path: string }> = ({ item, depth, path }) => {
   return (
     <div>
       <div 
@@ -20,7 +24,7 @@ const TreePreview: React.FC<{ item: PendingImportTask; depth: number }> = ({ ite
         • {item.title}
       </div>
       {item.subtasks?.map((child, idx) => (
-        <TreePreview key={idx} item={child} depth={depth + 1} />
+        <TreePreview key={getPreviewKey(child, `${path}.${idx}`)} item={child} depth={depth + 1} path={`${path}.${idx}`} />
       ))}
     </div>
   );
@@ -39,7 +43,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
   const [error, setError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   
-  const modalRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDialogElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -87,30 +91,39 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
     }
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (isImporting) return;
     setJsonText('');
     setParsedData(null);
     setError('');
     onClose();
-  };
+  }, [isImporting, onClose]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape' && !isImporting) {
-      e.preventDefault();
-      handleClose();
-    }
-  };
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isImporting) {
+        event.preventDefault();
+        handleClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    return () => document.removeEventListener('keydown', handleDocumentKeyDown);
+  }, [handleClose, isImporting, isOpen]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div 
+      <dialog
         ref={modalRef}
+        open
+        aria-modal="true"
+        aria-labelledby="import-tasks-title"
         data-scope
-        className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl h-[85vh] flex flex-col shadow-xl"
-        onKeyDown={handleKeyDown}
+        className="static m-0 flex h-[85vh] w-full max-w-6xl flex-col rounded-lg border-0 bg-white p-0 text-left shadow-xl dark:bg-gray-800"
       >
         <div 
           data-region
@@ -122,10 +135,11 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
             {/* Header */}
             <div data-layout="horizontal" data-order="0" className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <div className="flex items-center gap-3">
-                <FileJson className="w-5 h-5 text-blue-500" />
-                <h2 className="text-lg font-semibold">Import Tasks (JSON)</h2>
+                <FileJson className="size-5 text-blue-500" />
+                <h2 id="import-tasks-title" className="text-lg font-semibold">Import Tasks (JSON)</h2>
               </div>
               <button 
+                type="button"
                 data-focusable
                 data-tab-consume
                 data-order="0"
@@ -134,7 +148,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
                 className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="size-5" />
               </button>
             </div>
 
@@ -142,11 +156,13 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
             <div data-layout="horizontal" data-order="1" className="flex-1 overflow-hidden flex gap-4 p-4 min-h-0">
               {/* JSON Input Section */}
               <div data-layout="vertical" data-order="0" className="flex-1 flex flex-col min-h-0">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex-shrink-0">
+                <label htmlFor="import-json-input" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex-shrink-0">
                   Paste JSON
                 </label>
                 <textarea
+                  id="import-json-input"
                   ref={textareaRef}
+                  aria-label="Paste JSON"
                   data-focusable
                   data-tab-consume
                   data-order="0"
@@ -159,6 +175,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
                 />
                 <div data-layout="horizontal" data-order="1" className="flex items-center gap-2 mt-3 flex-shrink-0">
                   <button
+                    type="button"
                     data-focusable
                     data-tab-consume
                     data-order="0"
@@ -183,7 +200,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
                   {parsedData && parsedData.length > 0 ? (
                     <div>
                       {parsedData.map((task, idx) => (
-                        <TreePreview key={idx} item={task} depth={0} />
+                        <TreePreview key={getPreviewKey(task, String(idx))} item={task} depth={0} path={String(idx)} />
                       ))}
                     </div>
                   ) : (
@@ -204,6 +221,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
               </p>
               <div data-layout="horizontal" data-order="0" className="flex gap-2">
                 <button
+                  type="button"
                   data-focusable
                   data-tab-consume
                   data-order="0"
@@ -214,6 +232,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
                   Cancel
                 </button>
                 <button
+                  type="button"
                   data-focusable
                   data-tab-consume
                   data-order="1"
@@ -221,14 +240,14 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
                   disabled={!parsedData || parsedData.length === 0 || isImporting}
                   className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
-                  {isImporting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isImporting && <Loader2 className="size-4 animate-spin" />}
                   {isImporting ? 'Importing...' : `Import ${parsedData?.length || 0} Tasks`}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </dialog>
     </div>
   );
 };

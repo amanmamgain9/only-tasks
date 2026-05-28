@@ -66,14 +66,19 @@ export default function ConfirmModal({
 
   return (
     <div 
+      role="presentation"
       className="fixed inset-0 backdrop-blur-sm bg-black/20 dark:bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-200"
-      onClick={onCancel}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
     >
-      <div 
-        className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
+      <dialog
+        open
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        className="static m-0 w-full max-w-sm rounded-xl border border-gray-200/50 bg-white/95 p-6 text-left shadow-2xl backdrop-blur-md animate-in zoom-in-95 duration-200 dark:border-gray-700/50 dark:bg-gray-900/95"
       >
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <h3 id="confirm-modal-title" className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
           {title}
         </h3>
         <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
@@ -81,6 +86,7 @@ export default function ConfirmModal({
         </p>
         <div className="flex gap-2 justify-end">
           <button
+            type="button"
             ref={cancelRef}
             onClick={onCancel}
             onKeyDown={handleCancelKeyDown}
@@ -89,6 +95,7 @@ export default function ConfirmModal({
             {cancelText}
           </button>
           <button
+            type="button"
             ref={confirmRef}
             onClick={onConfirm}
             onKeyDown={handleConfirmKeyDown}
@@ -97,7 +104,7 @@ export default function ConfirmModal({
             {confirmText}
           </button>
         </div>
-      </div>
+      </dialog>
     </div>
   );
 }

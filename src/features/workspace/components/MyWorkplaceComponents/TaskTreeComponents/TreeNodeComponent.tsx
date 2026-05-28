@@ -179,8 +179,11 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
 
   return (
     <>
-      <div
-        className="group flex items-start gap-0.5 md:gap-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 focus-within:bg-blue-50 dark:focus-within:bg-blue-900/20 transition-colors select-none border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+        <div
+          role="treeitem"
+          aria-expanded={hasChildren ? isExpanded : undefined}
+          aria-selected={false}
+          className="group flex items-start gap-0.5 md:gap-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 focus-within:bg-blue-50 dark:focus-within:bg-blue-900/20 transition-colors select-none border-b border-gray-200 dark:border-gray-700 last:border-b-0"
         style={indentationStyle}
         data-node-id={node.id}
         data-node-type={node.nodeType}
@@ -193,16 +196,17 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
         <div className="flex-shrink-0 flex items-center h-6 mt-1">
           {hasChildren ? (
             <button
+              type="button"
               ref={expandButtonRef}
               onClick={handleExpandClick}
               data-focusable
               className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-500 select-none"
               title={isExpanded ? 'Collapse' : 'Expand'}
             >
-              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              {isExpanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             </button>
           ) : (
-            <div className="w-6 h-6 select-none" />
+            <div className="size-6 select-none" />
           )}
         </div>
 
@@ -212,36 +216,38 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             onClick={handleCompletionClick}
             data-focusable
             type="button"
-            className={`w-4 h-4 rounded border flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-500 select-none ${node.isCompleted
+            className={`size-4 rounded border flex items-center justify-center transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-500 select-none ${node.isCompleted
               ? 'bg-green-500 border-green-500'
               : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
               }`}
             title="Toggle completion"
             aria-pressed={node.isCompleted}
           >
-            {node.isCompleted && <Check className="h-2.5 w-2.5 text-white" />}
+            {node.isCompleted && <Check className="size-2.5 text-white" />}
           </button>
         </div>
 
         {showMakeRootButton ? (
           <div className="flex-shrink-0 flex items-center h-6 mt-1">
             <button
+              type="button"
               ref={makeRootButtonRef}
               onClick={handleMakeRootClick}
               data-focusable
               className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-500 select-none"
               title="Make Root"
             >
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="size-4" />
             </button>
           </div>
         ) : (
-          <div className="w-6 h-6 select-none" />
+          <div className="size-6 select-none" />
         )}
 
         <div className="flex-1 relative min-w-0">
           <textarea
             ref={titleInputRef}
+            aria-label="Task title"
             value={localTitle}
             onChange={handleInputChange}
             data-entrypoint-focus
@@ -258,18 +264,20 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             }}
           />
           <button
+            type="button"
             ref={calendarButtonRef}
             onClick={handleCalendarClick}
             data-focusable
             className="absolute right-1 top-1 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-500 select-none opacity-0 group-focus-within:opacity-100 focus-visible:opacity-100"
             title="Set date"
           >
-            <Calendar className="w-4 h-4" />
+            <Calendar className="size-4" />
           </button>
         </div>
 
         <div className="flex-shrink-0 flex items-center h-6 mt-1 relative">
           <button
+            type="button"
             ref={menuButtonRef}
             onClick={handleMenuClick}
             data-focusable
@@ -278,7 +286,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
             aria-expanded={isMenuOpen}
             aria-haspopup="true"
           >
-            <MoreHorizontal className="w-4 h-4" />
+            <MoreHorizontal className="size-4" />
           </button>
         </div>
       </div>

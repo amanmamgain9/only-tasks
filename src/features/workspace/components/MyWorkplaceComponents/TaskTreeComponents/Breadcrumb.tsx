@@ -16,21 +16,6 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
   breadcrumbs, 
   onNavigate
 }) => {
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    const target = e.target as HTMLButtonElement;
-    
-    // Only handle Space/Enter for breadcrumb navigation
-    // NavigationService handles arrow keys automatically
-    if (e.key === ' ' || e.key === 'Enter') {
-      e.preventDefault();
-      const breadcrumbId = target.getAttribute('data-breadcrumb-id');
-      if (breadcrumbId) {
-        onNavigate(breadcrumbId);
-      }
-      return;
-    }
-  }, [onNavigate]);
-
   if (!breadcrumbs || breadcrumbs.length <= 1) {
     return null;
   }
@@ -70,14 +55,15 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
     if (breadcrumbs.length > 3) {
       result.push(
         <div key="ellipsis" className="flex items-center gap-2">
-          <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          <ChevronRight className="size-3 text-gray-400 flex-shrink-0" />
           <button
+            type="button"
             className="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded transition-colors"
             title="Hidden breadcrumb levels"
             disabled
             tabIndex={-1}
           >
-            <MoreHorizontal className="w-4 h-4" />
+            <MoreHorizontal className="size-4" />
           </button>
         </div>
       );
@@ -104,16 +90,15 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
   };
 
   return (
-    <div
+    <nav
+      aria-label="Breadcrumb"
       className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
       data-layout="horizontal"
-      onKeyDown={handleKeyDown}
-      tabIndex={-1}
     >
       <div className="flex items-center gap-1 overflow-hidden">
         {renderBreadcrumbs()}
       </div>
-    </div>
+    </nav>
   );
 };
 
@@ -135,8 +120,9 @@ const BreadcrumbItemComp: React.FC<{
 
   return (
     <div className="flex items-center gap-1 min-w-0">
-      {!isFirst && <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />}
+      {!isFirst && <ChevronRight className="size-3 text-gray-400 flex-shrink-0" />}
       <button
+        type="button"
         data-breadcrumb-id={crumb.id}
         data-focusable
         data-order={order}
@@ -149,7 +135,7 @@ const BreadcrumbItemComp: React.FC<{
         title={crumb.title}
       >
         {isFirst ? (
-          <Home className="w-4 h-4 flex-shrink-0" />
+          <Home className="size-4 flex-shrink-0" />
         ) : (
           <span className="truncate text-sm">
             {truncateText(crumb.title)}

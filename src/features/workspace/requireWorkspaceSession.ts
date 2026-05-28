@@ -12,6 +12,8 @@ export async function requireWorkspaceSession(nextPath: string) {
   }
 
   const requestHeaders = await headers();
+  let redirectPath: string | null = null;
+
   try {
     await getWorkspaceUserFromRequest(
       new Request("http://local.planmyworkday/app", {
@@ -22,11 +24,15 @@ export async function requireWorkspaceSession(nextPath: string) {
     );
   } catch (error) {
     if (error instanceof BillingRequiredError) {
-      redirect(`/pricing?next=${encodeURIComponent(nextPath)}`);
+      redirectPath = `/pricing?next=${encodeURIComponent(nextPath)}`;
+    } else if (error instanceof UnauthorizedError) {
+      redirectPath = `/sign-in?next=${encodeURIComponent(nextPath)}`;
+    } else {
+      throw error;
     }
-    if (error instanceof UnauthorizedError) {
-      redirect(`/sign-in?next=${encodeURIComponent(nextPath)}`);
-    }
-    throw error;
+  }
+
+  if (redirectPath) {
+    redirect(redirectPath);
   }
 }

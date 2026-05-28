@@ -167,9 +167,11 @@ export default function ProjectForm({
               Project title
             </label>
             <div className="relative">
-              <Folder className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <Folder className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
               <input
                 id="project-title"
+                type="text"
+                aria-label="Project title"
                 data-focusable
                 data-order="1"
                 data-tab-consume
@@ -235,7 +237,7 @@ export default function ProjectForm({
                         }}
                         className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-400/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
                       >
-                        <Icon className="h-4 w-4" />
+                        <Icon className="size-4" />
                         {action.label}
                       </button>
                     );
@@ -254,7 +256,7 @@ export default function ProjectForm({
                     onClick={() => runLifecycleAction(onUnarchive)}
                     className="flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-400/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-green-900/70 dark:bg-slate-950 dark:text-green-300 dark:hover:bg-green-950/25"
                   >
-                    <RotateCcw className="h-4 w-4" />
+                    <RotateCcw className="size-4" />
                     Unarchive
                   </button>
                 ) : (
@@ -272,7 +274,7 @@ export default function ProjectForm({
                     }
                     className="flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-900/70 dark:bg-slate-950 dark:text-amber-300 dark:hover:bg-amber-950/25"
                   >
-                    <Archive className="h-4 w-4" />
+                    <Archive className="size-4" />
                     Archive
                   </button>
                 )}
@@ -291,7 +293,7 @@ export default function ProjectForm({
                   }
                   className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-400/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/70 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/25"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="size-4" />
                   Delete
                 </button>
               </div>
@@ -300,7 +302,7 @@ export default function ProjectForm({
 
           {error || lifecycleError ? (
             <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+              <AlertCircle className="mt-0.5 size-5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-semibold">
                   {lifecycleError ? "Unable to update project lifecycle" : isEditMode ? "Unable to update project" : "Unable to create project"}
@@ -331,7 +333,7 @@ export default function ProjectForm({
               onClick={handleSubmit}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ButtonIcon className="h-5 w-5" />}
+              {isLoading ? <Loader2 className="size-5 animate-spin" /> : <ButtonIcon className="size-5" />}
               {submitLabel}
             </button>
           </div>

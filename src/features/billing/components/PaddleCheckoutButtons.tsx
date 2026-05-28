@@ -208,8 +208,8 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
               </div>
             )}
 
-            <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-600 to-purple-700 text-white shadow-lg">
-              <CreditCard className="h-5 w-5" />
+            <div className="mb-6 flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-blue-600 to-purple-700 text-white shadow-lg">
+              <CreditCard className="size-5" />
             </div>
             <h2 className="text-2xl font-bold text-slate-950 dark:text-white">{plan.label}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{plan.description}</p>
@@ -223,7 +223,7 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
               className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-600 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busyPlan === plan.planKey ? "Opening checkout..." : plan.checkoutLabel}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="size-4" />
             </button>
             {plan.planKey === "pro_monthly" && plan.trialDays > 0 && (
               <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">

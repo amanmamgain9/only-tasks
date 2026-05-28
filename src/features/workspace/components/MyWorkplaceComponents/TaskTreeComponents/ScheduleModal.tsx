@@ -17,7 +17,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
   onSave,
   initialDueDate = null
 }) => {
-  const modalRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDialogElement>(null);
   const dateInputRef = useRef<MaskedDateInputRef>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
@@ -238,30 +238,36 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
   return (
     <div
+      role="presentation"
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
-      <div
+      <dialog
         ref={modalRef}
+        open
+        aria-modal="true"
+        aria-labelledby="schedule-modal-title"
         data-scope
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
+        className="static m-0 w-full max-w-md rounded-lg border-0 bg-white p-6 text-left shadow-xl dark:bg-gray-800"
       >
         <div data-region id="schedule-modal-region" data-tab-consume>
           <div data-layout="vertical">
             {/* Header with close button - order 0 */}
             <div data-order="0" className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              <h2 id="schedule-modal-title" className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Schedule Task
               </h2>
               <button
+                type="button"
                 data-focusable
                 data-tab-consume
                 data-order="0"
                 onClick={onClose}
                 className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <X className="w-5 h-5" />
+                <X className="size-5" />
               </button>
             </div>
 
@@ -279,6 +285,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       data-tab-consume
                       data-order="0"
                       type="radio"
+                      aria-label="Schedule for today"
                       name="schedule"
                       id="schedule-today"
                       value="today"
@@ -291,13 +298,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       htmlFor="schedule-today"
                       className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500"
                     >
-                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      <span className={`size-4 rounded-full border-2 flex items-center justify-center ${
                         !isEmpty && dateValue === getTodayFormatted()
                           ? 'border-blue-600 bg-blue-600'
                           : 'border-gray-300 dark:border-gray-500'
                       }`}>
                         {!isEmpty && dateValue === getTodayFormatted() && (
-                          <span className="w-2 h-2 bg-white rounded-full"></span>
+                          <span className="size-2 bg-white rounded-full"></span>
                         )}
                       </span>
                       <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -313,6 +320,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       data-tab-consume
                       data-order="0"
                       type="radio"
+                      aria-label="Schedule for tomorrow"
                       name="schedule"
                       id="schedule-tomorrow"
                       value="tomorrow"
@@ -325,13 +333,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       htmlFor="schedule-tomorrow"
                       className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500"
                     >
-                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      <span className={`size-4 rounded-full border-2 flex items-center justify-center ${
                         !isEmpty && dateValue === getTomorrowFormatted()
                           ? 'border-blue-600 bg-blue-600'
                           : 'border-gray-300 dark:border-gray-500'
                       }`}>
                         {!isEmpty && dateValue === getTomorrowFormatted() && (
-                          <span className="w-2 h-2 bg-white rounded-full"></span>
+                          <span className="size-2 bg-white rounded-full"></span>
                         )}
                       </span>
                       <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -347,6 +355,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       data-tab-consume
                       data-order="0"
                       type="radio"
+                      aria-label="Schedule for end of this week"
                       name="schedule"
                       id="schedule-week"
                       value="this-week"
@@ -359,13 +368,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       htmlFor="schedule-week"
                       className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500"
                     >
-                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      <span className={`size-4 rounded-full border-2 flex items-center justify-center ${
                         !isEmpty && dateValue === getEndOfWeekFormatted()
                           ? 'border-blue-600 bg-blue-600'
                           : 'border-gray-300 dark:border-gray-500'
                       }`}>
                         {!isEmpty && dateValue === getEndOfWeekFormatted() && (
-                          <span className="w-2 h-2 bg-white rounded-full"></span>
+                          <span className="size-2 bg-white rounded-full"></span>
                         )}
                       </span>
                       <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -381,6 +390,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       data-tab-consume
                       data-order="0"
                       type="radio"
+                      aria-label="No deadline"
                       name="schedule"
                       id="schedule-none"
                       value=""
@@ -393,13 +403,13 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                       htmlFor="schedule-none"
                       className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500"
                     >
-                      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      <span className={`size-4 rounded-full border-2 flex items-center justify-center ${
                         isEmpty
                           ? 'border-blue-600 bg-blue-600'
                           : 'border-gray-300 dark:border-gray-500'
                       }`}>
                         {isEmpty && (
-                          <span className="w-2 h-2 bg-white rounded-full"></span>
+                          <span className="size-2 bg-white rounded-full"></span>
                         )}
                       </span>
                       <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -412,11 +422,12 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
               {/* Custom date input - order 4 */}
               <div data-order="4" className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Or set custom deadline
-                </label>
+                </p>
                 <MaskedDateInput
                   ref={dateInputRef}
+                  ariaLabel="Custom deadline"
                   value={dateValue}
                   onChange={handleDateChange}
                   onUserEdit={handleUserEdit}
@@ -460,6 +471,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
             <div data-order="2" className="flex justify-end gap-4 mt-6">
               <div data-layout="horizontal" className="flex gap-4">
                 <button
+                  type="button"
                   ref={cancelRef}
                   data-focusable
                   data-tab-consume
@@ -470,6 +482,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   Cancel
                 </button>
                 <button
+                  type="button"
                   ref={saveRef}
                   data-focusable
                   data-tab-consume
@@ -484,7 +497,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </dialog>
     </div>
   );
 };

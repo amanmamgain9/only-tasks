@@ -26,7 +26,7 @@ const SkeletonMyWorkplaceComponent = () => {
 };
 
 const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
-  const location = useLocation();
+  const routerLocation = useLocation();
   const [resolvedViewer, setResolvedViewer] = useState<AuthenticatedUser | null>(viewer ?? null);
   const [isLoadingViewer, setIsLoadingViewer] = useState(!viewer);
 
@@ -75,7 +75,7 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
     return () => {
       cancelled = true;
     };
-  }, [location.pathname, viewer]);
+  }, [routerLocation.pathname, viewer]);
 
   if (isLoadingViewer || !resolvedViewer) {
     return <SkeletonMyWorkplaceComponent />;

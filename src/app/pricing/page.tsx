@@ -68,7 +68,7 @@ export default function PricingPage() {
             const Icon = item.icon;
             return (
               <div key={item.title} className="rounded-3xl border border-slate-200/70 bg-white/70 p-6 shadow-lg backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/50">
-                <Icon className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+                <Icon className="size-6 text-indigo-600 dark:text-indigo-300" />
                 <h2 className="mt-4 text-lg font-bold text-slate-950 dark:text-white">{item.title}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.text}</p>
               </div>
@@ -85,7 +85,7 @@ export default function PricingPage() {
               "Secure checkout includes receipts, card updates, and tax handling.",
             ].map((point) => (
               <div key={point} className="flex gap-3">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-500" />
                 <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">{point}</p>
               </div>
             ))}

@@ -66,7 +66,7 @@ function getPostLoginRedirect(nextPath: string, payload: MeResponse) {
 }
 
 export default function SignInScreen() {
-  const router = useRouter();
+  const { replace } = useRouter();
   const searchParams = useSearchParams();
   const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
   const [devAuthEnabled, setDevAuthEnabled] = useState(false);
@@ -87,7 +87,7 @@ export default function SignInScreen() {
 
       if (meResponse.ok) {
         const payload = (await meResponse.json()) as MeResponse;
-        router.replace(getPostLoginRedirect(nextPath, payload));
+        replace(getPostLoginRedirect(nextPath, payload));
         return;
       }
 
@@ -126,7 +126,7 @@ export default function SignInScreen() {
     return () => {
       cancelled = true;
     };
-  }, [nextPath, router]);
+  }, [nextPath, replace]);
 
   const featureCards = useMemo(
     () => [

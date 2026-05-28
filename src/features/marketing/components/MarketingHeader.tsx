@@ -15,7 +15,7 @@ export default function MarketingHeader() {
     <nav className="flex min-w-full flex-wrap items-center justify-between rounded-lg p-4">
       <div className="order-1 flex items-center">
         <Link href="/" className="flex items-center">
-          <div className="relative h-10 w-10 overflow-hidden">
+          <div className="relative size-10 overflow-hidden">
             <Image
               src="/media/plan-my-workday/logo.jpg"
               alt="PlanMyWorkday logo"

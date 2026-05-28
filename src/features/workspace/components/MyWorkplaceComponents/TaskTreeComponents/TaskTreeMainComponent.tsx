@@ -284,6 +284,7 @@ export default function TreeMain({ project, dueDateFilter, chatId }: Props) { //
         <div className="text-center">
           <p className="text-red-500">Failed to load project tree: {loadError}</p>
           <button
+            type="button"
             onClick={() => loadProjectTree()}
             className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
@@ -303,11 +304,12 @@ export default function TreeMain({ project, dueDateFilter, chatId }: Props) { //
         {/* Hide Import button for due date views and chat views */}
         {!dueDateFilter && !chatId && ( // ✅ UPDATED: Also hide in chat view
           <button
+            type="button"
             data-tab-only
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <FileJson className="w-4 h-4" />
+            <FileJson className="size-4" />
             Import Tasks
           </button>
         )}

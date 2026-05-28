@@ -49,8 +49,8 @@ export default async function AccountPage() {
         <section className="mx-auto w-full max-w-2xl flex-1 py-16 sm:py-20">
           <div className="rounded-lg border border-slate-200/70 bg-white/80 p-6 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/60 sm:p-8">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <UserRound className="h-6 w-6" />
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <UserRound className="size-6" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Account</h1>
@@ -82,7 +82,7 @@ export default async function AccountPage() {
                 href="/pricing"
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted"
               >
-                <CreditCard className="h-4 w-4" />
+                <CreditCard className="size-4" />
                 View plans
               </Link>
               <form action="/api/auth/logout" method="post">
@@ -90,7 +90,7 @@ export default async function AccountPage() {
                   type="submit"
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted sm:w-auto"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="size-4" />
                   Sign out
                 </button>
               </form>
