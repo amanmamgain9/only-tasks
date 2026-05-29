@@ -73,16 +73,17 @@ export function buildMarketingMetadata({
 export const seoMetadata: Metadata = {
   title: {
     template: "%s | Plan My Workday",
-    default: "Plan My Workday - AI-Powered Work Plans for Maximum Productivity",
+    default: "Plan My Workday - Keyboard-First Task Management",
   },
   description:
-    "Create personalized work plans using AI that match your energy levels, preferences, and goals. Built for ADHD, students, freelancers, and professionals.",
+    "Plan projects, nested tasks, date-focused views, and focus sessions in one keyboard-first workspace.",
   keywords: [
     "productivity",
     "ADHD",
     "work plan",
     "focus",
-    "energy optimization",
+    "keyboard-first task management",
+    "nested tasks",
     "pomodoro timer",
     "task management",
     "freelancers",
@@ -96,8 +97,8 @@ export const seoMetadata: Metadata = {
     locale: "en_US",
     url: siteUrl,
     siteName: "Plan My Workday",
-    title: "Plan My Workday - AI-Powered Work Plans",
-    description: "Create personalized work plans using AI that match your energy levels, preferences, and goals.",
+    title: "Plan My Workday - Keyboard-First Task Management",
+    description: "Plan projects, nested tasks, date-focused views, and focus sessions in one keyboard-first workspace.",
     images: [
       {
         url: "/media/plan-my-workday/og-image.png",
@@ -109,8 +110,8 @@ export const seoMetadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Plan My Workday - AI-Powered Work Plans",
-    description: "Create personalized work plans using AI that match your energy levels, preferences, and goals.",
+    title: "Plan My Workday - Keyboard-First Task Management",
+    description: "Plan projects, nested tasks, date-focused views, and focus sessions in one keyboard-first workspace.",
     creator: "@planmyworkday",
     site: "@planmyworkday",
     images: ["/media/plan-my-workday/og-image.png"],
@@ -139,7 +140,7 @@ export const productJsonLd = {
     price: "4",
     priceCurrency: "USD",
   },
-  description: "AI-powered work plans that maximize productivity for different working styles",
+  description: "Keyboard-first task management with nested tasks, date-focused views, and focus sessions",
   image: absoluteUrl(defaultOgImage),
   url: siteUrl,
   author: {

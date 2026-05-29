@@ -27,7 +27,7 @@ export default function AlternativesPage() {
             Built for keyboard-speed planning.
           </h1>
           <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
-            Plan My Workday is focused on fast nested tasks, scheduling views, and workday flow instead of broad project-management ceremony.
+            Plan My Workday is focused on fast nested tasks, date views, and focused execution instead of broad project-management ceremony.
           </p>
         </section>
 

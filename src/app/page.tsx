@@ -30,7 +30,7 @@ const testimonials = [
   {
     name: "Marcus T.",
     role: "Software Engineer",
-    content: "Never touching my mouse again. The timer integration is genius. Finally found my flow state.",
+    content: "Never touching my mouse again. The timer integration is genius. Finally found a focus setup that sticks.",
     rating: 5,
     avatar: "MT",
     gradient: "from-blue-600 to-cyan-700",
@@ -142,7 +142,7 @@ export default function HomePage() {
                     <div>
                       <h3 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Timer Built In</h3>
                       <p className="text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-                        Pomodoro timer integrated into your workflow. Plan it. Time it. Get it done. All in one place.
+                        Pomodoro timer integrated into your workspace. Plan it. Time it. Get it done. All in one place.
                       </p>
                     </div>
                   </div>
@@ -156,7 +156,7 @@ export default function HomePage() {
                     <div>
                       <h3 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Zero Friction</h3>
                       <p className="text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-                        Your brain does not stop for UI. Why should your task manager? Pure flow state.
+                        Your brain does not stop for UI. Why should your task manager? Stay focused without fighting the interface.
                       </p>
                     </div>
                   </div>
