@@ -3,6 +3,7 @@
 import React, { Suspense } from "react";
 import MyDayTasksComponent from "./MyWorkdayTasksComponent";
 import WorkspaceSidebar from "../WorkspaceSidebar";
+import WorkspaceTimer from "../TimerComponents/WorkspaceTimer";
 import type { AuthenticatedUser } from "@/server/auth";
 
 interface MyWorkplaceComponentProps {
@@ -32,7 +33,8 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
       <div className="min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
         <WorkspaceSidebar regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={viewer} />
         <div className="min-w-0">
-          <div data-region id="workspace-region" data-order={regionOrder + 1} className="px-4 py-5 sm:px-6 md:px-8">
+          <WorkspaceTimer regionOrder={regionOrder + 1} />
+          <div data-region id="workspace-region" data-order={regionOrder + 2} className="px-4 py-5 sm:px-6 md:px-8">
             <div data-layout="vertical">
               <div data-order="0">
                 <MyDayTasksComponent dueDateFilter={dueDateFilter} />

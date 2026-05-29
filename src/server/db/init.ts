@@ -130,6 +130,55 @@ export function initializeDatabase(sqlite: Database.Database) {
     ON subscriptions(paddle_subscription_id)
     WHERE paddle_subscription_id IS NOT NULL;
 
+    CREATE TABLE IF NOT EXISTS pmwd_timer_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      task_id INTEGER,
+      project_id INTEGER,
+      phase TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'running',
+      work_session_number INTEGER NOT NULL DEFAULT 1,
+      duration_seconds INTEGER NOT NULL,
+      accumulated_ms INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT NOT NULL,
+      last_resumed_at TEXT,
+      paused_at TEXT,
+      ended_at TEXT,
+      client_mutation_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (task_id) REFERENCES pmwd_tasks(id) ON DELETE SET NULL,
+      FOREIGN KEY (project_id) REFERENCES pmwd_projects(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS pmwd_timer_sessions_user_id_idx
+    ON pmwd_timer_sessions(user_id);
+
+    CREATE INDEX IF NOT EXISTS pmwd_timer_sessions_task_id_idx
+    ON pmwd_timer_sessions(task_id);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_timer_sessions_one_active_per_user_unique
+    ON pmwd_timer_sessions(user_id)
+    WHERE state IN ('running', 'paused');
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_timer_sessions_user_mutation_unique
+    ON pmwd_timer_sessions(user_id, client_mutation_id)
+    WHERE client_mutation_id IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS pmwd_timer_settings (
+      user_id INTEGER PRIMARY KEY,
+      focus_duration_minutes INTEGER NOT NULL DEFAULT 25,
+      short_break_duration_minutes INTEGER NOT NULL DEFAULT 5,
+      long_break_duration_minutes INTEGER NOT NULL DEFAULT 15,
+      sessions_before_long_break INTEGER NOT NULL DEFAULT 4,
+      sound_enabled INTEGER NOT NULL DEFAULT 1,
+      selected_sound TEXT NOT NULL DEFAULT 'chime',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS billing_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider TEXT NOT NULL DEFAULT 'paddle',

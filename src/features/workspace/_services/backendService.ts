@@ -1,4 +1,4 @@
-import type { ApiResponse, Project, SaveProjectInput } from "../types";
+import type { ApiResponse, Project, SaveProjectInput, TimerSettings, TimerStatus } from "../types";
 import type { EnhancedTaskTreeType, OperationBatch } from "../components/MyWorkplaceComponents/TaskTreeComponents/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -140,4 +140,54 @@ export const applyOperationBatch = async (
   });
 
   return parseResponse<EnhancedTaskTreeType[]>(response);
+};
+
+export const getTimerStatus = async (): Promise<ApiResponse<TimerStatus> | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/timer`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    return await parseResponse<TimerStatus>(response);
+  } catch (error) {
+    console.error("Error fetching timer:", error);
+    return null;
+  }
+};
+
+export const startTimer = async (input: {
+  phase?: TimerStatus["nextSession"]["phase"];
+  durationSeconds?: number;
+  taskId?: number | null;
+  clientMutationId?: string;
+}): Promise<ApiResponse<TimerStatus>> => {
+  const response = await fetch(`${API_BASE_URL}/api/timer/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  return parseResponse<TimerStatus>(response);
+};
+
+function postTimerAction(timerId: number, action: "pause" | "resume" | "skip" | "complete" | "reset") {
+  return fetch(`${API_BASE_URL}/api/timer/${timerId}/${action}`, {
+    method: "POST",
+  }).then((response) => parseResponse<TimerStatus>(response));
+}
+
+export const pauseTimer = (timerId: number) => postTimerAction(timerId, "pause");
+export const resumeTimer = (timerId: number) => postTimerAction(timerId, "resume");
+export const skipTimer = (timerId: number) => postTimerAction(timerId, "skip");
+export const completeTimer = (timerId: number) => postTimerAction(timerId, "complete");
+export const resetTimer = (timerId: number) => postTimerAction(timerId, "reset");
+
+export const saveTimerSettings = async (settings: TimerSettings): Promise<ApiResponse<TimerSettings>> => {
+  const response = await fetch(`${API_BASE_URL}/api/timer/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+
+  return parseResponse<TimerSettings>(response);
 };

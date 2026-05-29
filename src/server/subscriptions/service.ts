@@ -8,7 +8,9 @@ import {
 } from "../billing/paddle";
 import { billingEvents } from "../db/schema/billingEvents";
 import { subscriptions, type Subscription } from "../db/schema/subscriptions";
+import { users } from "../db/schema/users";
 import type { PaddleSubscriptionSnapshot } from "../billing/paddleWebhook";
+import { hasComplimentaryFullAccess } from "../access";
 
 export type SubscriptionSummary = {
   id: number;
@@ -174,16 +176,40 @@ export async function listSubscriptionsForUser(userId: number) {
     .orderBy(desc(subscriptions.updatedAt), desc(subscriptions.createdAt));
 }
 
+async function getUserEmail(userId: number) {
+  const rows = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  return rows[0]?.email ?? null;
+}
+
+function getComplimentaryFullAccessSummary(billingPortalAvailable: boolean): SubscriptionSummary {
+  return {
+    id: 0,
+    status: "active",
+    provider: "complimentary",
+    planKey: "lifetime",
+    label: "Lifetime",
+    note: "Complimentary lifetime access is active.",
+    isEntitled: true,
+    isTrial: false,
+    requiresBillingMigrationReview: false,
+    autoRenew: false,
+    billingPortalAvailable,
+  };
+}
+
 export async function getEffectiveSubscriptionForUser(userId: number) {
   const rows = await listSubscriptionsForUser(userId);
+  const billingPortalAvailable = rows.some((row) => Boolean(row.paddleCustomerId && row.paddleSubscriptionId));
+  if (hasComplimentaryFullAccess(await getUserEmail(userId))) {
+    return getComplimentaryFullAccessSummary(billingPortalAvailable);
+  }
+
   const summary = summarizeSubscription(pickEffectiveSubscription(rows));
   if (!summary) return null;
 
   return {
     ...summary,
-    billingPortalAvailable:
-      summary.billingPortalAvailable ||
-      rows.some((row) => Boolean(row.paddleCustomerId && row.paddleSubscriptionId)),
+    billingPortalAvailable: summary.billingPortalAvailable || billingPortalAvailable,
   };
 }
 

@@ -66,3 +66,47 @@ export type TaskTreeType = {
   isCompleted?: boolean;
   subtasks?: TaskTreeType[];
 } & Partial<Omit<TaskData, "subtasks">>;
+
+export type TimerPhase = "work" | "short_break" | "long_break";
+export type TimerSessionState = "running" | "paused" | "completed" | "skipped";
+
+export interface TimerSettings {
+  focusDurationMinutes: number;
+  shortBreakDurationMinutes: number;
+  longBreakDurationMinutes: number;
+  sessionsBeforeLongBreak: number;
+  soundEnabled: boolean;
+  selectedSound: string;
+}
+
+export interface TimerSession {
+  id: number;
+  userId: number;
+  taskId: number | null;
+  taskTitle: string | null;
+  projectId: number | null;
+  phase: TimerPhase;
+  state: TimerSessionState;
+  workSessionNumber: number;
+  durationSeconds: number;
+  accumulatedMs: number;
+  startedAt: string;
+  lastResumedAt: string | null;
+  pausedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NextTimerSession {
+  phase: TimerPhase;
+  workSessionNumber: number;
+  durationSeconds: number;
+}
+
+export interface TimerStatus {
+  activeSession: TimerSession | null;
+  nextSession: NextTimerSession;
+  settings: TimerSettings;
+  serverNow: string;
+}

@@ -6,6 +6,7 @@ import { users } from "./db/schema/users";
 import { ensureDefaultWorkspace } from "./projects/service";
 import { assertWorkspaceBillingAccess } from "./billing/enforcement";
 import { getEffectiveSubscriptionForUser, type SubscriptionSummary } from "./subscriptions/service";
+import { hasComplimentaryFullAccess } from "./access";
 
 export const SESSION_COOKIE_NAME = "only_tasks_session";
 export const GOOGLE_STATE_COOKIE_NAME = "only_tasks_google_state";
@@ -221,7 +222,7 @@ export async function getCurrentUserFromRequest(request: Request): Promise<Authe
     name: record.name,
     image: record.image,
     profilePicture: record.profilePicture,
-    isAdmin: record.isAdmin === 1,
+    isAdmin: record.isAdmin === 1 || hasComplimentaryFullAccess(record.email),
     subscription: await getEffectiveSubscriptionForUser(record.id),
   };
 }
@@ -255,6 +256,7 @@ async function upsertGoogleUser(profile: GoogleProfile) {
 
   const image = profile.picture ?? null;
   const name = profile.name ?? null;
+  const isComplimentaryFullAccessUser = hasComplimentaryFullAccess(normalizedEmail);
 
   if (existingRows[0]) {
     const [updated] = await db
@@ -266,6 +268,7 @@ async function upsertGoogleUser(profile: GoogleProfile) {
         googleId: profile.sub,
         profilePicture: image,
         authProvider: "google",
+        isAdmin: isComplimentaryFullAccessUser ? 1 : existingRows[0].isAdmin,
         lastLoginAt: now,
         updatedAt: now,
       })
@@ -286,7 +289,7 @@ async function upsertGoogleUser(profile: GoogleProfile) {
       profilePicture: image,
       authProvider: "google",
       lastLoginAt: now,
-      isAdmin: 0,
+      isAdmin: isComplimentaryFullAccessUser ? 1 : 0,
       createdAt: now,
       updatedAt: now,
     })
