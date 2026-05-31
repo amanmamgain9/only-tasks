@@ -249,6 +249,15 @@ function formatWeightedTasks(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function formatMinutes(value: number) {
+  const minutes = Math.max(0, Math.round(value));
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
+
 function CategoryBreakdown({
   items,
   emptyText,
@@ -274,6 +283,34 @@ function CategoryBreakdown({
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             {formatWeightedTasks(item.weightedTasks)} weighted {item.weightedTasks === 1 ? "task" : "tasks"}
           </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CategoryTimeBreakdown({
+  items,
+  emptyText,
+}: {
+  items: ProgressSummary["todayCategoryTimeBreakdown"];
+  emptyText: string;
+}) {
+  if (items.length === 0) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">{emptyText}</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div key={item.category}>
+          <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+            <span className="truncate font-medium text-slate-800 dark:text-slate-100">{item.label}</span>
+            <span className="shrink-0 font-semibold text-slate-950 dark:text-white">{formatMinutes(item.minutes)} · {item.percent}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+            <div className="h-full rounded-full bg-cyan-500" style={{ width: `${Math.max(6, item.percent)}%` }} />
+          </div>
         </div>
       ))}
     </div>
@@ -313,7 +350,9 @@ function DailyView({ summary }: { summary: ProgressSummary }) {
             <h2 className="mt-1 text-3xl font-semibold tracking-normal text-slate-950 dark:text-white">
               {summary.today.completedTasks} done · {openTasks} open
             </h2>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{getDailyNudge(summary)}</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              {getDailyNudge(summary)} {summary.today.reviewedMinutes > 0 ? `${formatMinutes(summary.today.reviewedMinutes)} reviewed.` : ""}
+            </p>
           </div>
 
           <div className="flex items-center gap-5">
@@ -334,10 +373,17 @@ function DailyView({ summary }: { summary: ProgressSummary }) {
           <TaskList tasks={summary.todayPlan} />
         </Panel>
         <Panel title="Category Mix" icon={BarChart3}>
-          <CategoryBreakdown
-            items={summary.todayCategoryBreakdown}
-            emptyText="Complete a task today to see the category split."
-          />
+          {summary.todayCategoryTimeBreakdown.length > 0 ? (
+            <CategoryTimeBreakdown
+              items={summary.todayCategoryTimeBreakdown}
+              emptyText="Review time today to see the time split."
+            />
+          ) : (
+            <CategoryBreakdown
+              items={summary.todayCategoryBreakdown}
+              emptyText="Complete a task today to see the category split."
+            />
+          )}
         </Panel>
       </div>
 
@@ -359,7 +405,7 @@ function WeeklyView({ summary }: { summary: ProgressSummary }) {
         <MetricCard icon={CheckCircle2} label="Done" value={`${summary.week.completedTasks}`} detail="tasks completed" />
         <MetricCard icon={ListChecks} label="Open" value={`${Math.max(0, summary.week.plannedTasks - summary.week.completedPlannedTasks)}`} detail="scheduled remaining" />
         <MetricCard icon={Trophy} label="Consistency" value={`${summary.week.productiveDays}/7`} detail="days with completed tasks" />
-        <MetricCard icon={CalendarCheck2} label="Plan" value={`${summary.week.planCompletionPercent}%`} detail={`${summary.week.completedPlannedTasks}/${summary.week.plannedTasks} scheduled done`} />
+        <MetricCard icon={CalendarCheck2} label="Reviewed" value={formatMinutes(summary.week.reviewedMinutes)} detail="time shaped this week" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.8fr)]">
@@ -395,10 +441,17 @@ function WeeklyView({ summary }: { summary: ProgressSummary }) {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel title="Category Mix" icon={BarChart3}>
-          <CategoryBreakdown
-            items={summary.weekCategoryBreakdown}
-            emptyText="No completed tasks in this week's category split yet."
-          />
+          {summary.weekCategoryTimeBreakdown.length > 0 ? (
+            <CategoryTimeBreakdown
+              items={summary.weekCategoryTimeBreakdown}
+              emptyText="Review time this week to see the time split."
+            />
+          ) : (
+            <CategoryBreakdown
+              items={summary.weekCategoryBreakdown}
+              emptyText="No completed tasks in this week's category split yet."
+            />
+          )}
         </Panel>
         <Panel title="Project Momentum" icon={BarChart3}>
           <ProjectBreakdown projects={summary.projectBreakdown} />

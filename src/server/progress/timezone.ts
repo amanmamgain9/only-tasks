@@ -22,7 +22,7 @@ function parseDateKey(dateKey: string) {
   return { year, month, day };
 }
 
-function getDateTimeParts(date: Date, timeZone: string): LocalDateParts {
+export function getLocalDateTimeParts(date: Date, timeZone: string): LocalDateParts {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
@@ -50,7 +50,7 @@ function getDateTimeParts(date: Date, timeZone: string): LocalDateParts {
 }
 
 function getTimeZoneOffsetMs(date: Date, timeZone: string) {
-  const parts = getDateTimeParts(date, timeZone);
+  const parts = getLocalDateTimeParts(date, timeZone);
   const localAsUtcMs = Date.UTC(
     parts.year,
     parts.month - 1,
@@ -75,7 +75,7 @@ export function normalizeTimeZone(value: string | null | undefined) {
 }
 
 export function formatLocalDateKey(date: Date, timeZone: string) {
-  const parts = getDateTimeParts(date, timeZone);
+  const parts = getLocalDateTimeParts(date, timeZone);
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
 }
 

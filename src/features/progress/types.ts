@@ -27,6 +27,13 @@ export type ProgressCategoryBreakdown = {
   percent: number;
 };
 
+export type ProgressCategoryTimeBreakdown = {
+  category: TaskCategoryId;
+  label: string;
+  minutes: number;
+  percent: number;
+};
+
 export type ProgressRecentCompletion = {
   id: number;
   title: string;
@@ -57,6 +64,7 @@ export type ProgressSummary = {
     completedPlannedTasks: number;
     focusMinutes: number;
     pomodoros: number;
+    reviewedMinutes: number;
     planCompletionPercent: number;
   };
   week: {
@@ -65,6 +73,7 @@ export type ProgressSummary = {
     completedPlannedTasks: number;
     focusMinutes: number;
     pomodoros: number;
+    reviewedMinutes: number;
     productiveDays: number;
     bestDay: ProgressDay | null;
     planCompletionPercent: number;
@@ -72,6 +81,8 @@ export type ProgressSummary = {
   todayPlan: ProgressPlannedTask[];
   todayCategoryBreakdown: ProgressCategoryBreakdown[];
   weekCategoryBreakdown: ProgressCategoryBreakdown[];
+  todayCategoryTimeBreakdown: ProgressCategoryTimeBreakdown[];
+  weekCategoryTimeBreakdown: ProgressCategoryTimeBreakdown[];
   projectBreakdown: ProgressProjectBreakdown[];
   recentCompletions: ProgressRecentCompletion[];
 };

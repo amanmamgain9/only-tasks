@@ -173,6 +173,41 @@ function ensureSchema(sqlite) {
       FOREIGN KEY (task_id) REFERENCES pmwd_tasks(id) ON DELETE SET NULL,
       FOREIGN KEY (project_id) REFERENCES pmwd_projects(id) ON DELETE SET NULL
     );
+
+    CREATE TABLE IF NOT EXISTS pmwd_workday_settings (
+      user_id INTEGER PRIMARY KEY,
+      workday_rollover_time TEXT NOT NULL DEFAULT '00:00',
+      midday_review_enabled INTEGER NOT NULL DEFAULT 1,
+      midday_review_time TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pmwd_task_time_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      task_id INTEGER NOT NULL,
+      project_id INTEGER,
+      workday_date TEXT NOT NULL,
+      duration_minutes INTEGER NOT NULL DEFAULT 0,
+      start_minute INTEGER,
+      end_minute INTEGER,
+      source TEXT NOT NULL DEFAULT 'manual_review',
+      review_status TEXT NOT NULL DEFAULT 'draft',
+      review_window TEXT NOT NULL DEFAULT 'same_workday_end',
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (task_id) REFERENCES pmwd_tasks(id) ON DELETE CASCADE,
+      FOREIGN KEY (project_id) REFERENCES pmwd_projects(id) ON DELETE SET NULL
+    );
+  `);
+
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_task_time_reviews_user_task_workday_unique
+    ON pmwd_task_time_reviews(user_id, task_id, workday_date);
   `);
 
   ensureColumn(sqlite, "pmwd_tasks", "completed_at", "completed_at TEXT");
@@ -206,6 +241,8 @@ const run = sqlite.transaction(() => {
   if (shouldReset) {
     sqlite.prepare("DELETE FROM auth_sessions WHERE user_id = ?").run(user.id);
     sqlite.prepare("DELETE FROM subscriptions WHERE user_id = ?").run(user.id);
+    sqlite.prepare("DELETE FROM pmwd_task_time_reviews WHERE user_id = ?").run(user.id);
+    sqlite.prepare("DELETE FROM pmwd_workday_settings WHERE user_id = ?").run(user.id);
     sqlite.prepare("DELETE FROM pmwd_tasks WHERE user_id = ?").run(user.id);
     sqlite.prepare("DELETE FROM pmwd_projects WHERE user_id = ?").run(user.id);
     sqlite.prepare("DELETE FROM pmwd_timer_sessions WHERE user_id = ?").run(user.id);
@@ -229,6 +266,15 @@ const run = sqlite.transaction(() => {
         sessions_before_long_break, sound_enabled, selected_sound, created_at, updated_at
       )
       VALUES (?, 25, 5, 15, 4, 1, 'chime', ?, ?)
+    `)
+    .run(user.id, now, now);
+
+  sqlite
+    .prepare(`
+      INSERT OR REPLACE INTO pmwd_workday_settings (
+        user_id, workday_rollover_time, midday_review_enabled, midday_review_time, created_at, updated_at
+      )
+      VALUES (?, '02:00', 1, '12:00', ?, ?)
     `)
     .run(user.id, now, now);
 
@@ -305,6 +351,43 @@ const run = sqlite.transaction(() => {
     )
     VALUES (?, ?, ?, 'work', ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)
   `);
+
+  const insertTimeReview = sqlite.prepare(`
+    INSERT INTO pmwd_task_time_reviews (
+      user_id, task_id, project_id, workday_date, duration_minutes, start_minute, end_minute,
+      source, review_status, review_window, notes, created_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'manual_review', 'confirmed', ?, NULL, ?, ?)
+    ON CONFLICT(user_id, task_id, workday_date) DO UPDATE SET
+      duration_minutes = excluded.duration_minutes,
+      start_minute = excluded.start_minute,
+      end_minute = excluded.end_minute,
+      review_status = excluded.review_status,
+      review_window = excluded.review_window,
+      updated_at = excluded.updated_at
+  `);
+
+  function timeReview({
+    taskId,
+    projectId,
+    offsetDays = 0,
+    durationMinutes,
+    startMinute,
+    reviewWindow = "same_workday_end",
+  }) {
+    insertTimeReview.run(
+      user.id,
+      taskId,
+      projectId,
+      isoDate(offsetDays).slice(0, 10),
+      durationMinutes,
+      startMinute,
+      Math.min(1440, startMinute + durationMinutes),
+      reviewWindow,
+      now,
+      now,
+    );
+  }
 
   function timerSession({
     taskId = null,
@@ -545,6 +628,9 @@ const run = sqlite.transaction(() => {
   timerSession({ taskId: historicalTasks[5], projectId: adminProjectId, offsetDays: -1, hour: 12, minute: 5, sessionNumber: 10, state: "skipped", actualMinutes: 14 });
   timerSession({ taskId: cleanCopyId, projectId: launchProjectId, offsetDays: 0, hour: 4, minute: 45, sessionNumber: 11 });
   timerSession({ taskId: historicalTasks[6], projectId: launchProjectId, offsetDays: 0, hour: 6, minute: 10, sessionNumber: 12 });
+
+  timeReview({ taskId: cleanCopyId, projectId: launchProjectId, offsetDays: 0, durationMinutes: 35, startMinute: 9 * 60, reviewWindow: "same_workday_midday" });
+  timeReview({ taskId: historicalTasks[6], projectId: launchProjectId, offsetDays: 0, durationMinutes: 25, startMinute: 10 * 60, reviewWindow: "same_workday_midday" });
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();

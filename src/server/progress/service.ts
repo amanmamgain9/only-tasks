@@ -35,6 +35,13 @@ type TimerSessionRow = {
   accumulatedMs: number;
 };
 
+type ReviewedTimeRow = {
+  workdayDate: string;
+  durationMinutes: number;
+  projectType: string | null;
+  categoryAllocations: string | null;
+};
+
 const completedTasksQuery = sqlite.prepare(`
   SELECT
     task.id AS id,
@@ -109,6 +116,22 @@ const timerSessionsQuery = sqlite.prepare(`
   ORDER BY session.ended_at DESC
 `);
 
+const reviewedTimeQuery = sqlite.prepare(`
+  SELECT
+    review.workday_date AS workdayDate,
+    review.duration_minutes AS durationMinutes,
+    project.type AS projectType,
+    task.category_allocations AS categoryAllocations
+  FROM pmwd_task_time_reviews review
+  LEFT JOIN pmwd_tasks task ON task.id = review.task_id
+  LEFT JOIN pmwd_projects project ON project.id = review.project_id
+  WHERE review.user_id = @userId
+    AND review.duration_minutes > 0
+    AND review.workday_date >= @rangeStartDate
+    AND review.workday_date < @rangeEndDate
+  ORDER BY review.workday_date DESC
+`);
+
 export function getProgressSummaryForUser(
   userId: number,
   input: {
@@ -154,6 +177,11 @@ export function getProgressSummaryForUser(
       rangeStartUtc: historyOrWeekStartUtc,
       rangeEndUtc: historyOrWeekEndUtc,
     }) as TimerSessionRow[],
+    reviewedTimeEntries: reviewedTimeQuery.all({
+      userId,
+      rangeStartDate: plannedStartDate,
+      rangeEndDate: plannedEndDate,
+    }) as ReviewedTimeRow[],
   };
 
   return buildProgressSummary({

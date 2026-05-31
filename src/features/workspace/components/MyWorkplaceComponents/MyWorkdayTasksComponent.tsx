@@ -14,6 +14,7 @@ import TreeMainComponent from "./TaskTreeComponents/TaskTreeMainComponent";
 import { Project, ProjectFormData, SaveProjectInput, UpdateProjectInput, CreateProjectInput, ProjectStatus } from "../../types";
 import Modal from "../Modal";
 import ProjectForm from "../ProjectComponents/ProjectForm";
+import TimeReviewPanel from "../TimeReviewComponents/TimeReviewPanel";
 
 // Helper to get icon and title for due date view
 const getDueDateViewInfo = (dueDateFilter: 'today' | 'tomorrow' | 'this-week') => {
@@ -306,6 +307,8 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({
           </div>
         );
       })()}
+
+      {dueDateFilter === 'today' && <TimeReviewPanel />}
 
       {/* Project Tabs + Tree Section */}
       <div 

@@ -216,6 +216,41 @@ describe("progress summary", () => {
     expect(summary.weekCategoryBreakdown).toEqual(summary.todayCategoryBreakdown);
   });
 
+  test("rolls reviewed time into category minutes", () => {
+    const summary = buildProgressSummary({
+      timeZone: "UTC",
+      now: new Date("2026-06-03T12:00:00.000Z"),
+      rows: {
+        ...emptyRows,
+        reviewedTimeEntries: [
+          {
+            workdayDate: "2026-06-03",
+            durationMinutes: 60,
+            projectType: "side_project",
+            categoryAllocations: JSON.stringify([
+              { category: "side_project", weight: 70 },
+              { category: "learning", weight: 30 },
+            ]),
+          },
+          {
+            workdayDate: "2026-06-03",
+            durationMinutes: 30,
+            projectType: null,
+            categoryAllocations: JSON.stringify([{ category: "health", weight: 100 }]),
+          },
+        ],
+      },
+    });
+
+    expect(summary.today.reviewedMinutes).toBe(90);
+    expect(summary.todayCategoryTimeBreakdown).toEqual([
+      { category: "side_project", label: "Side Project", minutes: 42, percent: 47 },
+      { category: "health", label: "Health", minutes: 30, percent: 33 },
+      { category: "learning", label: "Learning", minutes: 18, percent: 20 },
+    ]);
+    expect(summary.week.reviewedMinutes).toBe(90);
+  });
+
   test("returns recent completions newest first with local dates", () => {
     const summary = buildProgressSummary({
       timeZone: "Asia/Kolkata",

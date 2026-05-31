@@ -1,5 +1,6 @@
 import type {
   ProgressCategoryBreakdown,
+  ProgressCategoryTimeBreakdown,
   ProgressDay,
   ProgressPlannedTask,
   ProgressProjectBreakdown,
@@ -57,11 +58,19 @@ export type TimerProgressRow = {
   accumulatedMs: number;
 };
 
+export type ReviewedTimeProgressRow = {
+  workdayDate: string;
+  durationMinutes: number;
+  projectType?: string | null;
+  categoryAllocations?: string | null;
+};
+
 export type ProgressSourceRows = {
   completedTasks: CompletedTaskProgressRow[];
   plannedTasks: PlannedTaskProgressRow[];
   plannedTaskDetails?: PlannedTaskDetailProgressRow[];
   timerSessions: TimerProgressRow[];
+  reviewedTimeEntries?: ReviewedTimeProgressRow[];
 };
 
 export type ProgressWindow = {
@@ -145,6 +154,34 @@ function buildCategoryBreakdown(totals: Map<TaskCategoryId, number>): ProgressCa
     .sort((a, b) => b.weightedTasks - a.weightedTasks || a.label.localeCompare(b.label));
 }
 
+function addTaskCategoryMinutes(
+  totals: Map<TaskCategoryId, number>,
+  entry: Pick<ReviewedTimeProgressRow, "categoryAllocations" | "projectType" | "durationMinutes">,
+) {
+  const allocations = normalizeTaskCategoryAllocations(entry.categoryAllocations, {
+    projectType: getProjectType(entry.projectType ?? null),
+  });
+
+  for (const allocation of allocations) {
+    totals.set(allocation.category, (totals.get(allocation.category) ?? 0) + entry.durationMinutes * (allocation.weight / 100));
+  }
+}
+
+function buildCategoryTimeBreakdown(totals: Map<TaskCategoryId, number>): ProgressCategoryTimeBreakdown[] {
+  const totalMinutes = Array.from(totals.values()).reduce((sum, value) => sum + value, 0);
+  if (totalMinutes <= 0) return [];
+
+  return Array.from(totals.entries())
+    .map(([category, minutes]) => ({
+      category,
+      label: getTaskCategoryLabel(category),
+      minutes: Math.round(minutes),
+      percent: percent(minutes, totalMinutes),
+    }))
+    .filter((item) => item.minutes > 0)
+    .sort((a, b) => b.minutes - a.minutes || a.label.localeCompare(b.label));
+}
+
 export function getProgressWindow(input: {
   timeZone?: string | null;
   now?: Date;
@@ -186,6 +223,8 @@ export function buildProgressSummary(input: {
   const projectBreakdown = new Map<string, ProgressProjectBreakdown>();
   const todayCategoryTotals = new Map<TaskCategoryId, number>();
   const weekCategoryTotals = new Map<TaskCategoryId, number>();
+  const todayCategoryTimeTotals = new Map<TaskCategoryId, number>();
+  const weekCategoryTimeTotals = new Map<TaskCategoryId, number>();
 
   const ensureProject = (projectId: number | null, title: string | null) => {
     const key = getProjectKey(projectId);
@@ -250,6 +289,19 @@ export function buildProgressSummary(input: {
     }
   }
 
+  const reviewedTimeEntries = input.rows.reviewedTimeEntries ?? [];
+  for (const entry of reviewedTimeEntries) {
+    if (entry.durationMinutes <= 0) continue;
+
+    if (entry.workdayDate === window.todayDate) {
+      addTaskCategoryMinutes(todayCategoryTimeTotals, entry);
+    }
+
+    if (isDateInRange(entry.workdayDate, window.weekStartDate, window.weekEndDate)) {
+      addTaskCategoryMinutes(weekCategoryTimeTotals, entry);
+    }
+  }
+
   for (const day of days.values()) {
     day.focusMinutes = Math.round((focusMsByDay.get(day.date) ?? 0) / 60_000);
     day.planCompletionPercent = percent(day.completedPlannedTasks, day.plannedTasks);
@@ -268,6 +320,12 @@ export function buildProgressSummary(input: {
   });
   const weekPlannedTasks = plannedWeekRows.length;
   const weekCompletedPlannedTasks = plannedWeekRows.filter((task) => task.isCompleted === 1).length;
+  const todayReviewedMinutes = reviewedTimeEntries
+    .filter((entry) => entry.workdayDate === window.todayDate)
+    .reduce((total, entry) => total + Math.max(0, entry.durationMinutes), 0);
+  const weekReviewedMinutes = reviewedTimeEntries
+    .filter((entry) => isDateInRange(entry.workdayDate, window.weekStartDate, window.weekEndDate))
+    .reduce((total, entry) => total + Math.max(0, entry.durationMinutes), 0);
   const productiveWeekDays = weekDays.filter((day) => day.completedTasks > 0);
   const bestDay =
     productiveWeekDays
@@ -313,6 +371,7 @@ export function buildProgressSummary(input: {
       completedPlannedTasks: today.completedPlannedTasks,
       focusMinutes: today.focusMinutes,
       pomodoros: today.pomodoros,
+      reviewedMinutes: todayReviewedMinutes,
       planCompletionPercent: today.planCompletionPercent,
     },
     week: {
@@ -321,6 +380,7 @@ export function buildProgressSummary(input: {
       completedPlannedTasks: weekCompletedPlannedTasks,
       focusMinutes: weekDays.reduce((total, day) => total + day.focusMinutes, 0),
       pomodoros: weekDays.reduce((total, day) => total + day.pomodoros, 0),
+      reviewedMinutes: weekReviewedMinutes,
       productiveDays: productiveWeekDays.length,
       bestDay,
       planCompletionPercent: percent(weekCompletedPlannedTasks, weekPlannedTasks),
@@ -328,6 +388,8 @@ export function buildProgressSummary(input: {
     todayPlan,
     todayCategoryBreakdown: buildCategoryBreakdown(todayCategoryTotals),
     weekCategoryBreakdown: buildCategoryBreakdown(weekCategoryTotals),
+    todayCategoryTimeBreakdown: buildCategoryTimeBreakdown(todayCategoryTimeTotals),
+    weekCategoryTimeBreakdown: buildCategoryTimeBreakdown(weekCategoryTimeTotals),
     projectBreakdown: Array.from(projectBreakdown.values())
       .filter((project) => project.completedTasks > 0)
       .sort((a, b) => b.completedTasks - a.completedTasks || b.focusMinutes - a.focusMinutes)

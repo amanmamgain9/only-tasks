@@ -181,6 +181,42 @@ export function initializeDatabase(sqlite: Database.Database) {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS pmwd_workday_settings (
+      user_id INTEGER PRIMARY KEY,
+      workday_rollover_time TEXT NOT NULL DEFAULT '00:00',
+      midday_review_enabled INTEGER NOT NULL DEFAULT 1,
+      midday_review_time TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pmwd_task_time_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      task_id INTEGER NOT NULL,
+      project_id INTEGER,
+      workday_date TEXT NOT NULL,
+      duration_minutes INTEGER NOT NULL DEFAULT 0,
+      start_minute INTEGER,
+      end_minute INTEGER,
+      source TEXT NOT NULL DEFAULT 'manual_review',
+      review_status TEXT NOT NULL DEFAULT 'draft',
+      review_window TEXT NOT NULL DEFAULT 'same_workday_end',
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (task_id) REFERENCES pmwd_tasks(id) ON DELETE CASCADE,
+      FOREIGN KEY (project_id) REFERENCES pmwd_projects(id) ON DELETE SET NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_task_time_reviews_user_task_workday_unique
+    ON pmwd_task_time_reviews(user_id, task_id, workday_date);
+
+    CREATE INDEX IF NOT EXISTS pmwd_task_time_reviews_user_workday_idx
+    ON pmwd_task_time_reviews(user_id, workday_date);
+
     CREATE TABLE IF NOT EXISTS billing_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider TEXT NOT NULL DEFAULT 'paddle',
