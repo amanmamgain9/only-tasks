@@ -90,13 +90,16 @@ export default function HomePage() {
                   <ArrowRight className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
                 </Link>
 
-                <button
-                  type="button"
+                <Link
+                  href="/media/plan-my-workday/demo.mp4"
+                  prefetch={false}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="group inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:from-slate-800 hover:via-slate-900 hover:to-black hover:shadow-xl"
                 >
                   <Play className="size-5" />
                   Watch Demo
-                </button>
+                </Link>
               </div>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">No bullshit. No credit card. Just results.</p>

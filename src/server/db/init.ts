@@ -71,6 +71,8 @@ export function initializeDatabase(sqlite: Database.Database) {
       is_completed INTEGER NOT NULL DEFAULT 0,
       priority INTEGER,
       estimated_time_minutes INTEGER,
+      completed_at TEXT,
+      category_allocations TEXT,
       client_id TEXT,
       position TEXT NOT NULL DEFAULT 'a0',
       deleted INTEGER NOT NULL DEFAULT 0,
@@ -205,5 +207,7 @@ export function initializeDatabase(sqlite: Database.Database) {
   ensureColumn(sqlite, "users", "auth_provider", "auth_provider TEXT NOT NULL DEFAULT 'google'");
   ensureColumn(sqlite, "users", "last_login_at", "last_login_at TEXT");
   ensureColumn(sqlite, "users", "is_admin", "is_admin INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(sqlite, "pmwd_tasks", "completed_at", "completed_at TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "category_allocations", "category_allocations TEXT");
   ensureColumn(sqlite, "subscriptions", "paddle_updated_at", "paddle_updated_at TEXT");
 }

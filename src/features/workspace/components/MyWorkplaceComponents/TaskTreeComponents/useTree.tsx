@@ -18,6 +18,10 @@ import {
   getProjectTree,
   applyOperationBatch
 } from "../../../_services/backendService";
+import {
+  getDefaultTaskCategoryAllocations,
+  type TaskCategoryAllocation,
+} from "@/features/categories/taskCategories";
 
 import {
   type EditorState,
@@ -121,6 +125,7 @@ type Store = {
     dueDate?: string | null;
     priority?: number | null;
     description?: string | null;
+    categoryAllocations?: TaskCategoryAllocation[];
   }) => void;
 };
 
@@ -394,9 +399,10 @@ export const createEditorStore = (
           const parent = findParentTask(get().editor.tasks, clientId);
           
           const dueDateFilter = get().editor.dueDateFilter;
-          const initialMetadata = dueDateFilter
-            ? { dueDate: calculateDueDateFromFilter(dueDateFilter) }
-            : undefined;
+          const initialMetadata = {
+            ...(dueDateFilter ? { dueDate: calculateDueDateFromFilter(dueDateFilter) } : {}),
+            categoryAllocations: getDefaultTaskCategoryAllocations(get().editor.project.type),
+          };
           
           const createOp = createTaskOp(
             clientId,

@@ -1,3 +1,5 @@
+import type { TaskCategoryAllocation } from "@/features/categories/taskCategories";
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -46,6 +48,8 @@ export interface Task {
   isCompleted: boolean;
   priority: number | null;
   estimatedTimeMinutes: number | null;
+  completedAt?: string | null;
+  categoryAllocations?: TaskCategoryAllocation[] | string | null;
   createdAt: string;
   updatedAt: string;
   subtasks?: Task[];

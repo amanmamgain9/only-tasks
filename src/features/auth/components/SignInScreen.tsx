@@ -56,7 +56,7 @@ export default function SignInScreen({ nextPath, errorCode }: SignInScreenProps)
 
   const featureCards = useMemo(
     () => [
-      "Energy flow optimization",
+      "Daily and weekly progress",
       "Smart Pomodoro timers & breaks",
       "Weekly planning & progress tracking",
     ],

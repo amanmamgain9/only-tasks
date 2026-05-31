@@ -1,3 +1,4 @@
+import type { ProgressSummary } from "@/features/progress/types";
 import type { ApiResponse, Project, SaveProjectInput, TimerSettings, TimerStatus } from "../types";
 import type { EnhancedTaskTreeType, OperationBatch } from "../components/MyWorkplaceComponents/TaskTreeComponents/types";
 
@@ -151,6 +152,19 @@ export const getTimerStatus = async (): Promise<ApiResponse<TimerStatus> | null>
     return await parseResponse<TimerStatus>(response);
   } catch (error) {
     console.error("Error fetching timer:", error);
+    return null;
+  }
+};
+
+export const getProgressSummary = async (timeZone: string): Promise<ApiResponse<ProgressSummary> | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/progress/summary${toQueryString({ timeZone })}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    return await parseResponse<ProgressSummary>(response);
+  } catch (error) {
+    console.error("Error fetching progress:", error);
     return null;
   }
 };

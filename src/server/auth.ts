@@ -14,6 +14,7 @@ export const GOOGLE_REDIRECT_COOKIE_NAME = "only_tasks_google_redirect";
 export const DEFAULT_AUTH_REDIRECT = "/app/workspace/all-tasks";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const DEVELOPMENT_SIGN_IN_EMAIL = normalizeEmail(process.env.PMWD_DEMO_EMAIL || "demo@planmyworkday.dev");
 
 type GoogleProfile = {
   sub: string;
@@ -460,4 +461,18 @@ export async function signInAsExistingUser(
 
 export async function listRecentUsers(limit = 12) {
   return db.select().from(users).orderBy(desc(users.lastLoginAt), desc(users.updatedAt)).limit(limit);
+}
+
+export async function listDevelopmentSignInUsers() {
+  return db.select().from(users).where(eq(users.email, DEVELOPMENT_SIGN_IN_EMAIL)).limit(1);
+}
+
+export async function isDevelopmentSignInUser(userId: number) {
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.email, DEVELOPMENT_SIGN_IN_EMAIL)))
+    .limit(1);
+
+  return Boolean(rows[0]);
 }

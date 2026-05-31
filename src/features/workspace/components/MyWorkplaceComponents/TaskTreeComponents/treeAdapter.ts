@@ -2,6 +2,7 @@
 import { Project } from '../../../types';
 import { TreeNode, VisibleNode, EnhancedTaskTreeType } from './types';
 import { INITIAL_POSITION } from './positionUtils';
+import { normalizeTaskCategoryAllocations } from '@/features/categories/taskCategories';
 
 // ========================================================================
 // HELPER FUNCTIONS
@@ -63,7 +64,7 @@ export const computeTreeNodes = (
     });
     
     sortedTasks.forEach(task => {
-      const taskNode = taskToTreeNode(task, expandedTasks);
+      const taskNode = taskToTreeNode(task, expandedTasks, project.type);
       rootNodes.push(taskNode);
     });
     return rootNodes;
@@ -83,7 +84,7 @@ export const computeTreeNodes = (
       });
 
       sortedSubtasks.forEach(subtask => {
-        children.push(taskToTreeNode(subtask, expandedTasks));
+        children.push(taskToTreeNode(subtask, expandedTasks, project.type));
       });
     }
 
@@ -95,7 +96,8 @@ export const computeTreeNodes = (
 
 const taskToTreeNode = (
   task: EnhancedTaskTreeType, 
-  expandedTasks: Set<string>
+  expandedTasks: Set<string>,
+  projectType: Project["type"],
 ): TreeNode => {
   const isExpanded = expandedTasks.has(task.clientId);
   const children: TreeNode[] = [];
@@ -109,7 +111,7 @@ const taskToTreeNode = (
     });
 
     sortedSubtasks.forEach(subtask => {
-      children.push(taskToTreeNode(subtask, expandedTasks));
+      children.push(taskToTreeNode(subtask, expandedTasks, projectType));
     });
   }
 
@@ -123,6 +125,7 @@ const taskToTreeNode = (
     originalId: task.id,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    categoryAllocations: normalizeTaskCategoryAllocations(task.categoryAllocations, { projectType }),
     position: task.position,
     children: children.length > 0 ? children : undefined,
     taskId: task.id,

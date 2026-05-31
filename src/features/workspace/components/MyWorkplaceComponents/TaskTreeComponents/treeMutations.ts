@@ -2,6 +2,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { EnhancedTaskTreeType, Project, Operation, SubtreeNode } from "./types";
 import { generatePosition } from "./positionUtils";
+import {
+  getDefaultTaskCategoryAllocations,
+  normalizeTaskCategoryAllocations,
+  type TaskCategoryAllocation,
+} from "@/features/categories/taskCategories";
 
 // ========================================================================
 // TYPES
@@ -69,6 +74,9 @@ const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
     isCompleted: task.isCompleted ?? false,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    categoryAllocations: task.categoryAllocations
+      ? normalizeTaskCategoryAllocations(task.categoryAllocations)
+      : undefined,
     subtasks: task.subtasks?.flatMap((subtask) => (subtask.isEphemeral ? [] : [serializeSubtree(subtask)]))
   };
 };
@@ -111,6 +119,7 @@ const createEmptyTask = (
       ? findTaskByClientId(draft.tasks, parentTaskClientId)?.id || null 
       : null,
     position: generatePosition(siblings),
+    categoryAllocations: getDefaultTaskCategoryAllocations(draft.project.type),
     subtasks: [],
     isEphemeral: true
   };
@@ -227,6 +236,11 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
           if (operation.metadata.priority !== undefined) {
             task.priority = operation.metadata.priority;
           }
+          if (operation.metadata.categoryAllocations !== undefined) {
+            task.categoryAllocations = normalizeTaskCategoryAllocations(operation.metadata.categoryAllocations, {
+              projectType: draft.project.type,
+            });
+          }
         }
       } else if (!task) {
         // Task doesn't exist at all, create it
@@ -245,6 +259,9 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
           dueDate: operation.metadata?.dueDate ?? null,
           estimatedTimeMinutes: operation.metadata?.estimatedTimeMinutes ?? null,
           priority: operation.metadata?.priority ?? null,
+          categoryAllocations: normalizeTaskCategoryAllocations(operation.metadata?.categoryAllocations, {
+            projectType: draft.project.type,
+          }),
         };
         
         if (operation.parentClientId === null) {
@@ -291,6 +308,11 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
         if ('description' in operation) {
           task.description = operation.description ?? null;
         }
+        if ('categoryAllocations' in operation) {
+          task.categoryAllocations = normalizeTaskCategoryAllocations(operation.categoryAllocations, {
+            projectType: draft.project.type,
+          });
+        }
       }
       break;
     }
@@ -314,6 +336,9 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
         projectId: draft.project.id,
         parentTaskId: null,
         subtasks: subtree.subtasks?.map(reconstructTask),
+        categoryAllocations: normalizeTaskCategoryAllocations(subtree.categoryAllocations, {
+          projectType: draft.project.type,
+        }),
         isEphemeral: false
       });
       
@@ -389,6 +414,9 @@ export const getInverseOperation = (
         dueDate: task?.dueDate,
         priority: task?.priority,
         description: task?.description,
+        categoryAllocations: normalizeTaskCategoryAllocations(task?.categoryAllocations, {
+          projectType: currentState.project.type,
+        }),
         timestamp: Date.now()
       };
     }
@@ -450,6 +478,7 @@ export const createTaskOp = (
     dueDate?: string | null;
     estimatedTimeMinutes?: number | null;
     priority?: number | null;
+    categoryAllocations?: TaskCategoryAllocation[];
   }
 ): Operation => {
   return {
@@ -503,6 +532,7 @@ export const createUpdateMetadataOp = (
     dueDate?: string | null;
     priority?: number | null;
     description?: string | null;
+    categoryAllocations?: TaskCategoryAllocation[];
   }
 ): Operation => {
   return {

@@ -1,6 +1,7 @@
 // types.ts - UPDATED WITH CHATID SUPPORT
 
 import type { Project, TaskTreeType } from "../../../types";
+import type { TaskCategoryAllocation } from "@/features/categories/taskCategories";
 
 // ========================================================================
 // IMPORT TYPES
@@ -35,6 +36,7 @@ export type Operation =
       dueDate?: string | null;
       estimatedTimeMinutes?: number | null;
       priority?: number | null;
+      categoryAllocations?: TaskCategoryAllocation[];
     };
     timestamp: number;
   }
@@ -48,6 +50,7 @@ export type Operation =
       dueDate?: string | null;
       priority?: number | null;
       description?: string | null;
+      categoryAllocations?: TaskCategoryAllocation[];
       timestamp: number;
     }
   | { type: 'IMPORT_TASKS'; rootClientId: string; parentClientId: string | null; subtree: SubtreeNode; timestamp: number };
@@ -61,6 +64,7 @@ export type SubtreeNode = {
   dueDate?: string | null;
   priority?: number | null;
   description?: string | null;
+  categoryAllocations?: TaskCategoryAllocation[];
   subtasks?: SubtreeNode[];
 };
 
@@ -99,6 +103,7 @@ export interface TreeNode {
   
   estimatedTimeMinutes?: number | null;
   dueDate?: string | null;
+  categoryAllocations?: TaskCategoryAllocation[];
   taskId?: number;
   isEphemeral?: boolean;
   position?: string;

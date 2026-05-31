@@ -1,7 +1,13 @@
 import * as taskRepo from "./repository";
 import * as taskService from "./service";
 import * as positioning from "./positioning";
+import * as projectRepo from "../projects/repository";
 import type { Operation, OperationBatch, SubtreeNode } from "./contracts";
+import {
+  getDefaultTaskCategoryAllocations,
+  serializeTaskCategoryAllocations,
+  type ProjectCategorySeed,
+} from "../../features/categories/taskCategories";
 
 function convertLocalDateToUTC(localDateStr: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(localDateStr)) {
@@ -9,6 +15,18 @@ function convertLocalDateToUTC(localDateStr: string): string {
   }
 
   return new Date(`${localDateStr}T00:00:00.000Z`).toISOString();
+}
+
+async function getProjectType(projectId: number, userId: number): Promise<ProjectCategorySeed> {
+  const project = await projectRepo.findProjectById(projectId);
+  if (!project || project.userId !== userId) {
+    throw new Error(`Project not found: ${projectId}`);
+  }
+  return project.type;
+}
+
+function serializeCategoryAllocationsForWrite(value: unknown, projectType: ProjectCategorySeed) {
+  return serializeTaskCategoryAllocations(value ?? getDefaultTaskCategoryAllocations(projectType));
 }
 
 async function handleUpdateTitle(operation: Extract<Operation, { type: "UPDATE_TITLE" }>, userId: number) {
@@ -28,9 +46,11 @@ async function handleToggleComplete(
   const task = await taskRepo.getTaskByClientId(operation.clientId);
   if (!task || task.userId !== userId) throw new Error(`Task not found for clientId: ${operation.clientId}`);
 
+  const timestampISO = new Date(operation.timestamp).toISOString();
   await taskRepo.updateTask(task.id, {
     isCompleted: operation.isCompleted ? 1 : 0,
-    updatedAt: new Date(operation.timestamp).toISOString(),
+    completedAt: operation.isCompleted ? timestampISO : null,
+    updatedAt: timestampISO,
   });
 }
 
@@ -48,6 +68,10 @@ async function handleUpdateMetadata(
   if (operation.estimatedTimeMinutes !== undefined) updates.estimatedTimeMinutes = operation.estimatedTimeMinutes;
   if (operation.priority !== undefined) updates.priority = operation.priority;
   if (operation.description !== undefined) updates.description = operation.description;
+  if (operation.categoryAllocations !== undefined) {
+    const projectType = task.projectId ? await getProjectType(task.projectId, userId) : "main";
+    updates.categoryAllocations = serializeCategoryAllocationsForWrite(operation.categoryAllocations, projectType);
+  }
   if (operation.dueDate !== undefined) {
     updates.dueDate = operation.dueDate === null ? null : convertLocalDateToUTC(operation.dueDate);
   }
@@ -79,6 +103,7 @@ async function handleCreateTask(
   const parentTask = parentTaskId ? await taskRepo.findTaskById(parentTaskId) : null;
   const path = parentTask ? `${parentTask.path}${parentTask.id}/` : "/";
   const timestampISO = new Date(operation.timestamp).toISOString();
+  const projectType = await getProjectType(projectId, userId);
 
   await taskRepo.createTask({
     userId,
@@ -89,9 +114,11 @@ async function handleCreateTask(
     title: "",
     position: operation.position,
     isCompleted: 0,
+    completedAt: null,
     dueDate: operation.metadata?.dueDate ? convertLocalDateToUTC(operation.metadata.dueDate) : null,
     estimatedTimeMinutes: operation.metadata?.estimatedTimeMinutes ?? null,
     priority: operation.metadata?.priority ?? null,
+    categoryAllocations: serializeCategoryAllocationsForWrite(operation.metadata?.categoryAllocations, projectType),
     deleted: 0,
     archived: 0,
     draft: 0,
@@ -111,6 +138,7 @@ async function createSubtree(
   const parentTask = parentTaskId ? await taskRepo.findTaskById(parentTaskId) : null;
   const path = parentTask ? `${parentTask.path}${parentTask.id}/` : "/";
   const timestampISO = new Date(timestamp).toISOString();
+  const projectType = await getProjectType(projectId, userId);
 
   let position = node.position;
   if (!position) {
@@ -127,8 +155,11 @@ async function createSubtree(
     title: node.title,
     description: node.description ?? null,
     isCompleted: node.isCompleted ? 1 : 0,
+    completedAt: node.isCompleted ? timestampISO : null,
     estimatedTimeMinutes: node.estimatedTimeMinutes ?? null,
     dueDate: node.dueDate ? convertLocalDateToUTC(node.dueDate) : null,
+    priority: node.priority ?? null,
+    categoryAllocations: serializeCategoryAllocationsForWrite(node.categoryAllocations, projectType),
     position,
     deleted: 0,
     archived: 0,

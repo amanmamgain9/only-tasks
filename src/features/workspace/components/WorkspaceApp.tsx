@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import MyWorkplaceComponent from "./MyWorkplaceComponents/MyWorkplaceComponent";
+import ProgressWorkspaceComponent from "./ProgressComponents/ProgressWorkspaceComponent";
 import { NavigationService } from "../_services/navigationService";
 import type { AuthenticatedUser } from "@/server/auth";
 
@@ -57,6 +58,7 @@ export default function WorkspaceApp({ viewer }: WorkspaceAppProps) {
           <Route path="/workspace/today" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="today" viewer={viewer} />} />
           <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" viewer={viewer} />} />
           <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" viewer={viewer} />} />
+          <Route path="/workspace/progress" element={<ProgressWorkspaceComponent regionOrder={1} viewer={viewer} />} />
           <Route path="*" element={<MyWorkplaceComponent regionOrder={1} viewer={viewer} />} />
         </Routes>
       </BrowserRouter>

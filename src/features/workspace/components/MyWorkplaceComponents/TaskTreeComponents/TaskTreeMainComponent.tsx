@@ -8,6 +8,7 @@ import ImportTasksModal from './ImportTasksModal';
 import ScheduleModal from './ScheduleModal';
 import { Project } from '../../../types';
 import { PendingImportTask, VisibleNode } from './types';
+import type { TaskCategoryAllocation } from '@/features/categories/taskCategories';
 import { createEditorStore } from './useTree';
 import {
   computeBreadcrumbs,
@@ -119,6 +120,11 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     updateTitle({ nodeType: node.nodeType, title, clientId: node.id });
   }, [updateTitle]);
 
+  const handleUpdateCategoryAllocations = useCallback((node: VisibleNode, categoryAllocations: TaskCategoryAllocation[]) => {
+    if (node.nodeType !== 'task') return;
+    updateMetadata({ clientId: node.id, categoryAllocations });
+  }, [updateMetadata]);
+
   const handleMakeRoot = useCallback((node: VisibleNode) => {
     if (node.nodeType !== 'task') return;
     makeRoot({ clientId: node.id });
@@ -213,6 +219,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     handleToggleCompletion,
     handleToggleExpansion,
     handleUpdateTitle,
+    handleUpdateCategoryAllocations,
     hasBreadcrumbs,
     isLoading,
     loadError,
@@ -287,6 +294,7 @@ function TreeNodesPanel({ controller }: { controller: ReturnType<typeof useTreeM
       onMakeRoot={controller.handleMakeRoot}
       onAddChild={controller.handleAddChild}
       onUpdateTitle={controller.handleUpdateTitle}
+      onUpdateCategoryAllocations={controller.handleUpdateCategoryAllocations}
       onDeleteRequest={controller.handleDeleteRequest}
       onCalendarClick={controller.handleCalendarClick}
     />

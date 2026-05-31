@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const taskCategoryAllocationSchema = z.object({
+  category: z.enum(["job", "side_project", "learning", "health", "social", "chore", "hobby"]),
+  weight: z.number().int().min(1).max(100),
+});
+
 const subtreeNodeSchema: z.ZodSchema<{
   clientId: string;
   title: string;
@@ -7,7 +12,9 @@ const subtreeNodeSchema: z.ZodSchema<{
   isCompleted: boolean;
   estimatedTimeMinutes?: number | null;
   dueDate?: string | null;
+  priority?: number | null;
   description?: string | null;
+  categoryAllocations?: Array<{ category: "job" | "side_project" | "learning" | "health" | "social" | "chore" | "hobby"; weight: number }>;
   subtasks?: any[];
 }> = z.lazy(() =>
   z.object({
@@ -17,7 +24,9 @@ const subtreeNodeSchema: z.ZodSchema<{
     isCompleted: z.boolean(),
     estimatedTimeMinutes: z.number().nullable().optional(),
     dueDate: z.string().nullable().optional(),
+    priority: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
+    categoryAllocations: z.array(taskCategoryAllocationSchema).optional(),
     subtasks: z.array(subtreeNodeSchema).optional(),
   }),
 );
@@ -42,6 +51,7 @@ const operationSchema = z.discriminatedUnion("type", [
     dueDate: z.string().nullable().optional(),
     priority: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
+    categoryAllocations: z.array(taskCategoryAllocationSchema).optional(),
     timestamp: z.number(),
   }),
   z.object({
@@ -59,6 +69,7 @@ const operationSchema = z.discriminatedUnion("type", [
         dueDate: z.string().nullable().optional(),
         estimatedTimeMinutes: z.number().nullable().optional(),
         priority: z.number().nullable().optional(),
+        categoryAllocations: z.array(taskCategoryAllocationSchema).optional(),
       })
       .optional(),
     timestamp: z.number(),

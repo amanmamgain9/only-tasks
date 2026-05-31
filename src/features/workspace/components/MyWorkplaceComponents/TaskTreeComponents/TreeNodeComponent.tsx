@@ -1,16 +1,24 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useMemo, useState, useRef } from 'react';
 import {
   ChevronRight,
   ChevronDown,
   Check,
   Calendar,
   MoreHorizontal,
-  ArrowUpRight
+  ArrowUpRight,
+  Tags
 } from 'lucide-react';
 import type { VisibleNode } from './types';
 import { NavigationService } from '../../../_services/navigationService';
 import { findTaskByClientId } from './treeAdapter';
 import TreeNodeMenu from './TreeNodeMenu';
+import TaskCategoryEditor from './TaskCategoryEditor';
+import {
+  getTaskCategoryLabel,
+  normalizeTaskCategoryAllocations,
+  type TaskCategoryAllocation,
+  type TaskCategoryId,
+} from '@/features/categories/taskCategories';
 
 interface TreeNodeProps {
   node: VisibleNode;
@@ -24,6 +32,7 @@ interface TreeNodeProps {
   onMakeRoot: (node: VisibleNode) => void;
   onAddChild: (nodeIndex: number) => void;
   onUpdateTitle: (node: VisibleNode, newTitle: string) => void;
+  onUpdateCategoryAllocations: (node: VisibleNode, allocations: TaskCategoryAllocation[]) => void;
   onDeleteRequest: (nodeIndex: number) => void;
   onCalendarClick: (nodeIndex: number) => void;
 }
@@ -38,6 +47,16 @@ const serializeTask = (task: any): any => {
   return result;
 };
 
+const CATEGORY_CHIP_CLASSES: Record<TaskCategoryId, string> = {
+  job: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+  side_project: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200',
+  learning: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200',
+  health: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200',
+  social: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200',
+  chore: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200',
+  hobby: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-200',
+};
+
 const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   node,
   nodeIndex,
@@ -50,6 +69,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   onMakeRoot,
   onAddChild,
   onUpdateTitle,
+  onUpdateCategoryAllocations,
   onDeleteRequest,
   onCalendarClick,
 }) => {
@@ -58,13 +78,24 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   const completionCheckboxRef = useRef<HTMLButtonElement>(null);
   const makeRootButtonRef = useRef<HTMLButtonElement>(null);
   const calendarButtonRef = useRef<HTMLButtonElement>(null);
+  const categoryButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCategoryEditorOpen, setIsCategoryEditorOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   const showMakeRootButton = node.nodeType === 'task' && (node.title || '').trim().length > 0;
   const showDeleteButton = node.nodeType === 'task' && !node.isEphemeral;
+  const showCategoryButton = node.nodeType === 'task' && !node.isEphemeral && (node.title || '').trim().length > 0;
+  const categoryAllocations = useMemo(
+    () => normalizeTaskCategoryAllocations(node.categoryAllocations),
+    [node.categoryAllocations],
+  );
+  const primaryCategory = categoryAllocations[0];
+  const categorySummary = categoryAllocations
+    .map((allocation) => `${getTaskCategoryLabel(allocation.category)} ${allocation.weight}%`)
+    .join(' / ');
 
   const openMenu = useCallback(() => {
     const rect = menuButtonRef.current?.getBoundingClientRect();
@@ -110,6 +141,11 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
         onCalendarClick(nodeIndex);
         return;
       }
+      if (focused === categoryButtonRef.current) {
+        e.preventDefault();
+        setIsCategoryEditorOpen(true);
+        return;
+      }
       if (focused === menuButtonRef.current) {
         e.preventDefault();
         toggleMenu();
@@ -146,6 +182,17 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
     e.stopPropagation();
     onCalendarClick(nodeIndex);
   }, [nodeIndex, onCalendarClick]);
+
+  const handleCategoryClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsCategoryEditorOpen(true);
+  }, []);
+
+  const handleCategorySave = useCallback((allocations: TaskCategoryAllocation[]) => {
+    onUpdateCategoryAllocations(node, allocations);
+    setIsCategoryEditorOpen(false);
+    categoryButtonRef.current?.focus();
+  }, [node, onUpdateCategoryAllocations]);
 
   const handleMenuClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -275,6 +322,25 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
           </button>
         </div>
 
+        {showCategoryButton && primaryCategory && (
+          <div className="flex-shrink-0 flex items-center h-6 mt-1">
+            <button
+              type="button"
+              ref={categoryButtonRef}
+              onClick={handleCategoryClick}
+              data-focusable
+              className={`inline-flex h-7 max-w-[9.5rem] items-center gap-1.5 truncate rounded-full border px-2.5 text-xs font-medium outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-cyan-300 ${CATEGORY_CHIP_CLASSES[primaryCategory.category]}`}
+              title={categorySummary}
+            >
+              <Tags className="size-3.5 shrink-0" />
+              <span className="truncate">{getTaskCategoryLabel(primaryCategory.category)} {primaryCategory.weight}%</span>
+              {categoryAllocations.length > 1 && (
+                <span className="shrink-0 text-[11px] opacity-70">+{categoryAllocations.length - 1}</span>
+              )}
+            </button>
+          </div>
+        )}
+
         <div className="flex-shrink-0 flex items-center h-6 mt-1 relative">
           <button
             type="button"
@@ -302,6 +368,14 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
         onCopy={handleCopyClick}
         showMakeRoot={showMakeRootButton}
         showDelete={showDeleteButton}
+      />
+
+      <TaskCategoryEditor
+        isOpen={isCategoryEditorOpen}
+        title={node.title || ''}
+        allocations={categoryAllocations}
+        onClose={() => setIsCategoryEditorOpen(false)}
+        onSave={handleCategorySave}
       />
     </>
   );
