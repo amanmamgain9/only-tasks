@@ -209,9 +209,8 @@ describe("progress summary", () => {
     });
 
     expect(summary.todayCategoryBreakdown).toEqual([
-      { category: "health", label: "Health", weightedTasks: 1, percent: 50 },
+      { category: "lifestyle", label: "Lifestyle", weightedTasks: 1.3, percent: 65 },
       { category: "side_project", label: "Side Project", weightedTasks: 0.7, percent: 35 },
-      { category: "learning", label: "Learning", weightedTasks: 0.3, percent: 15 },
     ]);
     expect(summary.weekCategoryBreakdown).toEqual(summary.todayCategoryBreakdown);
   });
@@ -244,9 +243,8 @@ describe("progress summary", () => {
 
     expect(summary.today.reviewedMinutes).toBe(90);
     expect(summary.todayCategoryTimeBreakdown).toEqual([
+      { category: "lifestyle", label: "Lifestyle", minutes: 48, percent: 53 },
       { category: "side_project", label: "Side Project", minutes: 42, percent: 47 },
-      { category: "health", label: "Health", minutes: 30, percent: 33 },
-      { category: "learning", label: "Learning", minutes: 18, percent: 20 },
     ]);
     expect(summary.week.reviewedMinutes).toBe(90);
   });

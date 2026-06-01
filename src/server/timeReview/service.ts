@@ -1,5 +1,6 @@
 import { sqlite } from "@/server/db/client";
 import {
+  normalizeLifestyleTraitAllocations,
   normalizeTaskCategoryAllocations,
   type ProjectCategorySeed,
 } from "@/features/categories/taskCategories";
@@ -32,6 +33,7 @@ type CompletedTaskRow = {
   completedAt: string;
   estimatedTimeMinutes: number | null;
   categoryAllocations: string | null;
+  lifestyleTraits: string | null;
   durationMinutes: number | null;
   startMinute: number | null;
   endMinute: number | null;
@@ -69,6 +71,7 @@ const completedTasksQuery = sqlite.prepare(`
     COALESCE(task.completed_at, task.updated_at) AS completedAt,
     task.estimated_time_minutes AS estimatedTimeMinutes,
     task.category_allocations AS categoryAllocations,
+    task.lifestyle_traits AS lifestyleTraits,
     review.duration_minutes AS durationMinutes,
     review.start_minute AS startMinute,
     review.end_minute AS endMinute,
@@ -198,6 +201,7 @@ function buildSummary(input: {
     categoryAllocations: normalizeTaskCategoryAllocations(row.categoryAllocations, {
       projectType: getProjectType(row.projectType),
     }),
+    lifestyleTraits: normalizeLifestyleTraitAllocations(row.lifestyleTraits),
     durationMinutes: row.durationMinutes ?? 0,
     startMinute: row.startMinute,
     endMinute: row.endMinute,

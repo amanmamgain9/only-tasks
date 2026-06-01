@@ -1,4 +1,5 @@
 import { sqlite } from "@/server/db/client";
+import { materializeRecurringTasksForDateRangeInDatabase } from "@/server/tasks/recurrence";
 import { buildProgressSummary, getProgressWindow, type ProgressSourceRows } from "./progress-core";
 
 type CompletedTaskRow = {
@@ -156,6 +157,13 @@ export function getProgressSummaryForUser(
     progressWindow.tomorrowDate > progressWindow.weekEndDate
       ? progressWindow.tomorrowDate
       : progressWindow.weekEndDate;
+
+  materializeRecurringTasksForDateRangeInDatabase({
+    db: sqlite,
+    userId,
+    startDate: plannedStartDate,
+    endDateExclusive: plannedEndDate,
+  });
 
   const rows: ProgressSourceRows = {
     completedTasks: completedTasksQuery.all({

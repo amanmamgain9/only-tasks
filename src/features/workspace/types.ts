@@ -1,4 +1,4 @@
-import type { TaskCategoryAllocation } from "@/features/categories/taskCategories";
+import type { LifestyleTraitAllocation, TaskCategoryAllocation } from "@/features/categories/taskCategories";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -50,6 +50,14 @@ export interface Task {
   estimatedTimeMinutes: number | null;
   completedAt?: string | null;
   categoryAllocations?: TaskCategoryAllocation[] | string | null;
+  lifestyleTraits?: LifestyleTraitAllocation[] | string | null;
+  systemType?: string | null;
+  recurrenceSeriesId?: number | null;
+  recurrenceRole?: "template" | "occurrence_root" | "occurrence_child" | null;
+  recurrenceTemplateTaskId?: number | null;
+  recurrenceOccurrenceDate?: string | null;
+  recurrenceStatus?: "scheduled" | "skipped" | null;
+  recurrenceIsOverride?: number | boolean | null;
   createdAt: string;
   updatedAt: string;
   subtasks?: Task[];

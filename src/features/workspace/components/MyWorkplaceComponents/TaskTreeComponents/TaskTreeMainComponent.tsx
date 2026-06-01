@@ -5,10 +5,11 @@ import TreeNodeComponent from './TreeNodeComponent';
 import Breadcrumb from './Breadcrumb';
 import ConfirmModal from './ConfirmModal';
 import ImportTasksModal from './ImportTasksModal';
+import RecurrenceModal from './RecurrenceModal';
 import ScheduleModal from './ScheduleModal';
 import { Project } from '../../../types';
-import { PendingImportTask, VisibleNode } from './types';
-import type { TaskCategoryAllocation } from '@/features/categories/taskCategories';
+import { PendingImportTask, RecurrenceSchedule, VisibleNode } from './types';
+import type { LifestyleTraitAllocation } from '@/features/categories/taskCategories';
 import { createEditorStore } from './useTree';
 import {
   computeBreadcrumbs,
@@ -28,7 +29,7 @@ function getRootNode(projectData: Project, tasks: any[], currentRootTaskId: stri
   if (currentRootTaskId === null) {
     return {
       id: `project-${projectData.id}`,
-      title: projectData.title,
+      title: projectData.title.trim().toLowerCase() === "workspace" ? "Tasks" : projectData.title,
       isCompleted: projectData.status === 'completed',
       isExpanded: true,
       nodeType: 'project' as const,
@@ -49,6 +50,8 @@ function getRootNode(projectData: Project, tasks: any[], currentRootTaskId: stri
     originalId: task.id,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    lifestyleTraits: task.lifestyleTraits,
+    systemType: task.systemType,
   };
 }
 
@@ -56,6 +59,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ node: VisibleNode; nodeIndex: number } | null>(null);
   const [scheduleNode, setScheduleNode] = useState<VisibleNode | null>(null);
+  const [recurrenceNode, setRecurrenceNode] = useState<VisibleNode | null>(null);
   const useStore = useMemo(() => createEditorStore(project, dueDateFilter, chatId), [project, dueDateFilter, chatId]);
 
   const loadProjectTree = useStore((state) => state.loadProjectTree);
@@ -73,6 +77,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   const makeRoot = useStore((state) => state.makeRoot);
   const bulkImportTasks = useStore((state) => state.bulkImportTasks);
   const updateMetadata = useStore((state) => state.updateMetadata);
+  const setRecurrence = useStore((state) => state.setRecurrence);
 
   useEffect(() => {
     loadProjectTree();
@@ -93,7 +98,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   );
   const hasBreadcrumbs = breadcrumbs.length > 1;
   const nodesContainerIndex = hasBreadcrumbs ? 1 : 0;
-  const showImportAction = !dueDateFilter && !chatId;
+  const showImportAction = false;
 
   const escapeAttributeValue = useCallback((value: string) => (
     typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
@@ -113,16 +118,19 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   }, [toggleExpansion]);
 
   const handleToggleCompletion = useCallback((node: VisibleNode) => {
+    if (node.systemType === 'category_root') return;
     toggleCompletion({ clientId: node.id });
   }, [toggleCompletion]);
 
   const handleUpdateTitle = useCallback((node: VisibleNode, title: string) => {
+    if (node.systemType === 'category_root') return;
     updateTitle({ nodeType: node.nodeType, title, clientId: node.id });
   }, [updateTitle]);
 
-  const handleUpdateCategoryAllocations = useCallback((node: VisibleNode, categoryAllocations: TaskCategoryAllocation[]) => {
+  const handleUpdateLifestyleTraits = useCallback((node: VisibleNode, lifestyleTraits: LifestyleTraitAllocation[]) => {
     if (node.nodeType !== 'task') return;
-    updateMetadata({ clientId: node.id, categoryAllocations });
+    if (node.systemType === 'category_root') return;
+    updateMetadata({ clientId: node.id, lifestyleTraits });
   }, [updateMetadata]);
 
   const handleMakeRoot = useCallback((node: VisibleNode) => {
@@ -153,6 +161,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
 
   const handleDeleteRequest = useCallback((nodeIndex: number) => {
     const node = visibleNodes[nodeIndex];
+    if (node?.systemType === 'category_root') return;
     if (node) setDeleteConfirm({ node, nodeIndex });
   }, [visibleNodes]);
 
@@ -194,11 +203,29 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     });
   }, [visibleNodes]);
 
+  const handleRepeatClick = useCallback((nodeIndex: number) => {
+    requestAnimationFrame(() => {
+      setRecurrenceNode(visibleNodes[nodeIndex] ?? null);
+    });
+  }, [visibleNodes]);
+
+  const handleOpenRecurrenceFromSchedule = useCallback(() => {
+    if (!scheduleNode) return;
+    setRecurrenceNode(scheduleNode);
+    setScheduleNode(null);
+  }, [scheduleNode]);
+
   const handleScheduleSave = useCallback((data: { dueDate: string | null }) => {
     if (!scheduleNode) return;
     updateMetadata({ clientId: scheduleNode.id, dueDate: data.dueDate });
     setScheduleNode(null);
   }, [scheduleNode, updateMetadata]);
+
+  const handleRecurrenceSave = useCallback(async (recurrence: RecurrenceSchedule) => {
+    if (!recurrenceNode) return;
+    await setRecurrence({ clientId: recurrenceNode.id, recurrence });
+    setRecurrenceNode(null);
+  }, [recurrenceNode, setRecurrence]);
 
   return {
     breadcrumbs,
@@ -215,16 +242,21 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     handleDeleteRequest,
     handleMakeRoot,
     handleNavigateToBreadcrumb,
+    handleOpenRecurrenceFromSchedule,
+    handleRecurrenceSave,
+    handleRepeatClick,
     handleScheduleSave,
     handleToggleCompletion,
     handleToggleExpansion,
     handleUpdateTitle,
-    handleUpdateCategoryAllocations,
+    handleUpdateLifestyleTraits,
     hasBreadcrumbs,
     isLoading,
     loadError,
     loadProjectTree,
     scheduleNode,
+    recurrenceNode,
+    setRecurrenceNode,
     setScheduleNode,
     setShowImportModal,
     showImportAction,
@@ -294,9 +326,10 @@ function TreeNodesPanel({ controller }: { controller: ReturnType<typeof useTreeM
       onMakeRoot={controller.handleMakeRoot}
       onAddChild={controller.handleAddChild}
       onUpdateTitle={controller.handleUpdateTitle}
-      onUpdateCategoryAllocations={controller.handleUpdateCategoryAllocations}
+      onUpdateLifestyleTraits={controller.handleUpdateLifestyleTraits}
       onDeleteRequest={controller.handleDeleteRequest}
       onCalendarClick={controller.handleCalendarClick}
+      onRepeatClick={controller.handleRepeatClick}
     />
   ));
 
@@ -341,11 +374,20 @@ function TreeMainModals({ controller }: { controller: ReturnType<typeof useTreeM
       )}
 
       <ScheduleModal
-        key={controller.scheduleNode?.id || 'empty'}
+        key={controller.scheduleNode ? `schedule-${controller.scheduleNode.id}` : 'schedule-empty'}
         isOpen={controller.scheduleNode !== null}
         onClose={() => controller.setScheduleNode(null)}
         onSave={controller.handleScheduleSave}
+        onOpenRecurrence={controller.handleOpenRecurrenceFromSchedule}
         initialDueDate={controller.scheduleNode?.dueDate || null}
+      />
+
+      <RecurrenceModal
+        key={controller.recurrenceNode ? `recurrence-${controller.recurrenceNode.id}` : 'recurrence-empty'}
+        isOpen={controller.recurrenceNode !== null}
+        onClose={() => controller.setRecurrenceNode(null)}
+        onSave={controller.handleRecurrenceSave}
+        initialStartDate={controller.recurrenceNode?.dueDate || null}
       />
     </>
   );

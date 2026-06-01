@@ -1,4 +1,4 @@
-import type { TaskCategoryAllocation } from "@/features/categories/taskCategories";
+import type { LifestyleTraitAllocation, TaskCategoryAllocation } from "@/features/categories/taskCategories";
 
 export type ReviewWindow = "same_workday_midday" | "same_workday_end";
 export type ReviewPhase = "quiet" | "midday" | "end" | "reviewed";
@@ -17,6 +17,7 @@ export type TimeReviewTask = {
   completedAt: string;
   estimatedTimeMinutes: number | null;
   categoryAllocations: TaskCategoryAllocation[];
+  lifestyleTraits: LifestyleTraitAllocation[];
   durationMinutes: number;
   startMinute: number | null;
   endMinute: number | null;

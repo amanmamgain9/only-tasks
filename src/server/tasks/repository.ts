@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, like, lt, SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, like, lt, or, SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
 import {
@@ -36,6 +36,9 @@ export async function findTasksByUserId(
     if (validatedOptions.projectId !== undefined) conditions.push(eq(tasks.projectId, validatedOptions.projectId));
     if (validatedOptions.chatId !== undefined) conditions.push(eq(tasks.chatId, validatedOptions.chatId));
     if (validatedOptions.draft !== undefined) conditions.push(eq(tasks.draft, validatedOptions.draft));
+    if (validatedOptions.excludeRecurrenceOccurrences) {
+      conditions.push(or(isNull(tasks.recurrenceRole), eq(tasks.recurrenceRole, "template"))!);
+    }
 
     if (validatedOptions.parentTaskId !== undefined) {
       if (validatedOptions.parentTaskId === null) {

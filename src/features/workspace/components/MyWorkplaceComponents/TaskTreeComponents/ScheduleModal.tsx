@@ -1,6 +1,5 @@
-// ScheduleModal.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { Repeat2, X } from 'lucide-react';
 import { NavigationService } from '../../../_services/navigationService';
 import MaskedDateInput, { MaskedDateInputRef } from './MaskedDateInput';
 
@@ -8,6 +7,7 @@ interface ScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: { dueDate: string | null }) => void;
+  onOpenRecurrence?: () => void;
   initialDueDate?: string | null;
 }
 
@@ -134,6 +134,11 @@ function getDateState(dateValue: string, isEmpty: boolean): DateState {
   };
 }
 
+function toDateKey(dateValue: string, isEmpty: boolean, dateState: DateState) {
+  if (!dateState.parsed || isEmpty) return null;
+  return dateValue.replace(/[^0-9]/g, '').replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+}
+
 function useScheduleModalState({ initialDueDate, onClose, onSave }: ScheduleModalProps) {
   const [dateValue, setDateValue] = useState(() => getInitialDateValue(initialDueDate));
   const [isEmpty, setIsEmpty] = useState(!initialDueDate);
@@ -155,12 +160,7 @@ function useScheduleModalState({ initialDueDate, onClose, onSave }: ScheduleModa
 
   const handleSave = () => {
     if (!dateState.valid) return;
-
-    const dueDate = dateState.parsed && !isEmpty
-      ? dateValue.replace(/[^0-9]/g, '').replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')
-      : null;
-
-    onSave({ dueDate });
+    onSave({ dueDate: toDateKey(dateValue, isEmpty, dateState) });
     onClose();
   };
 
@@ -214,12 +214,14 @@ function ScheduleRadioOption({
       />
       <label
         htmlFor={`schedule-${option.id}`}
-        className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-gray-50 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 dark:hover:bg-gray-700"
+        className={`flex h-11 cursor-pointer items-center justify-between rounded-lg border px-3 text-sm transition peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 ${
+          checked
+            ? 'border-slate-950 bg-slate-950 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-950'
+            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
       >
-        <span className={`flex size-4 items-center justify-center rounded-full border-2 ${checked ? 'border-blue-600 bg-blue-600' : 'border-gray-300 dark:border-gray-500'}`}>
-          {checked && <span className="size-2 rounded-full bg-white" />}
-        </span>
-        <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+        <span>{label}</span>
+        <span className={`size-2 rounded-full ${checked ? 'bg-cyan-300 dark:bg-cyan-500' : 'bg-transparent'}`} />
       </label>
     </div>
   );
@@ -237,9 +239,8 @@ function ScheduleChoices({
   setQuickDate: (option: QuickDateOption) => void;
 }) {
   return (
-    <div>
-      <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Set deadline to</h3>
-      <div data-layout="vertical" className="space-y-2">
+    <div data-order="0">
+      <div data-layout="horizontal" className="grid grid-cols-2 gap-2">
         {quickDateOptions.map((option, index) => {
           const checked = option.id === 'none'
             ? isEmpty
@@ -280,27 +281,27 @@ function CustomDateField({
   setDateValue: (value: string) => void;
 }) {
   return (
-    <div data-order="4" className="mt-6">
-      <p className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Or set custom deadline</p>
+    <div data-order="1" className="mt-5">
+      <p className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Custom date</p>
       <MaskedDateInput
         ref={dateInputRef}
-        ariaLabel="Custom deadline"
+        ariaLabel="Custom date"
         value={dateValue}
         onChange={setDateValue}
         onUserEdit={handleUserEdit}
         onEnter={handleSave}
         isEmpty={isEmpty}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-center font-mono text-lg tracking-wider caret-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-center font-mono text-base caret-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
       />
 
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">YYYY/MM/DD • Click segment, use ↑↓ to adjust</p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">YYYY/MM/DD</p>
 
-      <div className="mt-2 min-h-[3rem] space-y-1">
+      <div className="mt-2 min-h-[2.75rem] space-y-1">
         {isEmpty ? (
-          <p className="text-sm italic text-gray-500 dark:text-gray-400">No deadline set</p>
+          <p className="text-sm italic text-slate-500 dark:text-slate-400">No date set</p>
         ) : dateState.valid && dateState.parsed ? (
           <>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{dateState.formatted}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">{dateState.formatted}</p>
             <p className={`text-sm font-medium ${dateState.relative?.includes('ago') ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
               {dateState.relative}
             </p>
@@ -317,26 +318,43 @@ function ScheduleActions({
   cancelRef,
   dateState,
   onClose,
+  onOpenRecurrence,
   onSave,
   saveRef,
 }: {
   cancelRef: React.RefObject<HTMLButtonElement | null>;
   dateState: DateState;
   onClose: () => void;
+  onOpenRecurrence?: () => void;
   onSave: () => void;
   saveRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   return (
-    <div data-order="2" className="mt-6 flex justify-end gap-4">
-      <div data-layout="horizontal" className="flex gap-4">
+    <div data-order="2" className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-700">
+      {onOpenRecurrence ? (
+        <button
+          type="button"
+          data-focusable
+          data-tab-consume
+          data-order="0"
+          onClick={onOpenRecurrence}
+          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          <Repeat2 className="size-4" />
+          Recurring
+        </button>
+      ) : (
+        <span />
+      )}
+      <div data-layout="horizontal" className="flex gap-3">
         <button
           type="button"
           ref={cancelRef}
           data-focusable
           data-tab-consume
-          data-order="0"
+          data-order="1"
           onClick={onClose}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
         >
           Cancel
         </button>
@@ -345,10 +363,10 @@ function ScheduleActions({
           ref={saveRef}
           data-focusable
           data-tab-consume
-          data-order="1"
+          data-order="2"
           onClick={onSave}
           disabled={!dateState.valid}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-slate-950 px-4 py-2 text-sm text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
         >
           Save
         </button>
@@ -358,7 +376,7 @@ function ScheduleActions({
 }
 
 const ScheduleModal: React.FC<ScheduleModalProps> = (props) => {
-  const { isOpen, onClose } = props;
+  const { isOpen, onClose, onOpenRecurrence } = props;
   const modalRef = useRef<HTMLDialogElement>(null);
   const dateInputRef = useRef<MaskedDateInputRef>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -407,19 +425,24 @@ const ScheduleModal: React.FC<ScheduleModalProps> = (props) => {
         aria-modal="true"
         aria-labelledby="schedule-modal-title"
         data-scope
-        className="static m-0 w-full max-w-md rounded-lg border-0 bg-white p-6 text-left shadow-xl dark:bg-gray-800"
+        className="static m-0 w-full max-w-md rounded-xl border-0 bg-white p-5 text-left shadow-2xl dark:bg-slate-800"
       >
         <div data-region id="schedule-modal-region" data-tab-consume>
           <div data-layout="vertical">
-            <div data-order="0" className="mb-6 flex items-center justify-between">
-              <h2 id="schedule-modal-title" className="text-xl font-semibold text-gray-900 dark:text-gray-100">Schedule Task</h2>
-              <button type="button" data-focusable data-tab-consume data-order="0" onClick={onClose} className="rounded p-1 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-400 dark:hover:bg-gray-700">
+            <div data-order="0" className="mb-5 flex items-center justify-between">
+              <h2 id="schedule-modal-title" className="text-lg font-semibold text-slate-950 dark:text-slate-100">Due Date</h2>
+              <button type="button" data-focusable data-tab-consume data-order="0" onClick={onClose} className="rounded p-1 text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-400 dark:hover:bg-slate-700">
                 <X className="size-5" />
               </button>
             </div>
 
-            <div data-order="1">
-              <ScheduleChoices clearDate={state.clearDate} dateValue={state.dateValue} isEmpty={state.isEmpty} setQuickDate={state.setQuickDate} />
+            <div data-order="1" data-layout="vertical">
+              <ScheduleChoices
+                clearDate={state.clearDate}
+                dateValue={state.dateValue}
+                isEmpty={state.isEmpty}
+                setQuickDate={state.setQuickDate}
+              />
               <CustomDateField
                 dateInputRef={dateInputRef}
                 dateState={state.dateState}
@@ -431,7 +454,14 @@ const ScheduleModal: React.FC<ScheduleModalProps> = (props) => {
               />
             </div>
 
-            <ScheduleActions cancelRef={cancelRef} dateState={state.dateState} onClose={onClose} onSave={state.handleSave} saveRef={saveRef} />
+            <ScheduleActions
+              cancelRef={cancelRef}
+              dateState={state.dateState}
+              onClose={onClose}
+              onOpenRecurrence={onOpenRecurrence}
+              onSave={state.handleSave}
+              saveRef={saveRef}
+            />
           </div>
         </div>
       </dialog>

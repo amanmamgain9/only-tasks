@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Calendar,
+  CalendarCheck2,
   CalendarDays,
   ChevronDown,
   CreditCard,
@@ -28,12 +29,14 @@ interface WorkspaceSidebarProps {
 const navItems: Array<{
   href: string;
   label: string;
+  shortLabel?: string;
   icon: ComponentType<{ className?: string }>;
   filter?: DueDateFilter;
 }> = [
   {
     href: "/workspace/all-tasks",
     label: "All Tasks",
+    shortLabel: "Tasks",
     icon: ListTodo,
   },
   {
@@ -51,12 +54,20 @@ const navItems: Array<{
   {
     href: "/workspace/this-week",
     label: "This Week",
+    shortLabel: "Week",
     icon: CalendarDays,
     filter: "this-week",
   },
   {
+    href: "/workspace/day-review",
+    label: "Day Review",
+    shortLabel: "Review",
+    icon: CalendarCheck2,
+  },
+  {
     href: "/workspace/progress",
     label: "Progress",
+    shortLabel: "Stats",
     icon: BarChart3,
   },
 ];
@@ -69,6 +80,9 @@ function isItemActive(pathname: string, href: string) {
   const normalizedPathname = normalizePathname(pathname);
   if (href === "/workspace/all-tasks") {
     return normalizedPathname === "/" || normalizedPathname === "/workspace" || normalizedPathname === "/workspace/all-tasks";
+  }
+  if (href === "/workspace/day-review") {
+    return normalizedPathname === "/workspace/day-review" || normalizedPathname === "/workspace/review" || normalizedPathname === "/review/today";
   }
   return normalizedPathname === href;
 }
@@ -267,7 +281,7 @@ export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSideb
         data-order={regionOrder}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95 lg:hidden"
       >
-        <div data-layout="horizontal" className="grid grid-cols-5 gap-1">
+        <div data-layout="horizontal" className="grid grid-cols-6 gap-1">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isItemActive(pathname, item.href);
@@ -285,7 +299,7 @@ export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSideb
                 }`}
               >
                 <Icon className="size-4 shrink-0" />
-                <span className="w-full truncate text-center leading-none">{item.label}</span>
+                <span className="w-full truncate text-center leading-none">{item.shortLabel ?? item.label}</span>
               </Link>
             );
           })}

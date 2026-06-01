@@ -1,7 +1,13 @@
 import { z } from "zod";
+import { recurrenceScheduleSchema } from "./recurrence";
 
 const taskCategoryAllocationSchema = z.object({
-  category: z.enum(["job", "side_project", "learning", "health", "social", "chore", "hobby"]),
+  category: z.enum(["job", "side_project", "chore", "lifestyle"]),
+  weight: z.number().int().min(1).max(100),
+});
+
+const lifestyleTraitAllocationSchema = z.object({
+  trait: z.enum(["learning", "health", "social", "hobby"]),
   weight: z.number().int().min(1).max(100),
 });
 
@@ -14,7 +20,9 @@ const subtreeNodeSchema: z.ZodSchema<{
   dueDate?: string | null;
   priority?: number | null;
   description?: string | null;
-  categoryAllocations?: Array<{ category: "job" | "side_project" | "learning" | "health" | "social" | "chore" | "hobby"; weight: number }>;
+  categoryAllocations?: Array<{ category: "job" | "side_project" | "chore" | "lifestyle"; weight: number }>;
+  lifestyleTraits?: Array<{ trait: "learning" | "health" | "social" | "hobby"; weight: number }>;
+  systemType?: string | null;
   subtasks?: any[];
 }> = z.lazy(() =>
   z.object({
@@ -27,6 +35,8 @@ const subtreeNodeSchema: z.ZodSchema<{
     priority: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
     categoryAllocations: z.array(taskCategoryAllocationSchema).optional(),
+    lifestyleTraits: z.array(lifestyleTraitAllocationSchema).optional(),
+    systemType: z.string().nullable().optional(),
     subtasks: z.array(subtreeNodeSchema).optional(),
   }),
 );
@@ -52,6 +62,13 @@ const operationSchema = z.discriminatedUnion("type", [
     priority: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
     categoryAllocations: z.array(taskCategoryAllocationSchema).optional(),
+    lifestyleTraits: z.array(lifestyleTraitAllocationSchema).optional(),
+    timestamp: z.number(),
+  }),
+  z.object({
+    type: z.literal("SET_RECURRENCE"),
+    clientId: z.string(),
+    recurrence: recurrenceScheduleSchema,
     timestamp: z.number(),
   }),
   z.object({
@@ -70,6 +87,8 @@ const operationSchema = z.discriminatedUnion("type", [
         estimatedTimeMinutes: z.number().nullable().optional(),
         priority: z.number().nullable().optional(),
         categoryAllocations: z.array(taskCategoryAllocationSchema).optional(),
+        lifestyleTraits: z.array(lifestyleTraitAllocationSchema).optional(),
+        systemType: z.string().nullable().optional(),
       })
       .optional(),
     timestamp: z.number(),

@@ -64,7 +64,7 @@ export async function ensureDefaultWorkspace(userId: number): Promise<void> {
   if (existingProjects.length === 0) {
     await projectRepo.createProject({
       userId,
-      title: "Inbox",
+      title: "Workspace",
       type: "main",
       status: "active",
       targetDate: null,

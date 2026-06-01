@@ -73,6 +73,14 @@ export function initializeDatabase(sqlite: Database.Database) {
       estimated_time_minutes INTEGER,
       completed_at TEXT,
       category_allocations TEXT,
+      lifestyle_traits TEXT,
+      system_type TEXT,
+      recurrence_series_id INTEGER,
+      recurrence_role TEXT,
+      recurrence_template_task_id INTEGER,
+      recurrence_occurrence_date TEXT,
+      recurrence_status TEXT,
+      recurrence_is_override INTEGER NOT NULL DEFAULT 0,
       client_id TEXT,
       position TEXT NOT NULL DEFAULT 'a0',
       deleted INTEGER NOT NULL DEFAULT 0,
@@ -84,6 +92,20 @@ export function initializeDatabase(sqlite: Database.Database) {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (parent_task_id) REFERENCES pmwd_tasks(id) ON DELETE CASCADE,
       FOREIGN KEY (project_id) REFERENCES pmwd_projects(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS pmwd_task_recurrence_series (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      template_task_id INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      rule TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (template_task_id) REFERENCES pmwd_tasks(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -245,5 +267,31 @@ export function initializeDatabase(sqlite: Database.Database) {
   ensureColumn(sqlite, "users", "is_admin", "is_admin INTEGER NOT NULL DEFAULT 0");
   ensureColumn(sqlite, "pmwd_tasks", "completed_at", "completed_at TEXT");
   ensureColumn(sqlite, "pmwd_tasks", "category_allocations", "category_allocations TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "lifestyle_traits", "lifestyle_traits TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "system_type", "system_type TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "recurrence_series_id", "recurrence_series_id INTEGER");
+  ensureColumn(sqlite, "pmwd_tasks", "recurrence_role", "recurrence_role TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "recurrence_template_task_id", "recurrence_template_task_id INTEGER");
+  ensureColumn(sqlite, "pmwd_tasks", "recurrence_occurrence_date", "recurrence_occurrence_date TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "recurrence_status", "recurrence_status TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "recurrence_is_override", "recurrence_is_override INTEGER NOT NULL DEFAULT 0");
   ensureColumn(sqlite, "subscriptions", "paddle_updated_at", "paddle_updated_at TEXT");
+
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_task_recurrence_series_active_template_unique
+    ON pmwd_task_recurrence_series(user_id, template_task_id)
+    WHERE status = 'active';
+
+    CREATE INDEX IF NOT EXISTS pmwd_task_recurrence_series_user_status_idx
+    ON pmwd_task_recurrence_series(user_id, status);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_tasks_recurrence_template_date_unique
+    ON pmwd_tasks(user_id, recurrence_template_task_id, recurrence_occurrence_date)
+    WHERE recurrence_template_task_id IS NOT NULL
+      AND recurrence_occurrence_date IS NOT NULL
+      AND deleted = 0;
+
+    CREATE INDEX IF NOT EXISTS pmwd_tasks_recurrence_series_idx
+    ON pmwd_tasks(user_id, recurrence_series_id, recurrence_occurrence_date);
+  `);
 }

@@ -2,7 +2,7 @@
 import { Project } from '../../../types';
 import { TreeNode, VisibleNode, EnhancedTaskTreeType } from './types';
 import { INITIAL_POSITION } from './positionUtils';
-import { normalizeTaskCategoryAllocations } from '@/features/categories/taskCategories';
+import { normalizeLifestyleTraitAllocations, normalizeTaskCategoryAllocations } from '@/features/categories/taskCategories';
 
 // ========================================================================
 // HELPER FUNCTIONS
@@ -126,6 +126,14 @@ const taskToTreeNode = (
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
     categoryAllocations: normalizeTaskCategoryAllocations(task.categoryAllocations, { projectType }),
+    lifestyleTraits: normalizeLifestyleTraitAllocations(task.lifestyleTraits),
+    systemType: task.systemType ?? null,
+    recurrenceSeriesId: task.recurrenceSeriesId ?? null,
+    recurrenceRole: task.recurrenceRole ?? null,
+    recurrenceTemplateTaskId: task.recurrenceTemplateTaskId ?? null,
+    recurrenceOccurrenceDate: task.recurrenceOccurrenceDate ?? null,
+    recurrenceStatus: task.recurrenceStatus ?? null,
+    recurrenceIsOverride: task.recurrenceIsOverride ?? null,
     position: task.position,
     children: children.length > 0 ? children : undefined,
     taskId: task.id,

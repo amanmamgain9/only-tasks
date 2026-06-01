@@ -2,6 +2,7 @@
 
 import Database from "better-sqlite3";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,6 +127,8 @@ function ensureSchema(sqlite) {
       estimated_time_minutes INTEGER,
       completed_at TEXT,
       category_allocations TEXT,
+      lifestyle_traits TEXT,
+      system_type TEXT,
       client_id TEXT,
       position TEXT NOT NULL DEFAULT 'a0',
       deleted INTEGER NOT NULL DEFAULT 0,
@@ -212,6 +215,8 @@ function ensureSchema(sqlite) {
 
   ensureColumn(sqlite, "pmwd_tasks", "completed_at", "completed_at TEXT");
   ensureColumn(sqlite, "pmwd_tasks", "category_allocations", "category_allocations TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "lifestyle_traits", "lifestyle_traits TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "system_type", "system_type TEXT");
 }
 
 const sqlite = new Database(dbPath);
@@ -286,10 +291,12 @@ const run = sqlite.transaction(() => {
   const launchProjectId = insertProject.run(user.id, "Launch", "main", now, now).lastInsertRowid;
   const contentProjectId = insertProject.run(user.id, "Content", "side_project", now, now).lastInsertRowid;
   const adminProjectId = insertProject.run(user.id, "Admin", "chore", now, now).lastInsertRowid;
+  const lifestyleProjectId = insertProject.run(user.id, "Lifestyle", "main", now, now).lastInsertRowid;
   const categoryDefaultsByProject = new Map([
     [launchProjectId, [{ category: "side_project", weight: 80 }, { category: "learning", weight: 20 }]],
     [contentProjectId, [{ category: "side_project", weight: 60 }, { category: "learning", weight: 25 }, { category: "hobby", weight: 15 }]],
     [adminProjectId, [{ category: "chore", weight: 100 }]],
+    [lifestyleProjectId, [{ category: "health", weight: 50 }, { category: "social", weight: 30 }, { category: "hobby", weight: 20 }]],
   ]);
 
   function categoryJson(projectId, categoryAllocations = null) {
@@ -299,9 +306,9 @@ const run = sqlite.transaction(() => {
   const insertTask = sqlite.prepare(`
     INSERT INTO pmwd_tasks (
       user_id, title, description, parent_task_id, project_id, path, due_date, is_completed, priority,
-      estimated_time_minutes, completed_at, category_allocations, client_id, position, deleted, archived, draft, draft_chat_id, created_at, updated_at
+      estimated_time_minutes, completed_at, category_allocations, lifestyle_traits, system_type, client_id, position, deleted, archived, draft, draft_chat_id, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, NULL, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 0, 0, 0, NULL, ?, ?)
   `);
 
   function task({
@@ -541,6 +548,33 @@ const run = sqlite.transaction(() => {
     position: "a1",
   });
 
+  task({
+    title: "Padel with friends",
+    projectId: lifestyleProjectId,
+    dueDate: isoDate(0),
+    priority: 3,
+    minutes: 60,
+    position: "a0",
+    categoryAllocations: [
+      { category: "health", weight: 45 },
+      { category: "social", weight: 35 },
+      { category: "hobby", weight: 20 },
+    ],
+  });
+
+  task({
+    title: "Read product psychology notes",
+    projectId: lifestyleProjectId,
+    dueDate: isoDate(2),
+    priority: 3,
+    minutes: 35,
+    position: "a1",
+    categoryAllocations: [
+      { category: "learning", weight: 75 },
+      { category: "hobby", weight: 25 },
+    ],
+  });
+
   const historicalTasks = [
     {
       title: "Define progress dashboard metrics",
@@ -651,11 +685,24 @@ const run = sqlite.transaction(() => {
       launch: launchProjectId,
       content: contentProjectId,
       admin: adminProjectId,
+      lifestyle: lifestyleProjectId,
     },
   };
 });
 
 const result = run();
+const migrationResult = JSON.parse(execFileSync(
+  process.execPath,
+  [path.join(projectRoot, "scripts/migrate-category-root-tree.mjs")],
+  {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      PMWD_CATEGORY_TREE_USERS: email,
+    },
+    encoding: "utf8",
+  },
+));
 await mkdir(scriptDir, { recursive: true });
 await writeFile(authOut, `${JSON.stringify(result, null, 2)}\n`);
 
@@ -664,5 +711,6 @@ console.log(JSON.stringify({
   auth: path.relative(projectRoot, authOut),
   email: result.email,
   userId: result.userId,
+  workspaceProjectId: migrationResult.users?.[0]?.workspaceProjectId,
   projects: result.projects,
 }, null, 2));
