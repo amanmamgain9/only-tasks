@@ -125,6 +125,8 @@ const taskToTreeNode = (
     originalId: task.id,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    originalDueDate: task.originalDueDate ?? null,
+    rolloverHistory: task.rolloverHistory ?? null,
     categoryAllocations: normalizeTaskCategoryAllocations(task.categoryAllocations, { projectType }),
     lifestyleTraits: normalizeLifestyleTraitAllocations(task.lifestyleTraits),
     systemType: task.systemType ?? null,
@@ -144,7 +146,8 @@ const taskToTreeNode = (
 export const computeVisibleNodes = (
   treeNodes: TreeNode[], 
   tasks: EnhancedTaskTreeType[],
-  depth = 0
+  depth = 0,
+  parentPath: string[] = []
 ): VisibleNode[] => {
   const visible: VisibleNode[] = [];
 
@@ -152,7 +155,7 @@ export const computeVisibleNodes = (
     const visibleNode: VisibleNode = {
       ...node,
       depth,
-      parentPath: [],
+      parentPath,
       hasChildren: node.nodeType === 'task' && hasActualChildren(node.id, tasks),
       isExpanded: node.isExpanded || false
     };
@@ -161,7 +164,7 @@ export const computeVisibleNodes = (
 
     // If expanded and has children, recursively add them
     if (node.isExpanded && node.children) {
-      const childVisible = computeVisibleNodes(node.children, tasks, depth + 1);
+      const childVisible = computeVisibleNodes(node.children, tasks, depth + 1, [...parentPath, node.id]);
       visible.push(...childVisible);
     }
   });

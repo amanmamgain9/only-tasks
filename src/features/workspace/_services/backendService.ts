@@ -108,6 +108,7 @@ export const getProjectTree = async (
   params?: {
     dueDate?: "today" | "tomorrow" | "this-week";
     chatId?: number;
+    timeZone?: string;
   },
 ): Promise<ApiResponse<EnhancedTaskTreeType[]> | null> => {
   try {
@@ -115,6 +116,9 @@ export const getProjectTree = async (
     searchParams.append("projectId", projectId.toString());
     if (params?.chatId) {
       searchParams.append("chatId", params.chatId.toString());
+    }
+    if (params?.timeZone) {
+      searchParams.append("timeZone", params.timeZone);
     }
 
     const url = params?.dueDate

@@ -68,6 +68,8 @@ export function initializeDatabase(sqlite: Database.Database) {
       project_id INTEGER,
       path TEXT NOT NULL DEFAULT '/',
       due_date TEXT,
+      original_due_date TEXT,
+      rollover_history TEXT,
       is_completed INTEGER NOT NULL DEFAULT 0,
       priority INTEGER,
       estimated_time_minutes INTEGER,
@@ -266,6 +268,8 @@ export function initializeDatabase(sqlite: Database.Database) {
   ensureColumn(sqlite, "users", "last_login_at", "last_login_at TEXT");
   ensureColumn(sqlite, "users", "is_admin", "is_admin INTEGER NOT NULL DEFAULT 0");
   ensureColumn(sqlite, "pmwd_tasks", "completed_at", "completed_at TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "original_due_date", "original_due_date TEXT");
+  ensureColumn(sqlite, "pmwd_tasks", "rollover_history", "rollover_history TEXT");
   ensureColumn(sqlite, "pmwd_tasks", "category_allocations", "category_allocations TEXT");
   ensureColumn(sqlite, "pmwd_tasks", "lifestyle_traits", "lifestyle_traits TEXT");
   ensureColumn(sqlite, "pmwd_tasks", "system_type", "system_type TEXT");

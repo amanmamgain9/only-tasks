@@ -115,6 +115,8 @@ export interface TreeNode {
   
   estimatedTimeMinutes?: number | null;
   dueDate?: string | null;
+  originalDueDate?: string | null;
+  rolloverHistory?: string | null;
   categoryAllocations?: TaskCategoryAllocation[];
   lifestyleTraits?: LifestyleTraitAllocation[];
   systemType?: string | null;

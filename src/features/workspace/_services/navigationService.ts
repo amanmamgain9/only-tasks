@@ -20,9 +20,15 @@ export type FocusPath = {
   path: number[];
 };
 
-type FocusSelector = {
+export type FocusSelector = {
   regionId?: string;
   selector: string;
+};
+
+export type PopScopeOptions = {
+  restorePrevious?: boolean;
+  fallbackSelectors?: FocusSelector[];
+  waitForMutation?: boolean;
 };
 
 const scopeStack: FocusScope[] = [];
@@ -31,7 +37,7 @@ let focusListener: ((e: FocusEvent) => void) | null = null;
 let keydownHandler: ((e: KeyboardEvent) => void) | null = null;
 let mutationObserver: MutationObserver | null = null;
 let pendingFocusPath: FocusPath | null = null;
-let pendingFocusSelector: FocusSelector | null = null;
+let pendingFocusSelectors: FocusSelector[] | null = null;
 
 export const NavigationService = {
   init(rootElement: HTMLElement) {
@@ -76,7 +82,7 @@ export const NavigationService = {
     }
   },
 
-  popScope() {
+  popScope(options?: PopScopeOptions) {
     if (!currentScope) return;
 
     this._cleanupObserver();
@@ -84,12 +90,24 @@ export const NavigationService = {
     if (scopeStack.length > 0) {
       const restoredScope = scopeStack.pop()!;
       const elementToFocus = restoredScope.lastFocused;
+      const fallbackSelectors = options?.fallbackSelectors?.filter(Boolean) ?? [];
 
       currentScope = restoredScope;
       this._setupObserver(currentScope.root);
 
-      if (elementToFocus && document.contains(elementToFocus)) {
+      if (options?.restorePrevious !== false && elementToFocus && document.contains(elementToFocus)) {
         elementToFocus.focus();
+        return;
+      }
+
+      const fallback = this._findFirstBySelector(fallbackSelectors);
+      if (fallback) {
+        fallback.focus();
+        return;
+      }
+
+      if (options?.waitForMutation && fallbackSelectors.length > 0) {
+        pendingFocusSelectors = fallbackSelectors;
       }
     } else {
       currentScope = null;
@@ -129,11 +147,11 @@ export const NavigationService = {
         }
       }
 
-      if (pendingFocusSelector) {
-        const selectorToResolve = pendingFocusSelector;
-        pendingFocusSelector = null;
+      if (pendingFocusSelectors) {
+        const selectorsToResolve = pendingFocusSelectors;
+        pendingFocusSelectors = null;
 
-        const element = this._findBySelector(selectorToResolve);
+        const element = this._findFirstBySelector(selectorsToResolve);
         if (element) {
           element.focus();
         }
@@ -149,7 +167,7 @@ export const NavigationService = {
       mutationObserver = null;
     }
     pendingFocusPath = null;
-    pendingFocusSelector = null;
+    pendingFocusSelectors = null;
   },
 
   getCurrentRegion(element: HTMLElement | null): HTMLElement | null {
@@ -301,7 +319,7 @@ export const NavigationService = {
     if (!this.getCurrentRoot()) return;
 
     if (waitForMutation) {
-      pendingFocusSelector = target;
+      pendingFocusSelectors = [target];
     } else {
       const element = this._findBySelector(target);
       if (element) {
@@ -360,5 +378,13 @@ export const NavigationService = {
     if (!searchRoot) return null;
 
     return searchRoot.querySelector(target.selector) as HTMLElement | null;
+  },
+
+  _findFirstBySelector(targets: FocusSelector[]): HTMLElement | null {
+    for (const target of targets) {
+      const element = this._findBySelector(target);
+      if (element) return element;
+    }
+    return null;
   },
 };

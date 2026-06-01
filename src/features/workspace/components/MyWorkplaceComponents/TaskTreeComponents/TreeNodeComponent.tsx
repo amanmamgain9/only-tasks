@@ -57,6 +57,27 @@ const LIFESTYLE_TRAIT_CHIP_CLASSES: Record<LifestyleTraitId, string> = {
   hobby: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-200',
 };
 
+function getDateKey(value: string | null | undefined) {
+  return value?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
+}
+
+function formatDateKeyLabel(dateKey: string) {
+  const [, month, day] = dateKey.split('-');
+  const label = new Date(`${dateKey}T00:00:00.000Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+  return label || `${month}/${day}`;
+}
+
+function getRolloverLabel(node: VisibleNode) {
+  const currentDate = getDateKey(node.dueDate);
+  const originalDate = getDateKey(node.originalDueDate);
+  if (!currentDate || !originalDate || currentDate === originalDate) return null;
+  return `Rolled from ${formatDateKeyLabel(originalDate)}`;
+}
+
 const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   node,
   nodeIndex,
@@ -109,6 +130,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   const lifestyleSummary = lifestyleTraits
     .map((allocation) => `${getLifestyleTraitLabel(allocation.trait)} ${allocation.weight}%`)
     .join(' / ');
+  const rolloverLabel = getRolloverLabel(node);
 
   const openMenu = useCallback(() => {
     const rect = menuButtonRef.current?.getBoundingClientRect();
@@ -383,6 +405,11 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
                 >
                   <Calendar className="size-4" />
                 </button>
+              )}
+              {rolloverLabel && (
+                <div className="ml-1 mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  {rolloverLabel}
+                </div>
               )}
             </>
           )}

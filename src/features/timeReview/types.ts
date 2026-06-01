@@ -24,6 +24,21 @@ export type TimeReviewTask = {
   reviewStatus: "draft" | "confirmed";
 };
 
+export type TimeReviewPlannedTask = {
+  taskId: number;
+  title: string;
+  projectId: number | null;
+  projectTitle: string | null;
+  dueDate: string;
+  originalDueDate?: string | null;
+  rolloverHistory?: string | null;
+  isCompleted: boolean;
+  completedAt: string | null;
+  estimatedTimeMinutes: number | null;
+  categoryAllocations: TaskCategoryAllocation[];
+  lifestyleTraits: LifestyleTraitAllocation[];
+};
+
 export type TimeReviewEntryInput = {
   taskId: number;
   durationMinutes: number;
@@ -40,6 +55,7 @@ export type TimeReviewSummary = {
   reviewWindow: ReviewWindow;
   phase: ReviewPhase;
   settings: TimeReviewSettings;
+  plannedTasks: TimeReviewPlannedTask[];
   tasks: TimeReviewTask[];
   totals: {
     completedTasks: number;

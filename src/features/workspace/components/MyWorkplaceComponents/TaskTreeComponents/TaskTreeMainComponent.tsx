@@ -17,12 +17,19 @@ import {
   computeVisibleNodes,
   findTaskByClientId,
 } from './treeAdapter';
-import { NavigationService } from '../../../_services/navigationService';
+import { NavigationService, type PopScopeOptions } from '../../../_services/navigationService';
 
 interface Props {
   project: Project;
   dueDateFilter?: 'today' | 'tomorrow' | 'this-week';
   chatId?: number;
+}
+
+function getBrowserDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function getRootNode(projectData: Project, tasks: any[], currentRootTaskId: string | null) {
@@ -50,9 +57,34 @@ function getRootNode(projectData: Project, tasks: any[], currentRootTaskId: stri
     originalId: task.id,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    originalDueDate: task.originalDueDate,
+    rolloverHistory: task.rolloverHistory,
     lifestyleTraits: task.lifestyleTraits,
     systemType: task.systemType,
   };
+}
+
+function getDeleteFocusTargetIds(visibleNodes: VisibleNode[], deletedIndex: number): string[] {
+  const deletedNode = visibleNodes[deletedIndex];
+  if (!deletedNode) return visibleNodes[0]?.id ? [visibleNodes[0].id] : [];
+  const targets: string[] = [];
+  const addTarget = (id: string | undefined) => {
+    if (id && id !== deletedNode.id && !targets.includes(id)) targets.push(id);
+  };
+
+  let nextIndex = deletedIndex + 1;
+  while (visibleNodes[nextIndex] && visibleNodes[nextIndex].depth > deletedNode.depth) {
+    nextIndex += 1;
+  }
+
+  addTarget(visibleNodes[nextIndex]?.id);
+  addTarget(visibleNodes[deletedIndex - 1]?.id);
+  [...deletedNode.parentPath].reverse().forEach((parentId) => {
+    if (visibleNodes.some((node) => node.id === parentId)) addTarget(parentId);
+  });
+  addTarget(visibleNodes.find((node) => node.isEphemeral)?.id);
+
+  return targets;
 }
 
 function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
@@ -60,6 +92,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   const [deleteConfirm, setDeleteConfirm] = useState<{ node: VisibleNode; nodeIndex: number } | null>(null);
   const [scheduleNode, setScheduleNode] = useState<VisibleNode | null>(null);
   const [recurrenceNode, setRecurrenceNode] = useState<VisibleNode | null>(null);
+  const deleteRestoreOptionsRef = useRef<PopScopeOptions | undefined>(undefined);
   const useStore = useMemo(() => createEditorStore(project, dueDateFilter, chatId), [project, dueDateFilter, chatId]);
 
   const loadProjectTree = useStore((state) => state.loadProjectTree);
@@ -82,6 +115,28 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   useEffect(() => {
     loadProjectTree();
   }, [loadProjectTree]);
+
+  useEffect(() => {
+    if (!dueDateFilter || typeof window === 'undefined') return;
+
+    let loadedDateKey = getBrowserDateKey();
+    const refreshIfDateChanged = () => {
+      const currentDateKey = getBrowserDateKey();
+      if (currentDateKey === loadedDateKey) return;
+      loadedDateKey = currentDateKey;
+      void loadProjectTree();
+    };
+
+    const intervalId = window.setInterval(refreshIfDateChanged, 60_000);
+    window.addEventListener('focus', refreshIfDateChanged);
+    document.addEventListener('visibilitychange', refreshIfDateChanged);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshIfDateChanged);
+      document.removeEventListener('visibilitychange', refreshIfDateChanged);
+    };
+  }, [dueDateFilter, loadProjectTree]);
 
   const treeNodes = useMemo(
     () => computeTreeNodes(tasks, expandedTasks, projectData, currentRootTaskId),
@@ -162,23 +217,42 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   const handleDeleteRequest = useCallback((nodeIndex: number) => {
     const node = visibleNodes[nodeIndex];
     if (node?.systemType === 'category_root') return;
-    if (node) setDeleteConfirm({ node, nodeIndex });
+    if (node) {
+      deleteRestoreOptionsRef.current = undefined;
+      setDeleteConfirm({ node, nodeIndex });
+    }
   }, [visibleNodes]);
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteConfirm) return;
+    const fallbackSelectors = getDeleteFocusTargetIds(visibleNodes, deleteConfirm.nodeIndex).map((nodeId) => ({
+      regionId: 'workspace-region',
+      selector: `[data-node-id="${escapeAttributeValue(nodeId)}"] [data-entrypoint-focus]`,
+    }));
+    fallbackSelectors.push({
+      regionId: 'workspace-region',
+      selector: '[data-node-id] [data-entrypoint-focus]',
+    });
+
+    deleteRestoreOptionsRef.current = {
+      restorePrevious: false,
+      fallbackSelectors,
+      waitForMutation: true,
+    };
     deleteNodeAction({ clientId: deleteConfirm.node.id });
     setDeleteConfirm(null);
-    focusNodeAction(0, 3);
-  }, [deleteConfirm, deleteNodeAction, focusNodeAction]);
+  }, [deleteConfirm, deleteNodeAction, escapeAttributeValue, visibleNodes]);
 
   const handleCancelDelete = useCallback(() => {
-    if (deleteConfirm) {
-      const nodeIndex = visibleNodes.findIndex((node) => node.id === deleteConfirm.node.id);
-      if (nodeIndex >= 0) focusNodeAction(nodeIndex, 3, false);
-    }
+    deleteRestoreOptionsRef.current = undefined;
     setDeleteConfirm(null);
-  }, [deleteConfirm, focusNodeAction, visibleNodes]);
+  }, []);
+
+  const getDeleteRestoreFocusOptions = useCallback(() => {
+    const options = deleteRestoreOptionsRef.current;
+    deleteRestoreOptionsRef.current = undefined;
+    return options;
+  }, []);
 
   const handleAddChild = useCallback((parentNodeIndex: number) => {
     const parentNode = visibleNodes[parentNodeIndex];
@@ -240,6 +314,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     handleCommitTasks,
     handleConfirmDelete,
     handleDeleteRequest,
+    getDeleteRestoreFocusOptions,
     handleMakeRoot,
     handleNavigateToBreadcrumb,
     handleOpenRecurrenceFromSchedule,
@@ -362,6 +437,7 @@ function TreeMainModals({ controller }: { controller: ReturnType<typeof useTreeM
           cancelText="Cancel"
           onConfirm={controller.handleConfirmDelete}
           onCancel={controller.handleCancelDelete}
+          getRestoreFocusOptions={controller.getDeleteRestoreFocusOptions}
         />
       )}
 

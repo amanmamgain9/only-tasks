@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import MyWorkplaceComponent from "./MyWorkplaceComponents/MyWorkplaceComponent";
 import ProgressWorkspaceComponent from "./ProgressComponents/ProgressWorkspaceComponent";
+import DayRecapWorkspaceComponent from "./ReviewComponents/DayRecapWorkspaceComponent";
 import ReviewWorkspaceComponent from "./ReviewComponents/ReviewWorkspaceComponent";
 import { NavigationService } from "../_services/navigationService";
 import { TASK_OPERATIONS_SAVED_EVENT, type TaskOperationsSavedDetail } from "../_events/taskOperationEvents";
@@ -80,6 +81,8 @@ export default function WorkspaceApp({ viewer }: WorkspaceAppProps) {
           <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" viewer={viewer} />} />
           <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" viewer={viewer} />} />
           <Route path="/workspace/day-review" element={<ReviewWorkspaceComponent regionOrder={1} viewer={viewer} />} />
+          <Route path="/workspace/day-recap" element={<DayRecapWorkspaceComponent regionOrder={1} viewer={viewer} />} />
+          <Route path="/workspace/day-review/complete" element={<DayRecapWorkspaceComponent regionOrder={1} viewer={viewer} />} />
           <Route path="/workspace/review" element={<ReviewWorkspaceComponent regionOrder={1} viewer={viewer} />} />
           <Route path="/review/today" element={<ReviewWorkspaceComponent regionOrder={1} viewer={viewer} />} />
           <Route path="/workspace/progress" element={<ProgressWorkspaceComponent regionOrder={1} viewer={viewer} />} />
