@@ -575,11 +575,13 @@ export default function TimeReviewPanel({
   leadingContent = null,
   initialExpanded = false,
   pageMode = false,
+  onSaved,
 }: {
   embedded?: boolean;
   leadingContent?: React.ReactNode;
   initialExpanded?: boolean;
   pageMode?: boolean;
+  onSaved?: (summary: TimeReviewSummary) => void;
 }) {
   const [timeZone] = useState(getBrowserTimeZone);
   const reviewQuery = useTodayTimeReview(timeZone);
@@ -639,6 +641,12 @@ export default function TimeReviewPanel({
         startMinute: entry.startMinute,
         endMinute: entry.endMinute,
       })),
+    }, {
+      onSuccess: (response) => {
+        if (response.success && response.data) {
+          onSaved?.(response.data);
+        }
+      },
     });
   };
 

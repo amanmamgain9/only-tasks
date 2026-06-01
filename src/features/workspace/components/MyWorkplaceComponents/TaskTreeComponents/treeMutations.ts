@@ -250,6 +250,8 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
         if (operation.metadata) {
           if (operation.metadata.dueDate !== undefined) {
             task.dueDate = operation.metadata.dueDate;
+            task.originalDueDate = operation.metadata.dueDate;
+            task.rolloverHistory = null;
           }
           if (operation.metadata.estimatedTimeMinutes !== undefined) {
             task.estimatedTimeMinutes = operation.metadata.estimatedTimeMinutes;
@@ -284,6 +286,8 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
           isEphemeral: false,
           // Apply metadata if provided
           dueDate: operation.metadata?.dueDate ?? null,
+          originalDueDate: operation.metadata?.dueDate ?? null,
+          rolloverHistory: null,
           estimatedTimeMinutes: operation.metadata?.estimatedTimeMinutes ?? null,
           priority: operation.metadata?.priority ?? null,
           categoryAllocations: normalizeTaskCategoryAllocations(operation.metadata?.categoryAllocations, {
@@ -330,6 +334,8 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
         }
         if ('dueDate' in operation) {
           task.dueDate = operation.dueDate ?? null;
+          task.originalDueDate = operation.dueDate ?? null;
+          task.rolloverHistory = null;
         }
         if ('priority' in operation) {
           task.priority = operation.priority ?? null;

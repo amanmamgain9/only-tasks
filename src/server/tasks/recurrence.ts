@@ -58,6 +58,8 @@ type TaskRow = {
   project_id: number | null;
   path: string;
   due_date: string | null;
+  original_due_date: string | null;
+  rollover_history: string | null;
   is_completed: number;
   priority: number | null;
   estimated_time_minutes: number | null;
@@ -299,6 +301,8 @@ function markSubtreeAsTemplate(input: {
            recurrence_status = NULL,
            recurrence_is_override = 0,
            due_date = NULL,
+           original_due_date = NULL,
+           rollover_history = NULL,
            is_completed = 0,
            completed_at = NULL,
            updated_at = @now
@@ -469,6 +473,8 @@ function syncOccurrenceFromTemplate(input: {
            project_id = @projectId,
            path = @path,
            due_date = @dueDate,
+           original_due_date = @dueDate,
+           rollover_history = NULL,
            priority = @priority,
            estimated_time_minutes = @estimatedTimeMinutes,
            category_allocations = @categoryAllocations,
@@ -526,6 +532,8 @@ function createOccurrenceFromTemplate(input: {
         project_id,
         path,
         due_date,
+        original_due_date,
+        rollover_history,
         is_completed,
         priority,
         estimated_time_minutes,
@@ -556,6 +564,8 @@ function createOccurrenceFromTemplate(input: {
         @projectId,
         @path,
         @dueDate,
+        @dueDate,
+        NULL,
         0,
         @priority,
         @estimatedTimeMinutes,

@@ -111,9 +111,12 @@ async function handleUpdateMetadata(
     updates.lifestyleTraits = serializeLifestyleTraitsForWrite(operation.lifestyleTraits);
   }
   if (operation.dueDate !== undefined) {
-    updates.dueDate = task.recurrenceRole === "template"
+    const nextDueDate = task.recurrenceRole === "template"
       ? null
       : operation.dueDate === null ? null : convertLocalDateToUTC(operation.dueDate);
+    updates.dueDate = nextDueDate;
+    updates.originalDueDate = nextDueDate;
+    updates.rolloverHistory = null;
   }
 
   await taskRepo.updateTask(task.id, updates);
@@ -166,6 +169,7 @@ async function handleCreateTask(
   const timestampISO = new Date(operation.timestamp).toISOString();
   const projectType = await getProjectType(projectId, userId);
   const recurrenceMetadata = getRecurrenceMetadataForNewChild(parentTask);
+  const dueDate = operation.metadata?.dueDate ? convertLocalDateToUTC(operation.metadata.dueDate) : null;
 
   await taskRepo.createTask({
     userId,
@@ -177,7 +181,9 @@ async function handleCreateTask(
     position: operation.position,
     isCompleted: 0,
     completedAt: null,
-    dueDate: operation.metadata?.dueDate ? convertLocalDateToUTC(operation.metadata.dueDate) : null,
+    dueDate,
+    originalDueDate: dueDate,
+    rolloverHistory: null,
     estimatedTimeMinutes: operation.metadata?.estimatedTimeMinutes ?? null,
     priority: operation.metadata?.priority ?? null,
     categoryAllocations: serializeCategoryAllocationsForWrite(operation.metadata?.categoryAllocations, projectType),
@@ -213,6 +219,7 @@ async function createSubtree(
   const path = parentTask ? `${parentTask.path}${parentTask.id}/` : "/";
   const timestampISO = new Date(timestamp).toISOString();
   const projectType = await getProjectType(projectId, userId);
+  const dueDate = node.dueDate ? convertLocalDateToUTC(node.dueDate) : null;
 
   let position = node.position;
   if (!position) {
@@ -231,7 +238,9 @@ async function createSubtree(
     isCompleted: node.isCompleted ? 1 : 0,
     completedAt: node.isCompleted ? timestampISO : null,
     estimatedTimeMinutes: node.estimatedTimeMinutes ?? null,
-    dueDate: node.dueDate ? convertLocalDateToUTC(node.dueDate) : null,
+    dueDate,
+    originalDueDate: dueDate,
+    rolloverHistory: null,
     priority: node.priority ?? null,
     categoryAllocations: serializeCategoryAllocationsForWrite(node.categoryAllocations, projectType),
     lifestyleTraits: serializeLifestyleTraitsForWrite(node.lifestyleTraits),

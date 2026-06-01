@@ -45,6 +45,8 @@ export interface Task {
   parentTaskId: number | null;
   projectId: number | null;
   dueDate: string | null;
+  originalDueDate?: string | null;
+  rolloverHistory?: string | null;
   isCompleted: boolean;
   priority: number | null;
   estimatedTimeMinutes: number | null;

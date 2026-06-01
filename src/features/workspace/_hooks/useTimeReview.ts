@@ -21,7 +21,11 @@ export function useSaveTodayTimeReview() {
 
   return useMutation<ApiResponse<TimeReviewSummary>, Error, SaveTimeReviewInput>({
     mutationFn: saveTodayTimeReview,
-    onSuccess: (_data, input) => {
+    onSuccess: (data, input) => {
+      if (data?.success && data.data) {
+        queryClient.setQueryData([...timeReviewKey, input.timeZone], data);
+      }
+
       startTransition(() => {
         queryClient.invalidateQueries({ queryKey: [...timeReviewKey, input.timeZone] });
         queryClient.invalidateQueries({ queryKey: progressSummaryKey });

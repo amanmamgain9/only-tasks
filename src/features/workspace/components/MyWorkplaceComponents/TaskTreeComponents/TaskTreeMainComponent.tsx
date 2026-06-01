@@ -25,6 +25,13 @@ interface Props {
   chatId?: number;
 }
 
+function getBrowserDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getRootNode(projectData: Project, tasks: any[], currentRootTaskId: string | null) {
   if (currentRootTaskId === null) {
     return {
@@ -50,6 +57,8 @@ function getRootNode(projectData: Project, tasks: any[], currentRootTaskId: stri
     originalId: task.id,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    originalDueDate: task.originalDueDate,
+    rolloverHistory: task.rolloverHistory,
     lifestyleTraits: task.lifestyleTraits,
     systemType: task.systemType,
   };
@@ -106,6 +115,28 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   useEffect(() => {
     loadProjectTree();
   }, [loadProjectTree]);
+
+  useEffect(() => {
+    if (!dueDateFilter || typeof window === 'undefined') return;
+
+    let loadedDateKey = getBrowserDateKey();
+    const refreshIfDateChanged = () => {
+      const currentDateKey = getBrowserDateKey();
+      if (currentDateKey === loadedDateKey) return;
+      loadedDateKey = currentDateKey;
+      void loadProjectTree();
+    };
+
+    const intervalId = window.setInterval(refreshIfDateChanged, 60_000);
+    window.addEventListener('focus', refreshIfDateChanged);
+    document.addEventListener('visibilitychange', refreshIfDateChanged);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshIfDateChanged);
+      document.removeEventListener('visibilitychange', refreshIfDateChanged);
+    };
+  }, [dueDateFilter, loadProjectTree]);
 
   const treeNodes = useMemo(
     () => computeTreeNodes(tasks, expandedTasks, projectData, currentRootTaskId),

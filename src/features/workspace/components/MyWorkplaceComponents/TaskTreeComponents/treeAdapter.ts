@@ -125,6 +125,8 @@ const taskToTreeNode = (
     originalId: task.id,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    originalDueDate: task.originalDueDate ?? null,
+    rolloverHistory: task.rolloverHistory ?? null,
     categoryAllocations: normalizeTaskCategoryAllocations(task.categoryAllocations, { projectType }),
     lifestyleTraits: normalizeLifestyleTraitAllocations(task.lifestyleTraits),
     systemType: task.systemType ?? null,

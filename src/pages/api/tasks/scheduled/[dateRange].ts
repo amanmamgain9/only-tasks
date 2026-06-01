@@ -13,6 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const dateRange = typeof req.query.dateRange === "string" ? req.query.dateRange : null;
   const projectId = typeof req.query.projectId === "string" ? Number(req.query.projectId) : undefined;
+  const timeZone = typeof req.query.timeZone === "string" ? req.query.timeZone : undefined;
 
   if (!dateRange || !["today", "tomorrow", "this-week"].includes(dateRange)) {
     res.status(400).json({ success: false, error: "Invalid dateRange value" });
@@ -24,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const tasks = await getScheduledTasks(userId, {
       dateRange: dateRange as "today" | "tomorrow" | "this-week",
       projectId: Number.isFinite(projectId) ? projectId : undefined,
+      timeZone,
     });
     res.status(200).json({ success: true, data: tasks });
   } catch (error) {

@@ -288,19 +288,35 @@ const run = sqlite.transaction(() => {
     VALUES (?, ?, ?, 'active', NULL, 0, NULL, NULL, ?, ?)
   `);
 
-  const launchProjectId = insertProject.run(user.id, "Launch", "main", now, now).lastInsertRowid;
+  const mainWorkProjectId = insertProject.run(user.id, "Client Work", "main", now, now).lastInsertRowid;
+  const launchProjectId = insertProject.run(user.id, "Launch", "side_project", now, now).lastInsertRowid;
   const contentProjectId = insertProject.run(user.id, "Content", "side_project", now, now).lastInsertRowid;
   const adminProjectId = insertProject.run(user.id, "Admin", "chore", now, now).lastInsertRowid;
   const lifestyleProjectId = insertProject.run(user.id, "Lifestyle", "main", now, now).lastInsertRowid;
   const categoryDefaultsByProject = new Map([
-    [launchProjectId, [{ category: "side_project", weight: 80 }, { category: "learning", weight: 20 }]],
-    [contentProjectId, [{ category: "side_project", weight: 60 }, { category: "learning", weight: 25 }, { category: "hobby", weight: 15 }]],
+    [mainWorkProjectId, [{ category: "job", weight: 100 }]],
+    [launchProjectId, [{ category: "side_project", weight: 100 }]],
+    [contentProjectId, [{ category: "side_project", weight: 70 }, { category: "lifestyle", weight: 30 }]],
     [adminProjectId, [{ category: "chore", weight: 100 }]],
-    [lifestyleProjectId, [{ category: "health", weight: 50 }, { category: "social", weight: 30 }, { category: "hobby", weight: 20 }]],
+    [lifestyleProjectId, [{ category: "lifestyle", weight: 100 }]],
+  ]);
+  const lifestyleDefaultsByProject = new Map([
+    [contentProjectId, [{ trait: "learning", weight: 70 }, { trait: "hobby", weight: 30 }]],
+    [lifestyleProjectId, [{ trait: "health", weight: 45 }, { trait: "social", weight: 30 }, { trait: "hobby", weight: 25 }]],
   ]);
 
+  function categoryAllocationsFor(projectId, categoryAllocations = null) {
+    return categoryAllocations || categoryDefaultsByProject.get(projectId) || [{ category: "job", weight: 100 }];
+  }
+
   function categoryJson(projectId, categoryAllocations = null) {
-    return JSON.stringify(categoryAllocations || categoryDefaultsByProject.get(projectId) || [{ category: "job", weight: 100 }]);
+    return JSON.stringify(categoryAllocationsFor(projectId, categoryAllocations));
+  }
+
+  function lifestyleTraitJson(projectId, categoryAllocations = null, lifestyleTraits = null) {
+    const categories = categoryAllocationsFor(projectId, categoryAllocations);
+    if (!categories.some((allocation) => allocation.category === "lifestyle")) return null;
+    return JSON.stringify(lifestyleTraits || lifestyleDefaultsByProject.get(projectId) || [{ trait: "learning", weight: 100 }]);
   }
 
   const insertTask = sqlite.prepare(`
@@ -308,7 +324,7 @@ const run = sqlite.transaction(() => {
       user_id, title, description, parent_task_id, project_id, path, due_date, is_completed, priority,
       estimated_time_minutes, completed_at, category_allocations, lifestyle_traits, system_type, client_id, position, deleted, archived, draft, draft_chat_id, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, 0, 0, 0, NULL, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, 0, 0, NULL, ?, ?)
   `);
 
   function task({
@@ -326,6 +342,7 @@ const run = sqlite.transaction(() => {
     createdAt = null,
     updatedAt = null,
     categoryAllocations = null,
+    lifestyleTraits = null,
   }) {
     const finalCompletedAt = done ? (completedAt || now) : null;
     const finalCreatedAt = createdAt || finalCompletedAt || now;
@@ -344,6 +361,7 @@ const run = sqlite.transaction(() => {
       minutes,
       finalCompletedAt,
       categoryJson(projectId, categoryAllocations),
+      lifestyleTraitJson(projectId, categoryAllocations, lifestyleTraits),
       randomUUID(),
       position,
       finalCreatedAt,
@@ -426,6 +444,27 @@ const run = sqlite.transaction(() => {
       endedAt,
     );
   }
+
+  const clientPromptId = task({
+    title: "Update client prompts",
+    description: "Make the prompt set clearer before the next client review.",
+    projectId: mainWorkProjectId,
+    dueDate: isoDate(0),
+    done: true,
+    priority: 1,
+    minutes: 90,
+    position: "a0",
+    completedAt: isoAt(0, 3, 30),
+  });
+
+  task({
+    title: "Review contract notes",
+    projectId: mainWorkProjectId,
+    dueDate: isoDate(0),
+    priority: 2,
+    minutes: 35,
+    position: "a1",
+  });
 
   const cleanCopyId = task({
     title: "Clean public feature copy",
@@ -530,13 +569,24 @@ const run = sqlite.transaction(() => {
     position: "a1",
   });
 
+  const gstFilingId = task({
+    title: "GST filing",
+    projectId: adminProjectId,
+    dueDate: isoDate(0),
+    done: true,
+    priority: 1,
+    minutes: 45,
+    position: "a0",
+    completedAt: isoAt(0, 5, 35),
+  });
+
   task({
     title: "Check production deployment",
     projectId: adminProjectId,
     dueDate: isoDate(0),
     priority: 1,
     minutes: 20,
-    position: "a0",
+    position: "a1",
   });
 
   task({
@@ -545,7 +595,23 @@ const run = sqlite.transaction(() => {
     dueDate: isoDate(1),
     priority: 2,
     minutes: 30,
-    position: "a1",
+    position: "a2",
+  });
+
+  const morningMovementId = task({
+    title: "Morning mobility and padel drills",
+    projectId: lifestyleProjectId,
+    dueDate: isoDate(0),
+    done: true,
+    priority: 2,
+    minutes: 50,
+    position: "a0",
+    completedAt: isoAt(0, 2, 45),
+    lifestyleTraits: [
+      { trait: "health", weight: 65 },
+      { trait: "hobby", weight: 25 },
+      { trait: "social", weight: 10 },
+    ],
   });
 
   task({
@@ -554,11 +620,11 @@ const run = sqlite.transaction(() => {
     dueDate: isoDate(0),
     priority: 3,
     minutes: 60,
-    position: "a0",
-    categoryAllocations: [
-      { category: "health", weight: 45 },
-      { category: "social", weight: 35 },
-      { category: "hobby", weight: 20 },
+    position: "a1",
+    lifestyleTraits: [
+      { trait: "health", weight: 45 },
+      { trait: "social", weight: 35 },
+      { trait: "hobby", weight: 20 },
     ],
   });
 
@@ -568,14 +634,23 @@ const run = sqlite.transaction(() => {
     dueDate: isoDate(2),
     priority: 3,
     minutes: 35,
-    position: "a1",
-    categoryAllocations: [
-      { category: "learning", weight: 75 },
-      { category: "hobby", weight: 25 },
+    position: "a2",
+    lifestyleTraits: [
+      { trait: "learning", weight: 75 },
+      { trait: "hobby", weight: 25 },
     ],
   });
 
-  const historicalTasks = [
+  const historicalTaskSpecs = [
+    {
+      title: "Ship client prompt refresh",
+      projectId: mainWorkProjectId,
+      dueDate: isoDate(-6),
+      completedAt: isoAt(-6, 4, 55),
+      priority: 1,
+      minutes: 85,
+      position: "a2",
+    },
     {
       title: "Define progress dashboard metrics",
       projectId: launchProjectId,
@@ -631,6 +706,20 @@ const run = sqlite.transaction(() => {
       position: "a2",
     },
     {
+      title: "Dance class with friends",
+      projectId: lifestyleProjectId,
+      dueDate: isoDate(-1),
+      completedAt: isoAt(-1, 13, 10),
+      priority: 3,
+      minutes: 55,
+      position: "a3",
+      lifestyleTraits: [
+        { trait: "health", weight: 45 },
+        { trait: "social", weight: 35 },
+        { trait: "hobby", weight: 20 },
+      ],
+    },
+    {
       title: "Verify weekly progress totals",
       projectId: launchProjectId,
       dueDate: isoDate(0),
@@ -639,7 +728,12 @@ const run = sqlite.transaction(() => {
       minutes: 25,
       position: "a7",
     },
-  ].map((item) => task({ ...item, done: true, createdAt: isoAt(item.dueDate === isoDate(0) ? 0 : -8, 3, 0) }));
+  ];
+  const historicalTasks = historicalTaskSpecs.map((item) => ({
+    ...item,
+    id: task({ ...item, done: true, createdAt: isoAt(item.dueDate === isoDate(0) ? 0 : -8, 3, 0) }),
+  }));
+  const historicalTaskIdByTitle = new Map(historicalTasks.map((item) => [item.title, item.id]));
 
   task({
     title: "Add progress view to homepage demo",
@@ -650,21 +744,26 @@ const run = sqlite.transaction(() => {
     position: "a6",
   });
 
-  timerSession({ taskId: historicalTasks[0], projectId: launchProjectId, offsetDays: -6, hour: 6, minute: 20, sessionNumber: 1 });
-  timerSession({ taskId: historicalTasks[1], projectId: launchProjectId, offsetDays: -5, hour: 8, minute: 30, sessionNumber: 2 });
-  timerSession({ taskId: historicalTasks[1], projectId: launchProjectId, offsetDays: -5, hour: 9, minute: 10, sessionNumber: 3 });
-  timerSession({ taskId: historicalTasks[2], projectId: contentProjectId, offsetDays: -4, hour: 6, minute: 0, sessionNumber: 4 });
-  timerSession({ taskId: historicalTasks[3], projectId: launchProjectId, offsetDays: -3, hour: 9, minute: 20, sessionNumber: 5 });
-  timerSession({ taskId: historicalTasks[3], projectId: launchProjectId, offsetDays: -3, hour: 10, minute: 5, sessionNumber: 6 });
-  timerSession({ taskId: historicalTasks[3], projectId: launchProjectId, offsetDays: -3, hour: 10, minute: 45, sessionNumber: 7 });
-  timerSession({ taskId: historicalTasks[4], projectId: contentProjectId, offsetDays: -2, hour: 7, minute: 45, sessionNumber: 8 });
-  timerSession({ taskId: historicalTasks[5], projectId: adminProjectId, offsetDays: -1, hour: 11, minute: 20, sessionNumber: 9 });
-  timerSession({ taskId: historicalTasks[5], projectId: adminProjectId, offsetDays: -1, hour: 12, minute: 5, sessionNumber: 10, state: "skipped", actualMinutes: 14 });
-  timerSession({ taskId: cleanCopyId, projectId: launchProjectId, offsetDays: 0, hour: 4, minute: 45, sessionNumber: 11 });
-  timerSession({ taskId: historicalTasks[6], projectId: launchProjectId, offsetDays: 0, hour: 6, minute: 10, sessionNumber: 12 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Ship client prompt refresh"), projectId: mainWorkProjectId, offsetDays: -6, hour: 5, minute: 0, durationMinutes: 50, sessionNumber: 1 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Define progress dashboard metrics"), projectId: launchProjectId, offsetDays: -6, hour: 6, minute: 20, sessionNumber: 2 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Fix keyboard route focus regression"), projectId: launchProjectId, offsetDays: -5, hour: 8, minute: 30, sessionNumber: 3 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Fix keyboard route focus regression"), projectId: launchProjectId, offsetDays: -5, hour: 9, minute: 10, sessionNumber: 4 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Draft progress marketing notes"), projectId: contentProjectId, offsetDays: -4, hour: 6, minute: 0, sessionNumber: 5 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Review mobile sidebar spacing"), projectId: launchProjectId, offsetDays: -3, hour: 9, minute: 20, sessionNumber: 6 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Review mobile sidebar spacing"), projectId: launchProjectId, offsetDays: -3, hour: 10, minute: 5, sessionNumber: 7 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Review mobile sidebar spacing"), projectId: launchProjectId, offsetDays: -3, hour: 10, minute: 45, sessionNumber: 8 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Publish timer focus notes"), projectId: contentProjectId, offsetDays: -2, hour: 7, minute: 45, sessionNumber: 9 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Prepare review account data"), projectId: adminProjectId, offsetDays: -1, hour: 11, minute: 20, sessionNumber: 10 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Dance class with friends"), projectId: lifestyleProjectId, offsetDays: -1, hour: 13, minute: 20, durationMinutes: 45, sessionNumber: 11 });
+  timerSession({ taskId: clientPromptId, projectId: mainWorkProjectId, offsetDays: 0, hour: 3, minute: 35, durationMinutes: 50, sessionNumber: 12 });
+  timerSession({ taskId: cleanCopyId, projectId: launchProjectId, offsetDays: 0, hour: 4, minute: 45, sessionNumber: 13 });
+  timerSession({ taskId: historicalTaskIdByTitle.get("Verify weekly progress totals"), projectId: launchProjectId, offsetDays: 0, hour: 6, minute: 10, sessionNumber: 14 });
 
+  timeReview({ taskId: clientPromptId, projectId: mainWorkProjectId, offsetDays: 0, durationMinutes: 95, startMinute: 8 * 60, reviewWindow: "same_workday_midday" });
   timeReview({ taskId: cleanCopyId, projectId: launchProjectId, offsetDays: 0, durationMinutes: 35, startMinute: 9 * 60, reviewWindow: "same_workday_midday" });
-  timeReview({ taskId: historicalTasks[6], projectId: launchProjectId, offsetDays: 0, durationMinutes: 25, startMinute: 10 * 60, reviewWindow: "same_workday_midday" });
+  timeReview({ taskId: historicalTaskIdByTitle.get("Verify weekly progress totals"), projectId: launchProjectId, offsetDays: 0, durationMinutes: 25, startMinute: 10 * 60, reviewWindow: "same_workday_midday" });
+  timeReview({ taskId: gstFilingId, projectId: adminProjectId, offsetDays: 0, durationMinutes: 40, startMinute: 11 * 60, reviewWindow: "same_workday_midday" });
+  timeReview({ taskId: morningMovementId, projectId: lifestyleProjectId, offsetDays: 0, durationMinutes: 45, startMinute: 7 * 60, reviewWindow: "same_workday_midday" });
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
@@ -682,6 +781,7 @@ const run = sqlite.transaction(() => {
     token,
     expiresAt,
     projects: {
+      mainWork: mainWorkProjectId,
       launch: launchProjectId,
       content: contentProjectId,
       admin: adminProjectId,

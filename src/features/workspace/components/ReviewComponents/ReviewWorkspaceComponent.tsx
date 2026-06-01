@@ -2,7 +2,7 @@
 
 import React, { Suspense } from "react";
 import { ArrowLeft, CalendarCheck2, CheckCircle2, Clock3, ListChecks } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { AuthenticatedUser } from "@/server/auth";
 import WorkspaceSidebar from "../WorkspaceSidebar";
 import TimeReviewPanel from "../TimeReviewComponents/TimeReviewPanel";
@@ -51,6 +51,7 @@ function ReviewSkeleton() {
 
 function ReviewView() {
   const timeZone = getBrowserTimeZone();
+  const navigate = useNavigate();
   const reviewQuery = useTodayTimeReview(timeZone);
   const summary = reviewQuery.data?.success ? reviewQuery.data.data ?? null : null;
   const remainingTasks = summary
@@ -109,7 +110,7 @@ function ReviewView() {
         </div>
       </div>
 
-      <TimeReviewPanel initialExpanded pageMode />
+      <TimeReviewPanel initialExpanded pageMode onSaved={() => navigate("/workspace/day-recap")} />
     </div>
   );
 }

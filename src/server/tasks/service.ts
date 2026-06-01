@@ -9,6 +9,9 @@ import {
   type TaskCategoryId,
 } from "@/features/categories/taskCategories";
 import { materializeRecurringTasksForDateRange } from "./recurrence";
+import { formatLocalDateKey, normalizeTimeZone } from "../progress/timezone";
+import { getScheduledDateRange, type ScheduledDateRange } from "./scheduledDateRange";
+import { appendRolloverHistory, dateKeyToDueDate, dueDateToDateKey } from "./rolloverMetadata";
 
 const CATEGORY_ROOT_SYSTEM_TYPE = "category_root";
 
@@ -19,46 +22,52 @@ function convertLocalDateToUTC(localDateStr: string): string {
   return new Date(`${localDateStr}T00:00:00.000Z`).toISOString();
 }
 
-function calculateUTCDateRange(dateRange: "today" | "tomorrow" | "this-week") {
-  const now = new Date();
-  const start = new Date(now);
-  start.setUTCHours(0, 0, 0, 0);
+function getCurrentLocalDateKey(input: { now?: Date; timeZone?: string | null }) {
+  return formatLocalDateKey(input.now ?? new Date(), normalizeTimeZone(input.timeZone));
+}
 
-  switch (dateRange) {
-    case "today": {
-      const end = new Date(start);
-      end.setUTCDate(end.getUTCDate() + 1);
-      return {
-        dueDateStart: start.toISOString(),
-        dueDateEnd: end.toISOString(),
-        startDate: start.toISOString().slice(0, 10),
-        endDateExclusive: end.toISOString().slice(0, 10),
-      };
-    }
-    case "tomorrow": {
-      const tomorrow = new Date(start);
-      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-      const end = new Date(tomorrow);
-      end.setUTCDate(end.getUTCDate() + 1);
-      return {
-        dueDateStart: tomorrow.toISOString(),
-        dueDateEnd: end.toISOString(),
-        startDate: tomorrow.toISOString().slice(0, 10),
-        endDateExclusive: end.toISOString().slice(0, 10),
-      };
-    }
-    case "this-week": {
-      const dayOfWeek = start.getUTCDay();
-      const end = new Date(start);
-      end.setUTCDate(end.getUTCDate() + (7 - dayOfWeek));
-      return {
-        dueDateStart: start.toISOString(),
-        dueDateEnd: end.toISOString(),
-        startDate: start.toISOString().slice(0, 10),
-        endDateExclusive: end.toISOString().slice(0, 10),
-      };
-    }
-  }
+function shouldRolloverTask(task: Awaited<ReturnType<typeof taskRepo.findTasksByUserId>>[number]) {
+  if (task.isCompleted === 1) return false;
+  if (task.deleted === 1 || task.archived === 1 || task.draft === 1) return false;
+  if (task.systemType === CATEGORY_ROOT_SYSTEM_TYPE) return false;
+  if (task.recurrenceRole) return false;
+  return Boolean(task.dueDate);
+}
+
+async function rolloverPastOpenScheduledTasks(input: {
+  userId: number;
+  projectId?: number;
+  todayDate: string;
+}) {
+  const todayDueDate = dateKeyToDueDate(input.todayDate);
+  const now = new Date().toISOString();
+  const staleTasks = await taskRepo.findTasksByUserId(input.userId, {
+    projectId: input.projectId,
+    dueDateEnd: todayDueDate,
+    includeCompleted: false,
+    includeDeleted: false,
+    includeArchived: false,
+    draft: 0,
+  });
+
+  await Promise.all(
+    staleTasks
+      .filter(shouldRolloverTask)
+      .map((task) => {
+        const fromDate = dueDateToDateKey(task.dueDate);
+        return taskRepo.updateTask(task.id, {
+          dueDate: todayDueDate,
+          originalDueDate: task.originalDueDate ?? task.dueDate,
+          rolloverHistory: appendRolloverHistory({
+            existingHistory: task.rolloverHistory,
+            fromDate,
+            toDate: input.todayDate,
+            at: now,
+          }),
+          updatedAt: now,
+        });
+      }),
+  );
 }
 
 export async function getUserTasks(
@@ -114,6 +123,8 @@ export async function ensureCategoryRootTasks(userId: number, projectId: number)
           isCompleted: 0,
           completedAt: null,
           dueDate: null,
+          originalDueDate: null,
+          rolloverHistory: null,
           systemType: CATEGORY_ROOT_SYSTEM_TYPE,
           categoryAllocations: serializeTaskCategoryAllocations([{ category: definition.category, weight: 100 }]),
           lifestyleTraits: null,
@@ -132,6 +143,8 @@ export async function ensureCategoryRootTasks(userId: number, projectId: number)
       projectId,
       path: "/",
       dueDate: null,
+      originalDueDate: null,
+      rolloverHistory: null,
       isCompleted: 0,
       priority: null,
       estimatedTimeMinutes: null,
@@ -173,14 +186,29 @@ export async function getProjectTree(userId: number, projectId: number): Promise
 export async function getScheduledTasks(
   userId: number,
   options: {
-    dateRange: "today" | "tomorrow" | "this-week";
+    dateRange: ScheduledDateRange;
     projectId?: number;
+    timeZone?: string | null;
+    now?: Date;
   },
 ): Promise<TaskTreeNode[]> {
   const categoryRoots = options.projectId
     ? await ensureCategoryRootTasks(userId, options.projectId)
     : [];
-  const { dueDateStart, dueDateEnd, startDate, endDateExclusive } = calculateUTCDateRange(options.dateRange);
+  const todayDate = getCurrentLocalDateKey({
+    now: options.now,
+    timeZone: options.timeZone,
+  });
+  await rolloverPastOpenScheduledTasks({
+    userId,
+    projectId: options.projectId,
+    todayDate,
+  });
+
+  const { dueDateStart, dueDateEnd, startDate, endDateExclusive } = getScheduledDateRange(
+    options.dateRange,
+    todayDate,
+  );
   await materializeRecurringTasksForDateRange({
     userId,
     projectId: options.projectId,

@@ -4,9 +4,12 @@ import {
   normalizeTaskCategoryAllocations,
   type ProjectCategorySeed,
 } from "@/features/categories/taskCategories";
+import { addDaysToDateKey } from "@/server/progress/timezone";
+import { materializeRecurringTasksForDateRangeInDatabase } from "@/server/tasks/recurrence";
 import type {
   SaveTimeReviewInput,
   TimeReviewEntryInput,
+  TimeReviewPlannedTask,
   TimeReviewSettings,
   TimeReviewSummary,
   TimeReviewTask,
@@ -38,6 +41,22 @@ type CompletedTaskRow = {
   startMinute: number | null;
   endMinute: number | null;
   reviewStatus: "draft" | "confirmed" | null;
+};
+
+type PlannedTaskRow = {
+  taskId: number;
+  title: string;
+  projectId: number | null;
+  projectTitle: string | null;
+  projectType: string | null;
+  dueDate: string;
+  originalDueDate: string | null;
+  rolloverHistory: string | null;
+  isCompleted: number;
+  completedAt: string | null;
+  estimatedTimeMinutes: number | null;
+  categoryAllocations: string | null;
+  lifestyleTraits: string | null;
 };
 
 const getSettingsQuery = sqlite.prepare(`
@@ -90,6 +109,37 @@ const completedTasksQuery = sqlite.prepare(`
     AND COALESCE(task.completed_at, task.updated_at) >= @startUtc
     AND COALESCE(task.completed_at, task.updated_at) < @endUtc
   ORDER BY COALESCE(task.completed_at, task.updated_at) ASC, task.position ASC
+`);
+
+const plannedTasksQuery = sqlite.prepare(`
+  SELECT
+    task.id AS taskId,
+    task.title AS title,
+    task.project_id AS projectId,
+    project.title AS projectTitle,
+    project.type AS projectType,
+    task.due_date AS dueDate,
+    task.original_due_date AS originalDueDate,
+    task.rollover_history AS rolloverHistory,
+    task.is_completed AS isCompleted,
+    task.completed_at AS completedAt,
+    task.estimated_time_minutes AS estimatedTimeMinutes,
+    task.category_allocations AS categoryAllocations,
+    task.lifestyle_traits AS lifestyleTraits
+  FROM pmwd_tasks task
+  LEFT JOIN pmwd_projects project ON project.id = task.project_id
+  WHERE task.user_id = @userId
+    AND task.due_date IS NOT NULL
+    AND task.deleted = 0
+    AND task.archived = 0
+    AND task.draft = 0
+    AND (
+      substr(task.due_date, 1, 10) = @workdayDate
+      OR substr(COALESCE(task.original_due_date, task.due_date), 1, 10) = @workdayDate
+      OR task.rollover_history LIKE '%"from":"' || @workdayDate || '"%'
+      OR task.rollover_history LIKE '%"to":"' || @workdayDate || '"%'
+    )
+  ORDER BY task.is_completed ASC, task.priority ASC, task.position ASC
 `);
 
 const getTaskForUserQuery = sqlite.prepare(`
@@ -184,12 +234,24 @@ function buildSummary(input: {
     rolloverTime: input.settings.workdayRolloverTime,
   });
 
+  materializeRecurringTasksForDateRangeInDatabase({
+    db: sqlite,
+    userId: input.userId,
+    startDate: window.workdayDate,
+    endDateExclusive: addDaysToDateKey(window.workdayDate, 1),
+  });
+
   const rows = completedTasksQuery.all({
     userId: input.userId,
     workdayDate: window.workdayDate,
     startUtc: window.startUtc,
     endUtc: window.endUtc,
   }) as CompletedTaskRow[];
+
+  const plannedRows = plannedTasksQuery.all({
+    userId: input.userId,
+    workdayDate: window.workdayDate,
+  }) as PlannedTaskRow[];
 
   const tasks: TimeReviewTask[] = rows.map((row) => ({
     taskId: row.taskId,
@@ -206,6 +268,23 @@ function buildSummary(input: {
     startMinute: row.startMinute,
     endMinute: row.endMinute,
     reviewStatus: row.reviewStatus ?? "draft",
+  }));
+
+  const plannedTasks: TimeReviewPlannedTask[] = plannedRows.map((row) => ({
+    taskId: row.taskId,
+    title: row.title,
+    projectId: row.projectId,
+    projectTitle: row.projectTitle,
+    dueDate: row.dueDate,
+    originalDueDate: row.originalDueDate,
+    rolloverHistory: row.rolloverHistory,
+    isCompleted: row.isCompleted === 1,
+    completedAt: row.completedAt,
+    estimatedTimeMinutes: row.estimatedTimeMinutes,
+    categoryAllocations: normalizeTaskCategoryAllocations(row.categoryAllocations, {
+      projectType: getProjectType(row.projectType),
+    }),
+    lifestyleTraits: normalizeLifestyleTraitAllocations(row.lifestyleTraits),
   }));
 
   const reviewedTasks = tasks.filter((task) => task.durationMinutes > 0).length;
@@ -228,6 +307,7 @@ function buildSummary(input: {
       middayReviewTime: input.settings.middayReviewTime,
     }),
     settings: input.settings,
+    plannedTasks,
     tasks,
     totals: {
       completedTasks: tasks.length,

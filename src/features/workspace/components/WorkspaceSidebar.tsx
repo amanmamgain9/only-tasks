@@ -82,7 +82,11 @@ function isItemActive(pathname: string, href: string) {
     return normalizedPathname === "/" || normalizedPathname === "/workspace" || normalizedPathname === "/workspace/all-tasks";
   }
   if (href === "/workspace/day-review") {
-    return normalizedPathname === "/workspace/day-review" || normalizedPathname === "/workspace/review" || normalizedPathname === "/review/today";
+    return normalizedPathname === "/workspace/day-review" ||
+      normalizedPathname === "/workspace/day-recap" ||
+      normalizedPathname === "/workspace/day-review/complete" ||
+      normalizedPathname === "/workspace/review" ||
+      normalizedPathname === "/review/today";
   }
   return normalizedPathname === href;
 }

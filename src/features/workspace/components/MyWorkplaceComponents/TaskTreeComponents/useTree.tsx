@@ -138,6 +138,14 @@ type Store = {
 let saveTimer: NodeJS.Timeout | null = null;
 const SAVE_DELAY = 1500;
 
+function getBrowserTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 // ✅ UPDATED: Accept chatId parameter
 export const createEditorStore = (
   project: Project,
@@ -176,7 +184,10 @@ export const createEditorStore = (
 
         try {
           const params: any = {};
-          if (dueDateFilter) params.dueDate = dueDateFilter;
+          if (dueDateFilter) {
+            params.dueDate = dueDateFilter;
+            params.timeZone = getBrowserTimeZone();
+          }
           if (chatId) params.chatId = chatId; // ✅ NEW
 
           const response = await getProjectTree(get().editor.project.id, params);
