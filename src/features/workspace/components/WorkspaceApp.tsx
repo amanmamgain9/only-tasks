@@ -1,11 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import MyWorkplaceComponent from "./MyWorkplaceComponents/MyWorkplaceComponent";
 import ProgressWorkspaceComponent from "./ProgressComponents/ProgressWorkspaceComponent";
 import ReviewWorkspaceComponent from "./ReviewComponents/ReviewWorkspaceComponent";
 import { NavigationService } from "../_services/navigationService";
+import { TASK_OPERATIONS_SAVED_EVENT, type TaskOperationsSavedDetail } from "../_events/taskOperationEvents";
+import { progressSummaryKey } from "../_hooks/useProgressSummary";
+import { timeReviewKey } from "../_hooks/useTimeReview";
 import type { AuthenticatedUser } from "@/server/auth";
 
 function WorkspaceShellFallback() {
@@ -25,6 +29,7 @@ type WorkspaceAppProps = {
 };
 
 export default function WorkspaceApp({ viewer }: WorkspaceAppProps) {
+  const queryClient = useQueryClient();
   const [isClient, setIsClient] = useState(false);
   const [scopeElement, setScopeElement] = useState<HTMLDivElement | null>(null);
 
@@ -40,6 +45,21 @@ export default function WorkspaceApp({ viewer }: WorkspaceAppProps) {
       NavigationService.cleanup();
     };
   }, [scopeElement]);
+
+  useEffect(() => {
+    const handleTaskOperationsSaved = (event: Event) => {
+      const detail = (event as CustomEvent<TaskOperationsSavedDetail>).detail;
+      if (!detail?.operationTypes?.length) return;
+
+      void queryClient.invalidateQueries({ queryKey: timeReviewKey });
+      void queryClient.invalidateQueries({ queryKey: progressSummaryKey });
+    };
+
+    window.addEventListener(TASK_OPERATIONS_SAVED_EVENT, handleTaskOperationsSaved);
+    return () => {
+      window.removeEventListener(TASK_OPERATIONS_SAVED_EVENT, handleTaskOperationsSaved);
+    };
+  }, [queryClient]);
 
   const handleScopeRef = useCallback((element: HTMLDivElement | null) => {
     setScopeElement(element);

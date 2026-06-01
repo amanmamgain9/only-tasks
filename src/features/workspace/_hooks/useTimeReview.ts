@@ -13,6 +13,8 @@ export function useTodayTimeReview(timeZone: string) {
   return useQuery<ApiResponse<TimeReviewSummary> | null>({
     queryKey: [...timeReviewKey, timeZone],
     queryFn: () => getTodayTimeReview(timeZone),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

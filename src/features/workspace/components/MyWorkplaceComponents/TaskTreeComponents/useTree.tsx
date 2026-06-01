@@ -19,6 +19,7 @@ import {
   getProjectTree,
   applyOperationBatch
 } from "../../../_services/backendService";
+import { emitTaskOperationsSaved } from "../../../_events/taskOperationEvents";
 import {
   normalizeLifestyleTraitAllocations,
   normalizeTaskCategoryAllocations,
@@ -138,6 +139,24 @@ type Store = {
 let saveTimer: NodeJS.Timeout | null = null;
 const SAVE_DELAY = 1500;
 
+function getSaveDelay(operations: Operation[]) {
+  return operations.some((operation) => operation.type === "TOGGLE_COMPLETE") ? 0 : SAVE_DELAY;
+}
+
+function clearSaveTimer() {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+}
+
+function scheduleBackendSave(save: () => Promise<void>, operations: Operation[]) {
+  clearSaveTimer();
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    void save();
+  }, getSaveDelay(operations));
+}
+
 // ✅ UPDATED: Accept chatId parameter
 export const createEditorStore = (
   project: Project,
@@ -240,8 +259,7 @@ export const createEditorStore = (
         });
 
         if (needsSync) {
-          if (saveTimer) clearTimeout(saveTimer);
-          saveTimer = setTimeout(() => get().saveToBackend(), SAVE_DELAY);
+          scheduleBackendSave(get().saveToBackend, [operation]);
         }
       },
 
@@ -270,8 +288,7 @@ export const createEditorStore = (
         });
 
         if (needsSync) {
-          if (saveTimer) clearTimeout(saveTimer);
-          saveTimer = setTimeout(() => get().saveToBackend(), SAVE_DELAY);
+          scheduleBackendSave(get().saveToBackend, [entry.inverseOperation]);
         }
       },
 
@@ -300,8 +317,7 @@ export const createEditorStore = (
         });
 
         if (needsSync) {
-          if (saveTimer) clearTimeout(saveTimer);
-          saveTimer = setTimeout(() => get().saveToBackend(), SAVE_DELAY);
+          scheduleBackendSave(get().saveToBackend, [entry.operation]);
         }
       },
 
@@ -315,6 +331,7 @@ export const createEditorStore = (
         if (autosave.isSaving || unsavedOperations.length === 0) return;
 
         const operationsToSave = [...unsavedOperations];
+        clearSaveTimer();
 
         set(state => ({
           unsavedOperations: [],
@@ -333,6 +350,12 @@ export const createEditorStore = (
           const response = await applyOperationBatch(batch);
 
           if (response?.success) {
+            emitTaskOperationsSaved({
+              projectId: batch.projectId,
+              chatId: batch.chatId,
+              operationTypes: operationsToSave.map((operation) => operation.type),
+            });
+
             set({
               autosave: {
                 isDirty: get().unsavedOperations.length > 0,
@@ -343,8 +366,7 @@ export const createEditorStore = (
             });
 
             if (get().unsavedOperations.length > 0) {
-              if (saveTimer) clearTimeout(saveTimer);
-              saveTimer = setTimeout(() => get().saveToBackend(), SAVE_DELAY);
+              scheduleBackendSave(get().saveToBackend, get().unsavedOperations);
             }
           } else {
             throw new Error('Operation batch failed');
@@ -387,10 +409,11 @@ export const createEditorStore = (
 
       toggleCompletion: ({ clientId }) => {
         const task = findTaskByClientId(get().editor.tasks, clientId);
-        if (!task?.id || task.isEphemeral) return;
+        if (!task || task.isEphemeral) return;
 
         const operation = createToggleCompletionOp(clientId, !task.isCompleted);
         get().applyOperation(operation, 'toggleCompletion');
+        void get().saveToBackend();
       },
 
       updateTitle: ({ nodeType, title, clientId }) => {
@@ -520,10 +543,7 @@ export const createEditorStore = (
         const task = findTaskByClientId(get().editor.tasks, clientId);
         if (!task?.id || task.isEphemeral) return;
 
-        if (saveTimer) {
-          clearTimeout(saveTimer);
-          saveTimer = null;
-        }
+        clearSaveTimer();
         await get().saveToBackend();
 
         const operation = createSetRecurrenceOp(clientId, recurrence);
