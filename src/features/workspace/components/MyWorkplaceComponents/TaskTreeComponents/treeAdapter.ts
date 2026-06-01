@@ -144,7 +144,8 @@ const taskToTreeNode = (
 export const computeVisibleNodes = (
   treeNodes: TreeNode[], 
   tasks: EnhancedTaskTreeType[],
-  depth = 0
+  depth = 0,
+  parentPath: string[] = []
 ): VisibleNode[] => {
   const visible: VisibleNode[] = [];
 
@@ -152,7 +153,7 @@ export const computeVisibleNodes = (
     const visibleNode: VisibleNode = {
       ...node,
       depth,
-      parentPath: [],
+      parentPath,
       hasChildren: node.nodeType === 'task' && hasActualChildren(node.id, tasks),
       isExpanded: node.isExpanded || false
     };
@@ -161,7 +162,7 @@ export const computeVisibleNodes = (
 
     // If expanded and has children, recursively add them
     if (node.isExpanded && node.children) {
-      const childVisible = computeVisibleNodes(node.children, tasks, depth + 1);
+      const childVisible = computeVisibleNodes(node.children, tasks, depth + 1, [...parentPath, node.id]);
       visible.push(...childVisible);
     }
   });

@@ -387,7 +387,7 @@ export const createEditorStore = (
 
       toggleCompletion: ({ clientId }) => {
         const task = findTaskByClientId(get().editor.tasks, clientId);
-        if (!task?.id || task.isEphemeral) return;
+        if (!task || task.isEphemeral) return;
 
         const operation = createToggleCompletionOp(clientId, !task.isCompleted);
         get().applyOperation(operation, 'toggleCompletion');
