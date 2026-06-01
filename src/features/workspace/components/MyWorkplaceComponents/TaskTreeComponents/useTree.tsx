@@ -10,6 +10,7 @@ import type {
   Project,
   Operation,
   OperationBatch,
+  RecurrenceSchedule,
   SubtreeNode,
   PendingImportTask
 } from "./types";
@@ -18,6 +19,12 @@ import {
   getProjectTree,
   applyOperationBatch
 } from "../../../_services/backendService";
+import {
+  normalizeLifestyleTraitAllocations,
+  normalizeTaskCategoryAllocations,
+  type LifestyleTraitAllocation,
+  type TaskCategoryAllocation,
+} from "@/features/categories/taskCategories";
 
 import {
   type EditorState,
@@ -33,6 +40,7 @@ import {
   createUpdateTitleOp,
   createToggleCompletionOp,
   createDeleteTaskOp,
+  createSetRecurrenceOp,
   createUpdateMetadataOp,
   ensureEmptyNodesEverywhere,
 } from "./treeMutations";
@@ -121,7 +129,10 @@ type Store = {
     dueDate?: string | null;
     priority?: number | null;
     description?: string | null;
+    categoryAllocations?: TaskCategoryAllocation[];
+    lifestyleTraits?: LifestyleTraitAllocation[];
   }) => void;
+  setRecurrence: (params: { clientId: string; recurrence: RecurrenceSchedule }) => Promise<void>;
 };
 
 let saveTimer: NodeJS.Timeout | null = null;
@@ -175,6 +186,11 @@ export const createEditorStore = (
 
             const newEditor = produce(get().editor, draft => {
               draft.tasks = enhancedTasks;
+              draft.expandedTasks = new Set(
+                enhancedTasks
+                  .filter((task) => task.systemType === "category_root")
+                  .map((task) => task.clientId),
+              );
               ensureEmptyNodesEverywhere(draft);
             });
 
@@ -394,9 +410,13 @@ export const createEditorStore = (
           const parent = findParentTask(get().editor.tasks, clientId);
           
           const dueDateFilter = get().editor.dueDateFilter;
-          const initialMetadata = dueDateFilter
-            ? { dueDate: calculateDueDateFromFilter(dueDateFilter) }
-            : undefined;
+          const initialMetadata = {
+            ...(dueDateFilter ? { dueDate: calculateDueDateFromFilter(dueDateFilter) } : {}),
+            categoryAllocations: normalizeTaskCategoryAllocations(task.categoryAllocations, {
+              projectType: get().editor.project.type,
+            }),
+            lifestyleTraits: normalizeLifestyleTraitAllocations(task.lifestyleTraits),
+          };
           
           const createOp = createTaskOp(
             clientId,
@@ -494,6 +514,54 @@ export const createEditorStore = (
 
         const operation = createUpdateMetadataOp(clientId, updates);
         get().applyOperation(operation, 'updateMetadata');
+      },
+
+      setRecurrence: async ({ clientId, recurrence }) => {
+        const task = findTaskByClientId(get().editor.tasks, clientId);
+        if (!task?.id || task.isEphemeral) return;
+
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        await get().saveToBackend();
+
+        const operation = createSetRecurrenceOp(clientId, recurrence);
+        set(state => ({
+          autosave: { ...state.autosave, isSaving: true, saveError: null },
+        }));
+
+        try {
+          const batch: OperationBatch = {
+            operations: [operation],
+            batchId: uuidv4(),
+            projectId: get().editor.project.id,
+            chatId: get().editor.chatId,
+            timestamp: Date.now(),
+          };
+          const response = await applyOperationBatch(batch);
+          if (!response?.success) throw new Error('Set recurrence failed');
+
+          set(state => ({
+            autosave: {
+              ...state.autosave,
+              isDirty: state.unsavedOperations.length > 0,
+              isSaving: false,
+              lastSaveTime: Date.now(),
+              saveError: null,
+            },
+          }));
+          await get().loadProjectTree();
+        } catch (error) {
+          set(state => ({
+            autosave: {
+              ...state.autosave,
+              isDirty: true,
+              isSaving: false,
+              saveError: error instanceof Error ? error.message : 'Set recurrence failed',
+            },
+          }));
+        }
       },
     }))
   );

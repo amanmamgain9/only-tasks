@@ -8,7 +8,7 @@ import { buildMarketingMetadata } from "@/features/marketing/seo";
 export const metadata = buildMarketingMetadata({
   title: "Features | Plan My Workday",
   description:
-    "Discover Plan My Workday features for keyboard-first task management, nested task planning, scheduling views, and focused execution.",
+    "Discover Plan My Workday features for keyboard-first task management, nested task planning, date views, and focused execution.",
   path: "/features",
   keywords: [
     "Plan My Workday features",
@@ -33,7 +33,7 @@ export default function FeaturesPage() {
             Task management as fast as your brain.
           </h1>
           <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600 dark:text-slate-300">
-            Plan My Workday keeps the fast task tree, keyboard movement, date views, and focus flow in one workspace.
+            Plan My Workday keeps the fast task tree, keyboard movement, date views, and focus timer in one workspace.
           </p>
         </section>
 

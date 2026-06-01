@@ -8,7 +8,7 @@ function normalizePaddleEnvironment(value: string | undefined): PaddleEnvironmen
   throw new Error("Invalid Paddle environment. Use 'sandbox' or 'production'.");
 }
 
-export function getPaddleEnvironment(): PaddleEnvironment {
+function getPaddleEnvironment(): PaddleEnvironment {
   return normalizePaddleEnvironment(process.env.PADDLE_ENVIRONMENT ?? process.env.PADDLE_ENV);
 }
 
@@ -48,15 +48,16 @@ function safeCompareHex(left: string, right: string) {
 }
 
 export function verifyPaddleWebhookSignature(rawBody: string, signatureHeader: string, secret: string) {
-  const parts = signatureHeader
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const parts = signatureHeader.split(";").flatMap((part) => {
+    const trimmed = part.trim();
+    return trimmed ? [trimmed] : [];
+  });
   const timestamp = parts.find((part) => part.startsWith("ts="))?.slice(3);
-  const signatures = parts
-    .filter((part) => part.startsWith("h1="))
-    .map((part) => part.slice(3))
-    .filter(Boolean);
+  const signatures = parts.flatMap((part) => {
+    if (!part.startsWith("h1=")) return [];
+    const signature = part.slice(3);
+    return signature ? [signature] : [];
+  });
 
   if (!timestamp || signatures.length === 0 || !/^\d+$/.test(timestamp)) {
     return false;

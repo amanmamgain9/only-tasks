@@ -6,7 +6,6 @@ import {
   archiveProject,
   deleteProject,
   getProjects,
-  restoreProject,
   saveProject,
   unarchiveProject,
 } from "../_services/backendService";
@@ -59,8 +58,4 @@ export function useArchiveProjectMutation() {
 
 export function useUnarchiveProjectMutation() {
   return useProjectLifecycleMutation(unarchiveProject);
-}
-
-export function useRestoreProjectMutation() {
-  return useProjectLifecycleMutation(restoreProject);
 }

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["planmyworkday.dev"],
   serverExternalPackages: ["better-sqlite3"],
   trailingSlash: false,
   skipTrailingSlashRedirect: true,

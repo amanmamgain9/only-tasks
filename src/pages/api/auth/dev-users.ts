@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isDevelopmentAuthEnabled, isGoogleAuthConfigured, listRecentUsers } from "@/server/auth";
+import { isDevelopmentAuthEnabled, isGoogleAuthConfigured, listDevelopmentSignInUsers } from "@/server/auth";
 import { resolveOrigin } from "@/server/api/helpers";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const users = await listRecentUsers(10);
+  const users = await listDevelopmentSignInUsers();
   res.status(200).json({
     success: true,
     data: {

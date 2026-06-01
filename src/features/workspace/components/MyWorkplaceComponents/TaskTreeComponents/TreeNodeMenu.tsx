@@ -33,6 +33,11 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
   const copyMenuItemRef = useRef<HTMLButtonElement>(null);
   const makeRootMenuItemRef = useRef<HTMLButtonElement>(null);
   const deleteMenuItemRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen && menuContainerRef.current) {
@@ -60,13 +65,13 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
         !menuContainerRef.current.contains(e.target as Node) &&
         !menuButtonRef.current?.contains(e.target as Node)
       ) {
-        onClose();
+        onCloseRef.current();
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, onClose, menuButtonRef]);
+  }, [isOpen, menuButtonRef]);
 
   const handleMenuKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -92,7 +97,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
         position: 'fixed',
         top: `${position.top}px`,
         left: `${position.left}px`,
-        zIndex: 9999,
+        zIndex: 50,
       }}
       data-scope
     >
@@ -101,6 +106,7 @@ const TreeNodeMenu: React.FC<TreeNodeMenuProps> = ({
         id="menu-region"
         className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[150px]"
         role="menu"
+        tabIndex={-1}
         onKeyDown={handleMenuKeyDown}
       >
         <div data-layout="vertical">

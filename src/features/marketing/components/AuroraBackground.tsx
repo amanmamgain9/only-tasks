@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface AuroraBackgroundProps {
   squareSize?: number;
@@ -23,60 +23,52 @@ export default function AuroraBackground({
 }: AuroraBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isInView, setIsInView] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const updateTheme = () => {
-      setIsDark(
-        document.documentElement.classList.contains("dark") ||
-          window.matchMedia("(prefers-color-scheme: dark)").matches,
-      );
-    };
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    updateTheme();
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    mediaQuery.addEventListener("change", updateTheme);
-
-    const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-
-    return () => {
-      mediaQuery.removeEventListener("change", updateTheme);
-      observer.disconnect();
-    };
-  }, []);
-
-  const activeColor = isDark ? darkModeColor : lightModeColor;
-
-  const memoizedColor = useMemo(() => {
-    if (typeof window === "undefined") {
-      return "rgba(99, 102, 241,";
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = 1;
-    canvas.height = 1;
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      return "rgba(99, 102, 241,";
-    }
+    if (!ctx) return;
 
-    ctx.fillStyle = activeColor;
-    ctx.fillRect(0, 0, 1, 1);
-    const [r, g, b] = Array.from(ctx.getImageData(0, 0, 1, 1).data);
-    return `rgba(${r}, ${g}, ${b},`;
-  }, [activeColor]);
+    let animationFrameId = 0;
+    let lastTime = 0;
+    let isInView = false;
+    let gridParams: {
+      cols: number;
+      rows: number;
+      squares: Float32Array;
+      dpr: number;
+    };
+    let colorPrefix = "rgba(99, 102, 241,";
 
-  const setupCanvas = useCallback(
-    (canvas: HTMLCanvasElement, width: number, height: number) => {
+    const getColorPrefix = (color: string) => {
+      const scratchCanvas = document.createElement("canvas");
+      scratchCanvas.width = 1;
+      scratchCanvas.height = 1;
+      const scratchContext = scratchCanvas.getContext("2d");
+      if (!scratchContext) return "rgba(99, 102, 241,";
+
+      scratchContext.fillStyle = color;
+      scratchContext.fillRect(0, 0, 1, 1);
+      const [r, g, b] = Array.from(scratchContext.getImageData(0, 0, 1, 1).data);
+      return `rgba(${r}, ${g}, ${b},`;
+    };
+
+    const updateColor = () => {
+      const isDark =
+        document.documentElement.classList.contains("dark") ||
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+      colorPrefix = getColorPrefix(isDark ? darkModeColor : lightModeColor);
+    };
+
+    const setupCanvas = (targetCanvas: HTMLCanvasElement, width: number, height: number) => {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+      targetCanvas.width = width * dpr;
+      targetCanvas.height = height * dpr;
+      targetCanvas.style.width = `${width}px`;
+      targetCanvas.style.height = `${height}px`;
 
       const cols = Math.floor(width / (squareSize + gridGap));
       const rows = Math.floor(height / (squareSize + gridGap));
@@ -87,24 +79,18 @@ export default function AuroraBackground({
       }
 
       return { cols, rows, squares, dpr };
-    },
-    [gridGap, maxOpacity, squareSize],
-  );
+    };
 
-  const updateSquares = useCallback(
-    (squares: Float32Array, deltaTime: number) => {
+    const updateSquares = (squares: Float32Array, deltaTime: number) => {
       for (let i = 0; i < squares.length; i++) {
         if (Math.random() < flickerChance * deltaTime) {
           squares[i] = Math.random() * maxOpacity;
         }
       }
-    },
-    [flickerChance, maxOpacity],
-  );
+    };
 
-  const drawGrid = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
+    const drawGrid = (
+      context: CanvasRenderingContext2D,
       width: number,
       height: number,
       cols: number,
@@ -112,7 +98,7 @@ export default function AuroraBackground({
       squares: Float32Array,
       dpr: number,
     ) => {
-      ctx.clearRect(0, 0, width, height);
+      context.clearRect(0, 0, width, height);
 
       const opacityGroups: Record<string, Array<{ x: number; y: number }>> = {};
       for (let i = 0; i < cols; i++) {
@@ -127,64 +113,70 @@ export default function AuroraBackground({
       }
 
       Object.entries(opacityGroups).forEach(([opacity, positions]) => {
-        ctx.fillStyle = `${memoizedColor}${opacity})`;
+        context.fillStyle = `${colorPrefix}${opacity})`;
         positions.forEach((position) => {
-          ctx.fillRect(position.x, position.y, squareSize * dpr, squareSize * dpr);
+          context.fillRect(position.x, position.y, squareSize * dpr, squareSize * dpr);
         });
       });
-    },
-    [gridGap, memoizedColor, squareSize],
-  );
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animationFrameId = 0;
-    let gridParams: ReturnType<typeof setupCanvas>;
+    };
 
     const updateCanvasSize = () => {
       const nextWidth = container.clientWidth || window.innerWidth;
       const nextHeight = container.clientHeight || window.innerHeight;
-      setCanvasSize({ width: nextWidth, height: nextHeight });
       gridParams = setupCanvas(canvas, nextWidth, nextHeight);
     };
 
-    updateCanvasSize();
+    const stopAnimation = () => {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = 0;
+    };
 
-    let lastTime = 0;
     const animate = (time: number) => {
-      if (!isInView) return;
+      if (!isInView || !gridParams) return;
 
-      const deltaTime = (time - lastTime) / 1000;
+      const deltaTime = lastTime === 0 ? 0 : (time - lastTime) / 1000;
       lastTime = time;
       updateSquares(gridParams.squares, deltaTime);
       drawGrid(ctx, canvas.width, canvas.height, gridParams.cols, gridParams.rows, gridParams.squares, gridParams.dpr);
       animationFrameId = requestAnimationFrame(animate);
     };
 
+    const startAnimation = () => {
+      if (animationFrameId !== 0) return;
+      lastTime = 0;
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    updateColor();
+    updateCanvasSize();
+
     const resizeObserver = new ResizeObserver(updateCanvasSize);
     resizeObserver.observe(container);
 
     const intersectionObserver = new IntersectionObserver(([entry]) => {
-      setIsInView(entry.isIntersecting);
+      isInView = entry.isIntersecting;
+      if (isInView) {
+        startAnimation();
+      } else {
+        stopAnimation();
+      }
     });
     intersectionObserver.observe(canvas);
 
-    if (isInView) {
-      animationFrameId = requestAnimationFrame(animate);
-    }
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", updateColor);
+
+    const themeObserver = new MutationObserver(updateColor);
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      stopAnimation();
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
+      mediaQuery.removeEventListener("change", updateColor);
+      themeObserver.disconnect();
     };
-  }, [drawGrid, isInView, setupCanvas, updateSquares]);
+  }, [darkModeColor, flickerChance, gridGap, lightModeColor, maxOpacity, squareSize]);
 
   return (
     <div
@@ -195,7 +187,6 @@ export default function AuroraBackground({
       <canvas
         ref={canvasRef}
         className="absolute left-0 top-0 size-full"
-        style={{ width: canvasSize.width, height: canvasSize.height }}
       />
     </div>
   );

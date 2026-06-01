@@ -62,60 +62,24 @@ export type MarketingAlternative = {
 
 export const marketingFeatures: MarketingFeature[] = [
   {
-    slug: "energy-flow-optimization",
-    name: "Energy Flow Optimization",
-    title: "Energy Flow Optimization: Schedule Tasks Based on Your Natural Energy Patterns",
-    description:
-      "Plan My Workday helps you place demanding work during stronger focus windows and keep lighter tasks for lower-energy parts of the day.",
-    image: "/media/plan-my-workday/pmwd-screenshots/full_keyboard_desktop.png",
-    benefits: [
-      "Match high-focus tasks with better energy windows",
-      "Reduce burnout by planning breaks and lighter work intentionally",
-      "Build a workday around your real attention patterns instead of a rigid template",
-      "Keep task planning fast with keyboard-first navigation",
-    ],
-    details:
-      "Energy Flow Optimization is the scheduling idea behind Plan My Workday: your day should account for focus, transition cost, and recovery. The rebuilt app keeps this grounded in a fast task tree, due-date views, and a workspace that makes reshaping the day cheap.",
-    howItWorks: [
-      {
-        title: "Capture the work",
-        description: "Add nested tasks quickly without leaving the keyboard-first workspace.",
-      },
-      {
-        title: "Schedule around focus",
-        description: "Use today, tomorrow, and this-week views to place work where it realistically belongs.",
-      },
-      {
-        title: "Adjust without friction",
-        description: "Move through projects, task roots, and date views without rebuilding the plan from scratch.",
-      },
-    ],
-    testimonial: {
-      quote:
-        "The task tree lets me keep the messy structure of a real workday, then narrow focus when I need to execute.",
-      author: "Plan My Workday user",
-      role: "Independent operator",
-    },
-  },
-  {
     slug: "smart-pomodoro-timer",
     name: "Smart Pomodoro Timer",
     title: "Smart Pomodoro Timer: Focus Sessions Without Leaving Your Task System",
     description:
-      "Plan focused sessions from the same workspace where tasks, schedules, and keyboard navigation already live.",
+      "Plan focused sessions from the same workspace where tasks, date views, and keyboard navigation already live.",
     image: "/media/plan-my-workday/pmwd-screenshots/full_keyboard_mobile.png",
     benefits: [
-      "Keep timing connected to the task you are actually doing",
+      "Keep timing beside the task system you are already using",
       "Reduce context switching between timer and task manager",
       "Use shorter or longer work blocks based on the type of work",
       "Return to the task tree when the session ends",
     ],
     details:
-      "The old Plan My Workday positioning included focus timing as part of the workday flow. In the focused migration, timer messaging stays part of the public feature set while the core app keeps the task tree and scheduling foundation stable.",
+      "The rebuilt Plan My Workday keeps focus timing inside the same workspace as the task tree, date views, and keyboard navigation. The timer is part of the app people can use today, without claiming a separate automation layer.",
     howItWorks: [
       {
-        title: "Choose the task",
-        description: "Start from a task or project context rather than a separate timer-only workflow.",
+        title: "Open the workspace",
+        description: "Start from the same place you manage projects, nested tasks, and date-focused views.",
       },
       {
         title: "Work in a clear block",
@@ -140,11 +104,11 @@ export const marketingUseCases: MarketingUseCase[] = [
     name: "ADHD Warriors",
     title: "Plan My Workday for ADHD: Productivity That Works With Your Brain",
     description:
-      "Use Plan My Workday to create flexible, structured task plans that can adapt when focus, energy, or priorities shift.",
+      "Use Plan My Workday to create flexible, structured task plans that can adapt when focus or priorities shift.",
     image: "/media/plan-my-workday/og-image.png",
     challenges: [
       "Large tasks become hard to start without visible smaller steps",
-      "Rigid calendars break when the day changes",
+      "Rigid task systems break when the day changes",
       "Switching between tools adds friction and delay",
       "Priorities are easier to lose when everything looks equally urgent",
     ],
@@ -170,7 +134,7 @@ export const marketingUseCases: MarketingUseCase[] = [
     ],
     testimonial: {
       quote:
-        "It gives me enough structure to start without forcing my whole day into a brittle schedule.",
+        "It gives me enough structure to start without forcing my whole day into a brittle plan.",
       author: "Plan My Workday user",
       role: "Designer with ADHD",
     },
@@ -201,7 +165,7 @@ export const marketingAlternatives: MarketingAlternative[] = [
     alternativeSolution:
       "Notion gives you a broad workspace where you can build documents, databases, task boards, and templates. It is flexible, but the planning system is something you usually have to design and maintain yourself.",
     planMyWorkdaySolution:
-      "Plan My Workday is narrower by design: projects, nested tasks, scheduling views, and keyboard-first navigation for getting through the workday.",
+      "Plan My Workday is narrower by design: projects, nested tasks, date views, and keyboard-first navigation for getting through the workday.",
     features: [
       {
         feature: "Core focus",

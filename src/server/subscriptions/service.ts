@@ -8,7 +8,9 @@ import {
 } from "../billing/paddle";
 import { billingEvents } from "../db/schema/billingEvents";
 import { subscriptions, type Subscription } from "../db/schema/subscriptions";
+import { users } from "../db/schema/users";
 import type { PaddleSubscriptionSnapshot } from "../billing/paddleWebhook";
+import { hasComplimentaryFullAccess } from "../access";
 
 export type SubscriptionSummary = {
   id: number;
@@ -74,8 +76,8 @@ function getEntitlementRank(subscription: Subscription, now: number) {
   }
 }
 
-export function pickEffectiveSubscription(rows: Subscription[], now = Date.now()) {
-  const sorted = [...rows].sort((left, right) => {
+function pickEffectiveSubscription(rows: Subscription[], now = Date.now()) {
+  const sorted = rows.toSorted((left, right) => {
     const entitlementDiff = getEntitlementRank(right, now) - getEntitlementRank(left, now);
     if (entitlementDiff !== 0) return entitlementDiff;
 
@@ -145,7 +147,7 @@ function buildSubscriptionNote(subscription: Subscription, now: number) {
   return null;
 }
 
-export function summarizeSubscription(subscription: Subscription | null, now = Date.now()): SubscriptionSummary | null {
+function summarizeSubscription(subscription: Subscription | null, now = Date.now()): SubscriptionSummary | null {
   if (!subscription) return null;
 
   const status = normalizeStatus(subscription.status) ?? "inactive";
@@ -174,16 +176,40 @@ export async function listSubscriptionsForUser(userId: number) {
     .orderBy(desc(subscriptions.updatedAt), desc(subscriptions.createdAt));
 }
 
+async function getUserEmail(userId: number) {
+  const rows = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  return rows[0]?.email ?? null;
+}
+
+function getComplimentaryFullAccessSummary(billingPortalAvailable: boolean): SubscriptionSummary {
+  return {
+    id: 0,
+    status: "active",
+    provider: "complimentary",
+    planKey: "lifetime",
+    label: "Lifetime",
+    note: "Complimentary lifetime access is active.",
+    isEntitled: true,
+    isTrial: false,
+    requiresBillingMigrationReview: false,
+    autoRenew: false,
+    billingPortalAvailable,
+  };
+}
+
 export async function getEffectiveSubscriptionForUser(userId: number) {
   const rows = await listSubscriptionsForUser(userId);
+  const billingPortalAvailable = rows.some((row) => Boolean(row.paddleCustomerId && row.paddleSubscriptionId));
+  if (hasComplimentaryFullAccess(await getUserEmail(userId))) {
+    return getComplimentaryFullAccessSummary(billingPortalAvailable);
+  }
+
   const summary = summarizeSubscription(pickEffectiveSubscription(rows));
   if (!summary) return null;
 
   return {
     ...summary,
-    billingPortalAvailable:
-      summary.billingPortalAvailable ||
-      rows.some((row) => Boolean(row.paddleCustomerId && row.paddleSubscriptionId)),
+    billingPortalAvailable: summary.billingPortalAvailable || billingPortalAvailable,
   };
 }
 
@@ -229,12 +255,10 @@ function subscriptionCanBeAutoCanceledAfterLifetime(subscription: Subscription) 
 
 async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
   const candidates = rows.filter(subscriptionCanBeAutoCanceledAfterLifetime);
-  const canceledSubscriptionIds: string[] = [];
-  const failedSubscriptionIds: string[] = [];
 
-  for (const subscription of candidates) {
+  const results = await Promise.all(candidates.map(async (subscription) => {
     const subscriptionId = subscription.paddleSubscriptionId;
-    if (!subscriptionId) continue;
+    if (!subscriptionId) return { canceledSubscriptionId: null, failedSubscriptionId: null };
 
     try {
       if (normalizeStatus(subscription.status) === "trialing") {
@@ -244,7 +268,6 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
       } else {
         await cancelPaddleSubscription(subscriptionId, "next_billing_period");
       }
-      canceledSubscriptionIds.push(subscriptionId);
       await db
         .update(subscriptions)
         .set({
@@ -252,18 +275,23 @@ async function scheduleMonthlyCancellationAfterLifetime(rows: Subscription[]) {
           updatedAt: new Date().toISOString(),
         })
         .where(eq(subscriptions.id, subscription.id));
+      return { canceledSubscriptionId: subscriptionId, failedSubscriptionId: null };
     } catch (error) {
-      failedSubscriptionIds.push(subscriptionId);
       console.error("Failed to schedule Paddle monthly cancellation after lifetime purchase", {
         subscriptionId,
         error: error instanceof Error ? error.message : String(error),
       });
+      return { canceledSubscriptionId: null, failedSubscriptionId: subscriptionId };
     }
-  }
+  }));
 
   return {
-    canceledSubscriptionIds,
-    failedSubscriptionIds,
+    canceledSubscriptionIds: results.flatMap((result) =>
+      result.canceledSubscriptionId ? [result.canceledSubscriptionId] : [],
+    ),
+    failedSubscriptionIds: results.flatMap((result) =>
+      result.failedSubscriptionId ? [result.failedSubscriptionId] : [],
+    ),
   };
 }
 

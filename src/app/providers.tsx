@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { createContext, use, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 type Theme = "light" | "dark";
 
@@ -13,6 +13,38 @@ interface ThemeContextValue {
 
 const THEME_STORAGE_KEY = "planmyworkday-theme";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const themeListeners = new Set<() => void>();
+
+function normalizeTheme(value: string | null): Theme {
+  return value === "light" || value === "dark" ? value : "dark";
+}
+
+function readThemeSnapshot(): Theme {
+  if (typeof window === "undefined") return "dark";
+  return normalizeTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
+}
+
+function readServerThemeSnapshot(): Theme {
+  return "dark";
+}
+
+function subscribeToTheme(listener: () => void) {
+  themeListeners.add(listener);
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === THEME_STORAGE_KEY) listener();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    themeListeners.delete(listener);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+function notifyThemeListeners() {
+  themeListeners.forEach((listener) => listener());
+}
 
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
@@ -20,26 +52,25 @@ function applyTheme(theme: Theme) {
 }
 
 function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const theme = useSyncExternalStore(subscribeToTheme, readThemeSnapshot, readServerThemeSnapshot);
 
   useEffect(() => {
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const initialTheme: Theme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
-    setThemeState(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
-  const setTheme = (nextTheme: Theme) => {
-    setThemeState(nextTheme);
+  const setTheme = useCallback((nextTheme: Theme) => {
     window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
-  };
+    notifyThemeListeners();
+  }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
-  };
+  }, [setTheme, theme]);
 
-  return <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>{children}</ThemeContext.Provider>;
+  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [setTheme, theme, toggleTheme]);
+
+  return <ThemeContext value={value}>{children}</ThemeContext>;
 }
 
 export function useTheme() {

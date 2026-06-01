@@ -6,6 +6,7 @@ import { users } from "./db/schema/users";
 import { ensureDefaultWorkspace } from "./projects/service";
 import { assertWorkspaceBillingAccess } from "./billing/enforcement";
 import { getEffectiveSubscriptionForUser, type SubscriptionSummary } from "./subscriptions/service";
+import { hasComplimentaryFullAccess } from "./access";
 
 export const SESSION_COOKIE_NAME = "only_tasks_session";
 export const GOOGLE_STATE_COOKIE_NAME = "only_tasks_google_state";
@@ -13,6 +14,7 @@ export const GOOGLE_REDIRECT_COOKIE_NAME = "only_tasks_google_redirect";
 export const DEFAULT_AUTH_REDIRECT = "/app/workspace/all-tasks";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const DEVELOPMENT_SIGN_IN_EMAIL = normalizeEmail(process.env.PMWD_DEMO_EMAIL || "demo@planmyworkday.dev");
 
 type GoogleProfile = {
   sub: string;
@@ -141,7 +143,7 @@ export function sanitizeAuthRedirectPath(value: string | null | undefined) {
   return DEFAULT_AUTH_REDIRECT;
 }
 
-export function isWorkspaceRedirectPath(value: string) {
+function isWorkspaceRedirectPath(value: string) {
   try {
     const parsed = new URL(value, "http://local.planmyworkday");
     return parsed.pathname === "/app" || parsed.pathname.startsWith("/app/");
@@ -150,7 +152,7 @@ export function isWorkspaceRedirectPath(value: string) {
   }
 }
 
-export function getBillingRedirectPath(nextPath: string) {
+function getBillingRedirectPath(nextPath: string) {
   return `/pricing?next=${encodeURIComponent(nextPath)}`;
 }
 
@@ -221,12 +223,12 @@ export async function getCurrentUserFromRequest(request: Request): Promise<Authe
     name: record.name,
     image: record.image,
     profilePicture: record.profilePicture,
-    isAdmin: record.isAdmin === 1,
+    isAdmin: record.isAdmin === 1 || hasComplimentaryFullAccess(record.email),
     subscription: await getEffectiveSubscriptionForUser(record.id),
   };
 }
 
-export async function getCurrentUserIdFromRequest(request: Request): Promise<number> {
+async function getCurrentUserIdFromRequest(request: Request): Promise<number> {
   const user = await getCurrentUserFromRequest(request);
   if (!user) throw new UnauthorizedError();
   return user.id;
@@ -255,6 +257,7 @@ async function upsertGoogleUser(profile: GoogleProfile) {
 
   const image = profile.picture ?? null;
   const name = profile.name ?? null;
+  const isComplimentaryFullAccessUser = hasComplimentaryFullAccess(normalizedEmail);
 
   if (existingRows[0]) {
     const [updated] = await db
@@ -266,6 +269,7 @@ async function upsertGoogleUser(profile: GoogleProfile) {
         googleId: profile.sub,
         profilePicture: image,
         authProvider: "google",
+        isAdmin: isComplimentaryFullAccessUser ? 1 : existingRows[0].isAdmin,
         lastLoginAt: now,
         updatedAt: now,
       })
@@ -286,7 +290,7 @@ async function upsertGoogleUser(profile: GoogleProfile) {
       profilePicture: image,
       authProvider: "google",
       lastLoginAt: now,
-      isAdmin: 0,
+      isAdmin: isComplimentaryFullAccessUser ? 1 : 0,
       createdAt: now,
       updatedAt: now,
     })
@@ -457,4 +461,18 @@ export async function signInAsExistingUser(
 
 export async function listRecentUsers(limit = 12) {
   return db.select().from(users).orderBy(desc(users.lastLoginAt), desc(users.updatedAt)).limit(limit);
+}
+
+export async function listDevelopmentSignInUsers() {
+  return db.select().from(users).where(eq(users.email, DEVELOPMENT_SIGN_IN_EMAIL)).limit(1);
+}
+
+export async function isDevelopmentSignInUser(userId: number) {
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.email, DEVELOPMENT_SIGN_IN_EMAIL)))
+    .limit(1);
+
+  return Boolean(rows[0]);
 }

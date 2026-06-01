@@ -59,6 +59,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
+  if (subscription?.isEntitled && subscription.provider === "complimentary") {
+    res.status(409).json({
+      success: false,
+      code: "complimentary_access_active",
+      error: "Complimentary lifetime access is already active for this account.",
+    });
+    return;
+  }
+
   if (subscription?.isEntitled && subscription.planKey === "lifetime") {
     res.status(409).json({
       success: false,

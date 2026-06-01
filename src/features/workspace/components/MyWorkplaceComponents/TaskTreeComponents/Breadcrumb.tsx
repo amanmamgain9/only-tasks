@@ -20,75 +20,6 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
     return null;
   }
 
-  const renderBreadcrumbs = () => {
-    const maxItems = 4;
-
-    if (breadcrumbs.length <= maxItems) {
-      return breadcrumbs.map((crumb, index) => (
-        <BreadcrumbItemComp
-          key={crumb.id}
-          crumb={crumb}
-          isLast={index === breadcrumbs.length - 1}
-          isFirst={index === 0}
-          onNavigate={onNavigate}
-          order={index}
-        />
-      ));
-    }
-
-    const result: React.ReactNode[] = [];
-    let orderIndex = 0;
-
-    // Home (project root)
-    result.push(
-      <BreadcrumbItemComp
-        key={breadcrumbs[0].id}
-        crumb={breadcrumbs[0]}
-        isLast={false}
-        isFirst={true}
-        onNavigate={onNavigate}
-        order={orderIndex++}
-      />
-    );
-
-    // Ellipsis for hidden items (not focusable)
-    if (breadcrumbs.length > 3) {
-      result.push(
-        <div key="ellipsis" className="flex items-center gap-2">
-          <ChevronRight className="size-3 text-gray-400 flex-shrink-0" />
-          <button
-            type="button"
-            className="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded transition-colors"
-            title="Hidden breadcrumb levels"
-            disabled
-            tabIndex={-1}
-          >
-            <MoreHorizontal className="size-4" />
-          </button>
-        </div>
-      );
-    }
-
-    // Last two items
-    const lastTwo = breadcrumbs.slice(-2);
-    lastTwo.forEach((crumb, idx) => {
-      const actualIndex = breadcrumbs.length - 2 + idx;
-      
-      result.push(
-        <BreadcrumbItemComp
-          key={crumb.id}
-          crumb={crumb}
-          isLast={actualIndex === breadcrumbs.length - 1}
-          isFirst={false}
-          onNavigate={onNavigate}
-          order={orderIndex++}
-        />
-      );
-    });
-
-    return result;
-  };
-
   return (
     <nav
       aria-label="Breadcrumb"
@@ -96,11 +27,77 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({
       data-layout="horizontal"
     >
       <div className="flex items-center gap-1 overflow-hidden">
-        {renderBreadcrumbs()}
+        <BreadcrumbItems breadcrumbs={breadcrumbs} onNavigate={onNavigate} />
       </div>
     </nav>
   );
 };
+
+function BreadcrumbItems({ breadcrumbs, onNavigate }: BreadcrumbProps) {
+  const maxItems = 4;
+
+  if (breadcrumbs.length <= maxItems) {
+    return breadcrumbs.map((crumb, index) => (
+      <BreadcrumbItemComp
+        key={crumb.id}
+        crumb={crumb}
+        isLast={index === breadcrumbs.length - 1}
+        isFirst={index === 0}
+        onNavigate={onNavigate}
+        order={index}
+      />
+    ));
+  }
+
+  const result: React.ReactNode[] = [];
+  let orderIndex = 0;
+
+  result.push(
+    <BreadcrumbItemComp
+      key={breadcrumbs[0].id}
+      crumb={breadcrumbs[0]}
+      isLast={false}
+      isFirst={true}
+      onNavigate={onNavigate}
+      order={orderIndex++}
+    />,
+  );
+
+  if (breadcrumbs.length > 3) {
+    result.push(
+      <div key="ellipsis" className="flex items-center gap-2">
+        <ChevronRight className="size-3 flex-shrink-0 text-gray-400" />
+        <button
+          type="button"
+          className="rounded px-2 py-1 text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          title="Hidden breadcrumb levels"
+          disabled
+          tabIndex={-1}
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+      </div>,
+    );
+  }
+
+  const lastTwo = breadcrumbs.slice(-2);
+  lastTwo.forEach((crumb, idx) => {
+    const actualIndex = breadcrumbs.length - 2 + idx;
+
+    result.push(
+      <BreadcrumbItemComp
+        key={crumb.id}
+        crumb={crumb}
+        isLast={actualIndex === breadcrumbs.length - 1}
+        isFirst={false}
+        onNavigate={onNavigate}
+        order={orderIndex++}
+      />,
+    );
+  });
+
+  return result;
+}
 
 const BreadcrumbItemComp: React.FC<{
   crumb: BreadcrumbItem;
@@ -114,7 +111,7 @@ const BreadcrumbItemComp: React.FC<{
     return text.slice(0, maxLength - 3) + '...';
   };
 
-  const handleClick = useCallback(() => {
+  const navigateToCrumb = useCallback(() => {
     onNavigate(crumb.id);
   }, [onNavigate, crumb.id]);
 
@@ -131,7 +128,7 @@ const BreadcrumbItemComp: React.FC<{
             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium shadow-sm'
             : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
         }`}
-        onClick={handleClick}
+        onClick={navigateToCrumb}
         title={crumb.title}
       >
         {isFirst ? (

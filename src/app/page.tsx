@@ -30,7 +30,7 @@ const testimonials = [
   {
     name: "Marcus T.",
     role: "Software Engineer",
-    content: "Never touching my mouse again. The timer integration is genius. Finally found my flow state.",
+    content: "Never touching my mouse again. The timer integration is genius. Finally found a focus setup that sticks.",
     rating: 5,
     avatar: "MT",
     gradient: "from-blue-600 to-cyan-700",
@@ -69,7 +69,7 @@ export default function HomePage() {
               <h1 className="mb-8 text-5xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-6xl lg:text-7xl xl:text-8xl">
                 Finally.{" "}
                 <span className="relative">
-                  <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                  <span className="text-indigo-600 dark:text-indigo-400">
                     Task management
                   </span>
                   <span className="absolute -inset-1 -z-10 bg-gradient-to-r from-indigo-600/20 via-blue-600/20 to-purple-700/20 blur-xl dark:from-indigo-400/20 dark:via-blue-500/20 dark:to-purple-600/20" />
@@ -90,13 +90,16 @@ export default function HomePage() {
                   <ArrowRight className="size-5 transition-transform duration-200 group-hover:translate-x-1" />
                 </Link>
 
-                <button
-                  type="button"
+                <Link
+                  href="/media/plan-my-workday/demo.mp4"
+                  prefetch={false}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="group inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:from-slate-800 hover:via-slate-900 hover:to-black hover:shadow-xl"
                 >
                   <Play className="size-5" />
                   Watch Demo
-                </button>
+                </Link>
               </div>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">No bullshit. No credit card. Just results.</p>
@@ -109,7 +112,7 @@ export default function HomePage() {
             <div className="mb-20 text-center">
               <h2 className="mb-6 text-4xl font-bold text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
                 Stop{" "}
-                <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                <span className="text-indigo-600 dark:text-indigo-400">
                   fighting your tools.
                 </span>
               </h2>
@@ -142,7 +145,7 @@ export default function HomePage() {
                     <div>
                       <h3 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Timer Built In</h3>
                       <p className="text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-                        Pomodoro timer integrated into your workflow. Plan it. Time it. Get it done. All in one place.
+                        Pomodoro timer integrated into your workspace. Plan it. Time it. Get it done. All in one place.
                       </p>
                     </div>
                   </div>
@@ -156,7 +159,7 @@ export default function HomePage() {
                     <div>
                       <h3 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">Zero Friction</h3>
                       <p className="text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-                        Your brain does not stop for UI. Why should your task manager? Pure flow state.
+                        Your brain does not stop for UI. Why should your task manager? Stay focused without fighting the interface.
                       </p>
                     </div>
                   </div>
@@ -173,7 +176,7 @@ export default function HomePage() {
             <div className="mb-20 text-center">
               <h2 className="mb-6 text-4xl font-bold text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
                 People actually{" "}
-                <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                <span className="text-indigo-600 dark:text-indigo-400">
                   use this stuff
                 </span>
               </h2>
@@ -217,7 +220,7 @@ export default function HomePage() {
             <div className="relative">
               <h2 className="mb-8 text-4xl font-bold text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
                 Ready to stop{" "}
-                <span className="bg-gradient-to-r from-indigo-500 via-blue-600 to-purple-700 bg-clip-text text-transparent dark:from-indigo-400 dark:via-blue-500 dark:to-purple-600">
+                <span className="text-indigo-600 dark:text-indigo-400">
                   disappointing yourself?
                 </span>
               </h2>

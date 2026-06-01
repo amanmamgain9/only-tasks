@@ -29,7 +29,7 @@ export default function MarketingHeader() {
         </Link>
       </div>
 
-      <div className="order-2 hidden items-center space-x-8 md:flex">
+      <div className="order-2 hidden items-center gap-x-8 md:flex">
         {navLinks.map((link) => (
           <Link key={link.href} href={link.href} className="rounded px-2 py-1 text-muted-foreground transition hover:text-foreground">
             {link.label}
@@ -37,7 +37,7 @@ export default function MarketingHeader() {
         ))}
       </div>
 
-      <div className="order-3 flex items-center space-x-3">
+      <div className="order-3 flex items-center gap-x-3">
         <div className="hidden md:block">
           <ThemeToggle />
         </div>

@@ -1,5 +1,5 @@
 // MaskedDateInput.tsx
-import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useImperativeHandle, type Ref } from 'react';
 
 interface MaskedDateInputProps {
   value: string;
@@ -10,14 +10,24 @@ interface MaskedDateInputProps {
   className?: string;
   isEmpty?: boolean;
   ariaLabel?: string;
+  ref?: Ref<MaskedDateInputRef>;
 }
 
 export interface MaskedDateInputRef {
   focus: () => void;
 }
 
-const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
-  ({ value, onChange, onUserEdit, onEnter, onTab, className = '', isEmpty = false, ariaLabel = 'Date' }, ref) => {
+function MaskedDateInput({
+  value,
+  onChange,
+  onUserEdit,
+  onEnter,
+  onTab,
+  className = '',
+  isEmpty = false,
+  ariaLabel = 'Date',
+  ref,
+}: MaskedDateInputProps) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const yearRef = useRef<HTMLInputElement>(null);
     const monthRef = useRef<HTMLInputElement>(null);
@@ -142,7 +152,7 @@ const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
           aria-label={`${ariaLabel} year`}
           value={year}
           placeholder="YYYY"
-          onInput={(e) => handleInput(e, 'year', 4, monthRef.current)}
+          onChange={(e) => handleInput(e, 'year', 4, monthRef.current)}
           onKeyDown={(e) => handleKeyDown(e, 'year', undefined, monthRef.current)}
           className="bg-transparent border-none outline-none p-0 m-0 text-center placeholder:italic placeholder:opacity-30"
           style={{ width: '4.5ch' }}
@@ -155,7 +165,7 @@ const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
           aria-label={`${ariaLabel} month`}
           value={month}
           placeholder="MM"
-          onInput={(e) => handleInput(e, 'month', 2, dayRef.current)}
+          onChange={(e) => handleInput(e, 'month', 2, dayRef.current)}
           onKeyDown={(e) => handleKeyDown(e, 'month', yearRef.current, dayRef.current)}
           className="bg-transparent border-none outline-none p-0 m-0 text-center placeholder:italic placeholder:opacity-30"
           style={{ width: '2.5ch' }}
@@ -168,15 +178,14 @@ const MaskedDateInput = forwardRef<MaskedDateInputRef, MaskedDateInputProps>(
           aria-label={`${ariaLabel} day`}
           value={day}
           placeholder="DD"
-          onInput={(e) => handleInput(e, 'day', 2)}
+          onChange={(e) => handleInput(e, 'day', 2)}
           onKeyDown={(e) => handleKeyDown(e, 'day', monthRef.current)}
           className="bg-transparent border-none outline-none p-0 m-0 text-center placeholder:italic placeholder:opacity-30"
           style={{ width: '2.5ch' }}
         />
       </div>
     );
-  }
-);
+}
 
 MaskedDateInput.displayName = 'MaskedDateInput';
 

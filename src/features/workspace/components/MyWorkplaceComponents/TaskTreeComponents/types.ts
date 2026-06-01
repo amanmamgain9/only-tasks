@@ -1,6 +1,7 @@
 // types.ts - UPDATED WITH CHATID SUPPORT
 
 import type { Project, TaskTreeType } from "../../../types";
+import type { LifestyleTraitAllocation, TaskCategoryAllocation } from "@/features/categories/taskCategories";
 
 // ========================================================================
 // IMPORT TYPES
@@ -23,6 +24,12 @@ export interface RawImportTask {
 // OPERATION TYPES FOR BACKEND SYNC
 // ========================================================================
 
+export type RecurrenceSchedule =
+  | { mode: 'none' }
+  | { mode: 'daily'; startDate: string; endDate?: string | null; interval?: number }
+  | { mode: 'weekdays'; startDate: string; endDate?: string | null }
+  | { mode: 'weekly'; startDate: string; endDate?: string | null; interval?: number; weekdays?: number[] };
+
 export type Operation = 
   | { type: 'TOGGLE_EXPANSION'; clientId: string; isExpanded: boolean; timestamp: number }
   | { type: 'SET_CURRENT_ROOT'; clientId: string | null; timestamp: number }
@@ -35,6 +42,9 @@ export type Operation =
       dueDate?: string | null;
       estimatedTimeMinutes?: number | null;
       priority?: number | null;
+      categoryAllocations?: TaskCategoryAllocation[];
+      lifestyleTraits?: LifestyleTraitAllocation[];
+      systemType?: string | null;
     };
     timestamp: number;
   }
@@ -48,8 +58,11 @@ export type Operation =
       dueDate?: string | null;
       priority?: number | null;
       description?: string | null;
+      categoryAllocations?: TaskCategoryAllocation[];
+      lifestyleTraits?: LifestyleTraitAllocation[];
       timestamp: number;
     }
+  | { type: 'SET_RECURRENCE'; clientId: string; recurrence: RecurrenceSchedule; timestamp: number }
   | { type: 'IMPORT_TASKS'; rootClientId: string; parentClientId: string | null; subtree: SubtreeNode; timestamp: number };
 
 export type SubtreeNode = {
@@ -61,6 +74,9 @@ export type SubtreeNode = {
   dueDate?: string | null;
   priority?: number | null;
   description?: string | null;
+  categoryAllocations?: TaskCategoryAllocation[];
+  lifestyleTraits?: LifestyleTraitAllocation[];
+  systemType?: string | null;
   subtasks?: SubtreeNode[];
 };
 
@@ -99,6 +115,15 @@ export interface TreeNode {
   
   estimatedTimeMinutes?: number | null;
   dueDate?: string | null;
+  categoryAllocations?: TaskCategoryAllocation[];
+  lifestyleTraits?: LifestyleTraitAllocation[];
+  systemType?: string | null;
+  recurrenceSeriesId?: number | null;
+  recurrenceRole?: 'template' | 'occurrence_root' | 'occurrence_child' | null;
+  recurrenceTemplateTaskId?: number | null;
+  recurrenceOccurrenceDate?: string | null;
+  recurrenceStatus?: 'scheduled' | 'skipped' | null;
+  recurrenceIsOverride?: number | boolean | null;
   taskId?: number;
   isEphemeral?: boolean;
   position?: string;

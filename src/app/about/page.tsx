@@ -17,7 +17,7 @@ export default function AboutPage() {
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">PlanMyWorkday is back to being one product.</h1>
             <div className="mt-6 space-y-4 text-base leading-8 text-slate-600">
               <p>
-                This rebuild pulls the task-management core out of the older multi-surface setup and puts it into one focused Next.js application. The task tree, scheduling views, keyboard navigation, auth, and subscription state now live together.
+                This rebuild pulls the task-management core out of the older multi-surface setup and puts it into one focused Next.js application. The task tree, date views, keyboard navigation, auth, and subscription state now live together.
               </p>
               <p>
                 The goal is simple: keep the hard-won workflow speed, remove product sprawl, and let the public site and the app coexist without fighting each other for routes or context.

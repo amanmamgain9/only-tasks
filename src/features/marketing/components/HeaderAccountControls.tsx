@@ -1,53 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
+import { useCurrentUserQuery } from "@/features/auth/hooks/useAuthQueries";
 
 type AuthState = {
   email: string;
   name: string | null;
 };
 
-type MeResponse = {
-  success: boolean;
-  data?: AuthState;
-};
-
 export default function HeaderAccountControls() {
-  const [authState, setAuthState] = useState<AuthState | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const { data: authState, isLoading } = useCurrentUserQuery<AuthState>();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadAuthState() {
-      try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const payload = (await response.json()) as MeResponse;
-        if (!cancelled && payload.data) {
-          setAuthState({
-            email: payload.data.email,
-            name: payload.data.name,
-          });
-        }
-      } finally {
-        if (!cancelled) setLoaded(true);
-      }
-    }
-
-    void loadAuthState();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!loaded) {
+  if (isLoading) {
     return <div className="h-9 w-40" aria-hidden="true" />;
   }
 

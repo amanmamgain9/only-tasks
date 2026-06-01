@@ -1,15 +1,15 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { Suspense } from "react";
 import MyDayTasksComponent from "./MyWorkdayTasksComponent";
 import WorkspaceSidebar from "../WorkspaceSidebar";
+import WorkspaceTimer from "../TimerComponents/WorkspaceTimer";
 import type { AuthenticatedUser } from "@/server/auth";
 
 interface MyWorkplaceComponentProps {
   regionOrder: number;
   dueDateFilter?: "today" | "tomorrow" | "this-week";
-  viewer?: AuthenticatedUser | null;
+  viewer: AuthenticatedUser;
 }
 
 const SkeletonMyWorkplaceComponent = () => {
@@ -26,69 +26,15 @@ const SkeletonMyWorkplaceComponent = () => {
 };
 
 const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
-  const routerLocation = useLocation();
-  const [resolvedViewer, setResolvedViewer] = useState<AuthenticatedUser | null>(viewer ?? null);
-  const [isLoadingViewer, setIsLoadingViewer] = useState(!viewer);
-
-  useEffect(() => {
-    if (viewer) {
-      setResolvedViewer(viewer);
-      setIsLoadingViewer(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function loadViewer() {
-      try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-          cache: "no-store",
-        });
-
-        if (response.status === 401) {
-          window.location.href = `/sign-in?next=${encodeURIComponent(window.location.pathname || "/app")}`;
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error("Failed to load current user.");
-        }
-
-        const payload = (await response.json()) as { success: boolean; data?: AuthenticatedUser };
-        if (!cancelled) {
-          setResolvedViewer(payload.data ?? null);
-        }
-      } catch {
-        if (!cancelled) {
-          window.location.href = `/sign-in?next=${encodeURIComponent(window.location.pathname || "/app")}`;
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingViewer(false);
-        }
-      }
-    }
-
-    void loadViewer();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [routerLocation.pathname, viewer]);
-
-  if (isLoadingViewer || !resolvedViewer) {
-    return <SkeletonMyWorkplaceComponent />;
-  }
-
   return (
     <div
       className="relative min-h-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(79,70,229,0.12),rgba(255,255,255,0)),linear-gradient(135deg,#f8fafc_0%,#ffffff_48%,#f1f5f9_100%)] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.18),rgba(0,0,0,0)),linear-gradient(135deg,#020617_0%,#0f172a_48%,#1e293b_100%)]"
     >
-      <div className="min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <WorkspaceSidebar regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={resolvedViewer} />
-        <div className="min-w-0">
-          <div data-region id="workspace-region" data-order={regionOrder + 1} className="px-4 py-5 sm:px-6 md:px-8">
+      <div className="min-h-screen lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <WorkspaceSidebar regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={viewer} />
+        <div className="relative min-w-0 pb-24 lg:pb-0">
+          <WorkspaceTimer regionOrder={regionOrder + 1} />
+          <div data-region id="workspace-region" data-order={regionOrder + 2} className="px-4 py-5 sm:px-6 md:px-8">
             <div data-layout="vertical">
               <div data-order="0">
                 <MyDayTasksComponent dueDateFilter={dueDateFilter} />
@@ -104,7 +50,7 @@ const MyWorkplaceComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder
 const MyWorkplaceParentComponent: React.FC<MyWorkplaceComponentProps> = ({ regionOrder, dueDateFilter, viewer }) => {
   return (
     <Suspense fallback={<SkeletonMyWorkplaceComponent />}>
-      <MyWorkplaceComponent regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={viewer ?? null} />
+      <MyWorkplaceComponent regionOrder={regionOrder} dueDateFilter={dueDateFilter} viewer={viewer} />
     </Suspense>
   );
 };

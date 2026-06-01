@@ -21,6 +21,6 @@ export default async function AppCatchAllPage({
   noStore();
   const resolvedParams = await params;
   const slug = resolvedParams.slug?.join("/") || "";
-  await requireWorkspaceSession(`/app/${slug}`);
-  return <WorkspaceApp />;
+  const viewer = await requireWorkspaceSession(`/app/${slug}`);
+  return <WorkspaceApp viewer={viewer} />;
 }

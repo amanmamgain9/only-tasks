@@ -80,7 +80,7 @@ export default function PricingPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {[
               "Cancel monthly any time before your next renewal.",
-              "Keep every project, task, and schedule in one focused workspace.",
+              "Keep every project, task, and date view in one focused workspace.",
               "Switch from monthly to lifetime whenever lifetime access is available.",
               "Secure checkout includes receipts, card updates, and tax handling.",
             ].map((point) => (

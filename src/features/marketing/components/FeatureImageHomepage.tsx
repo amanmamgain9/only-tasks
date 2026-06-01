@@ -46,7 +46,7 @@ export default function FeatureImageHomepage() {
                       sizes="(min-width: 1024px) 50vw, 100vw"
                       className="size-full object-cover"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/5 group-hover:opacity-100">
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-950/0 opacity-0 transition-all duration-300 group-hover:bg-slate-950/5 group-hover:opacity-100">
                       <div className="rounded-xl border border-slate-200 bg-white/95 px-6 py-3 shadow-lg backdrop-blur-sm transition-transform duration-200 group-hover:scale-100 dark:border-slate-600 dark:bg-slate-800/95">
                         <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
                           <Play className="size-4" />
@@ -97,7 +97,7 @@ export default function FeatureImageHomepage() {
         <div className="block md:hidden">
           <button type="button" className="mx-auto block w-full max-w-sm cursor-pointer text-left" onClick={() => setIsModalOpen(true)}>
             <div className="rounded-[2.5rem] bg-slate-900 p-3 shadow-2xl transition-all duration-300 hover:shadow-2xl">
-              <div className="rounded-[2rem] bg-black p-1">
+              <div className="rounded-[2rem] bg-slate-950 p-1">
                 <div className="relative overflow-hidden rounded-[1.8rem] bg-white" style={{ aspectRatio: "850/1888" }}>
                   <Image
                     src={`${imagePrefix}_mobile.png`}
@@ -107,7 +107,7 @@ export default function FeatureImageHomepage() {
                     className="size-full object-cover"
                   />
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                    <div className="rounded-full bg-black/60 px-3 py-1 backdrop-blur-sm">
+                    <div className="rounded-full bg-slate-950/60 px-3 py-1 backdrop-blur-sm">
                       <span className="text-xs font-medium text-white">Tap to expand</span>
                     </div>
                   </div>
@@ -119,7 +119,7 @@ export default function FeatureImageHomepage() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm">
           <div className="relative hidden w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900 md:block">
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-100 px-6 py-4 dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-center gap-4">
@@ -159,7 +159,7 @@ export default function FeatureImageHomepage() {
               </button>
             </div>
             <div className="p-4">
-              <div className="rounded-[2rem] bg-black p-1">
+              <div className="rounded-[2rem] bg-slate-950 p-1">
                 <div className="relative overflow-hidden rounded-[1.8rem] bg-white" style={{ aspectRatio: "850/1888" }}>
                   <Image
                     src={`${imagePrefix}_mobile.png`}

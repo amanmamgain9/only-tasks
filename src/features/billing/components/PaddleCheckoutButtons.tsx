@@ -222,7 +222,7 @@ export default function PaddleCheckoutButtons({ plans }: { plans: PlanCard[] }) 
               disabled={!plan.configured || busyPlan !== null}
               className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-600 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {busyPlan === plan.planKey ? "Opening checkout..." : plan.checkoutLabel}
+              {busyPlan === plan.planKey ? "Opening checkout" : plan.checkoutLabel}
               <ArrowRight className="size-4" />
             </button>
             {plan.planKey === "pro_monthly" && plan.trialDays > 0 && (

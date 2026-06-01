@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
   DEFAULT_AUTH_REDIRECT,
+  isDevelopmentSignInUser,
   isDevelopmentAuthEnabled,
   resolvePostLoginRedirectForUserId,
   sanitizeAuthRedirectPath,
@@ -40,6 +41,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    if (!(await isDevelopmentSignInUser(userId))) {
+      res.status(404).json({ success: false, error: "Development sign-in user not found" });
+      return;
+    }
+
     const session = await signInAsExistingUser(userId, {
       userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : null,
       ipAddress: getIpAddress(req),

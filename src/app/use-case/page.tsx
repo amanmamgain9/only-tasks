@@ -8,7 +8,7 @@ import { buildMarketingMetadata } from "@/features/marketing/seo";
 export const metadata = buildMarketingMetadata({
   title: "Use Cases | Plan My Workday",
   description:
-    "Discover how Plan My Workday helps ADHD users, freelancers, students, and professionals plan flexible workdays with nested tasks and scheduling views.",
+    "Discover how Plan My Workday helps ADHD users, freelancers, students, and professionals plan flexible workdays with nested tasks and date views.",
   path: "/use-case",
   keywords: ["ADHD productivity", "daily planning use cases", "freelancer task planning", "student productivity"],
 });

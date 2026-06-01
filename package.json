@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "migrate:legacy": "node scripts/migrate-legacy-data.mjs"
   },
   "dependencies": {
@@ -14,6 +15,7 @@
     "better-sqlite3": "^11.9.0",
     "drizzle-orm": "^0.45.2",
     "fractional-indexing": "^3.2.0",
+    "html-react-parser": "^6.1.2",
     "immer": "^10.1.1",
     "lucide-react": "^0.525.0",
     "next": "^15.5.18",
@@ -34,8 +36,14 @@
     "drizzle-kit": "^0.31.4",
     "eslint": "^9.23.0",
     "eslint-config-next": "15.2.2",
+    "happy-dom": "^20.9.0",
     "tailwindcss": "^4.1.13",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "postcss": "8.5.10",
+    "brace-expansion": "5.0.6"
   }
 }

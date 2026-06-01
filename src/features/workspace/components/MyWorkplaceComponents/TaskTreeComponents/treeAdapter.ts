@@ -2,12 +2,13 @@
 import { Project } from '../../../types';
 import { TreeNode, VisibleNode, EnhancedTaskTreeType } from './types';
 import { INITIAL_POSITION } from './positionUtils';
+import { normalizeLifestyleTraitAllocations, normalizeTaskCategoryAllocations } from '@/features/categories/taskCategories';
 
 // ========================================================================
 // HELPER FUNCTIONS
 // ========================================================================
 
-export const findTaskById = (tasks: EnhancedTaskTreeType[], targetId: number): EnhancedTaskTreeType | null => {
+const findTaskById = (tasks: EnhancedTaskTreeType[], targetId: number): EnhancedTaskTreeType | null => {
   for (const task of tasks) {
     if (task.id === targetId) return task;
     
@@ -56,14 +57,14 @@ export const computeTreeNodes = (
   // If at project root, show all top-level tasks
   if (currentRootTaskId === null) {
     // Sort by position
-    const sortedTasks = [...tasks].sort((a, b) => {
+    const sortedTasks = tasks.toSorted((a, b) => {
       const posA = a.position || INITIAL_POSITION;
       const posB = b.position || INITIAL_POSITION;
       return posA.localeCompare(posB);
     });
     
     sortedTasks.forEach(task => {
-      const taskNode = taskToTreeNode(task, expandedTasks);
+      const taskNode = taskToTreeNode(task, expandedTasks, project.type);
       rootNodes.push(taskNode);
     });
     return rootNodes;
@@ -76,14 +77,14 @@ export const computeTreeNodes = (
 
     // Add subtasks with their positions, sort by position
     if (rootTask.subtasks) {
-      const sortedSubtasks = [...rootTask.subtasks].sort((a, b) => {
+      const sortedSubtasks = rootTask.subtasks.toSorted((a, b) => {
         const posA = a.position || INITIAL_POSITION;
         const posB = b.position || INITIAL_POSITION;
         return posA.localeCompare(posB);
       });
 
       sortedSubtasks.forEach(subtask => {
-        children.push(taskToTreeNode(subtask, expandedTasks));
+        children.push(taskToTreeNode(subtask, expandedTasks, project.type));
       });
     }
 
@@ -93,23 +94,24 @@ export const computeTreeNodes = (
   return rootNodes;
 };
 
-export const taskToTreeNode = (
+const taskToTreeNode = (
   task: EnhancedTaskTreeType, 
-  expandedTasks: Set<string>
+  expandedTasks: Set<string>,
+  projectType: Project["type"],
 ): TreeNode => {
   const isExpanded = expandedTasks.has(task.clientId);
   const children: TreeNode[] = [];
 
   // Only build children array if expanded
   if (isExpanded && task.subtasks) {
-    const sortedSubtasks = [...task.subtasks].sort((a, b) => {
+    const sortedSubtasks = task.subtasks.toSorted((a, b) => {
       const posA = a.position || INITIAL_POSITION;
       const posB = b.position || INITIAL_POSITION;
       return posA.localeCompare(posB);
     });
 
     sortedSubtasks.forEach(subtask => {
-      children.push(taskToTreeNode(subtask, expandedTasks));
+      children.push(taskToTreeNode(subtask, expandedTasks, projectType));
     });
   }
 
@@ -123,6 +125,15 @@ export const taskToTreeNode = (
     originalId: task.id,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
+    categoryAllocations: normalizeTaskCategoryAllocations(task.categoryAllocations, { projectType }),
+    lifestyleTraits: normalizeLifestyleTraitAllocations(task.lifestyleTraits),
+    systemType: task.systemType ?? null,
+    recurrenceSeriesId: task.recurrenceSeriesId ?? null,
+    recurrenceRole: task.recurrenceRole ?? null,
+    recurrenceTemplateTaskId: task.recurrenceTemplateTaskId ?? null,
+    recurrenceOccurrenceDate: task.recurrenceOccurrenceDate ?? null,
+    recurrenceStatus: task.recurrenceStatus ?? null,
+    recurrenceIsOverride: task.recurrenceIsOverride ?? null,
     position: task.position,
     children: children.length > 0 ? children : undefined,
     taskId: task.id,
@@ -192,7 +203,7 @@ export const computeBreadcrumbs = (
   return breadcrumbs;
 };
 
-export const findTaskPath = (tasks: EnhancedTaskTreeType[], targetId: number, path: number[] = []): number[] | null => {
+const findTaskPath = (tasks: EnhancedTaskTreeType[], targetId: number, path: number[] = []): number[] | null => {
   for (let i = 0; i < tasks.length; i++) {
     const task = tasks[i];
     const currentPath = [...path, i];
@@ -207,7 +218,7 @@ export const findTaskPath = (tasks: EnhancedTaskTreeType[], targetId: number, pa
   return null;
 };
 
-export const findTaskPathByClientId = (tasks: EnhancedTaskTreeType[], targetClientId: string, path: number[] = []): number[] | null => {
+const findTaskPathByClientId = (tasks: EnhancedTaskTreeType[], targetClientId: string, path: number[] = []): number[] | null => {
   for (let i = 0; i < tasks.length; i++) {
     const task = tasks[i];
     const currentPath = [...path, i];

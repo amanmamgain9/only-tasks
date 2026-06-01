@@ -1,7 +1,14 @@
 // treeMutations.ts - All tree operations in one place
 import { v4 as uuidv4 } from 'uuid';
-import type { EnhancedTaskTreeType, Project, Operation, SubtreeNode } from "./types";
+import type { EnhancedTaskTreeType, Project, Operation, RecurrenceSchedule, SubtreeNode } from "./types";
 import { generatePosition } from "./positionUtils";
+import {
+  getDefaultTaskCategoryAllocations,
+  normalizeLifestyleTraitAllocations,
+  normalizeTaskCategoryAllocations,
+  type LifestyleTraitAllocation,
+  type TaskCategoryAllocation,
+} from "@/features/categories/taskCategories";
 
 // ========================================================================
 // TYPES
@@ -61,7 +68,7 @@ export const findParentTask = (
 // SERIALIZATION
 // ========================================================================
 
-export const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
+const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
   return {
     clientId: task.clientId,
     title: task.title || '',
@@ -69,7 +76,14 @@ export const serializeSubtree = (task: EnhancedTaskTreeType): SubtreeNode => {
     isCompleted: task.isCompleted ?? false,
     estimatedTimeMinutes: task.estimatedTimeMinutes,
     dueDate: task.dueDate,
-    subtasks: task.subtasks?.filter(t => !t.isEphemeral).map(serializeSubtree)
+    categoryAllocations: task.categoryAllocations
+      ? normalizeTaskCategoryAllocations(task.categoryAllocations)
+      : undefined,
+    lifestyleTraits: task.lifestyleTraits
+      ? normalizeLifestyleTraitAllocations(task.lifestyleTraits)
+      : undefined,
+    systemType: task.systemType ?? null,
+    subtasks: task.subtasks?.flatMap((subtask) => (subtask.isEphemeral ? [] : [serializeSubtree(subtask)]))
   };
 };
 
@@ -94,13 +108,22 @@ const removeTaskFromTree = (tasks: EnhancedTaskTreeType[], clientId: string): bo
 // EMPTY NODE MANAGEMENT
 // ========================================================================
 
-export const createEmptyTask = (
+const createEmptyTask = (
   draft: EditorState, 
   parentTaskClientId: string | null
 ): EnhancedTaskTreeType => {
+  const parentTask = parentTaskClientId
+    ? findTaskByClientId(draft.tasks, parentTaskClientId)
+    : null;
   const siblings = parentTaskClientId === null 
     ? draft.tasks 
-    : findTaskByClientId(draft.tasks, parentTaskClientId)?.subtasks || [];
+    : parentTask?.subtasks || [];
+  const inheritedCategoryAllocations = parentTask?.categoryAllocations
+    ? normalizeTaskCategoryAllocations(parentTask.categoryAllocations, { projectType: draft.project.type })
+    : getDefaultTaskCategoryAllocations(draft.project.type);
+  const inheritedLifestyleTraits = parentTask?.lifestyleTraits
+    ? normalizeLifestyleTraitAllocations(parentTask.lifestyleTraits)
+    : [];
 
   return {
     clientId: uuidv4(),
@@ -108,15 +131,18 @@ export const createEmptyTask = (
     isCompleted: false,
     projectId: draft.project.id,
     parentTaskId: parentTaskClientId 
-      ? findTaskByClientId(draft.tasks, parentTaskClientId)?.id || null 
+      ? parentTask?.id || null
       : null,
     position: generatePosition(siblings),
+    categoryAllocations: inheritedCategoryAllocations,
+    lifestyleTraits: inheritedLifestyleTraits,
+    systemType: null,
     subtasks: [],
     isEphemeral: true
   };
 };
 
-export const ensureTrailingEmptyTask = (
+const ensureTrailingEmptyTask = (
   draft: EditorState, 
   parentTaskClientId: string | null
 ): void => {
@@ -150,7 +176,10 @@ export const ensureTrailingEmptyTask = (
 };
 
 export const ensureEmptyNodesEverywhere = (draft: EditorState): void => {
-  ensureTrailingEmptyTask(draft, null);
+  const hasCategoryRoots = draft.tasks.some((task) => task.systemType === "category_root");
+  if (!hasCategoryRoots) {
+    ensureTrailingEmptyTask(draft, null);
+  }
   
   const walkTasks = (tasks: EnhancedTaskTreeType[]) => {
     tasks.forEach(task => {
@@ -176,6 +205,7 @@ const BACKEND_SYNCED_OPERATIONS = new Set([
   'TOGGLE_COMPLETE',
   'DELETE_TASK',
   'UPDATE_METADATA',
+  'SET_RECURRENCE',
   'IMPORT_TASKS'
 ]);
 
@@ -227,6 +257,17 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
           if (operation.metadata.priority !== undefined) {
             task.priority = operation.metadata.priority;
           }
+          if (operation.metadata.categoryAllocations !== undefined) {
+            task.categoryAllocations = normalizeTaskCategoryAllocations(operation.metadata.categoryAllocations, {
+              projectType: draft.project.type,
+            });
+          }
+          if (operation.metadata.lifestyleTraits !== undefined) {
+            task.lifestyleTraits = normalizeLifestyleTraitAllocations(operation.metadata.lifestyleTraits);
+          }
+          if (operation.metadata.systemType !== undefined) {
+            task.systemType = operation.metadata.systemType;
+          }
         }
       } else if (!task) {
         // Task doesn't exist at all, create it
@@ -245,6 +286,11 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
           dueDate: operation.metadata?.dueDate ?? null,
           estimatedTimeMinutes: operation.metadata?.estimatedTimeMinutes ?? null,
           priority: operation.metadata?.priority ?? null,
+          categoryAllocations: normalizeTaskCategoryAllocations(operation.metadata?.categoryAllocations, {
+            projectType: draft.project.type,
+          }),
+          lifestyleTraits: normalizeLifestyleTraitAllocations(operation.metadata?.lifestyleTraits),
+          systemType: operation.metadata?.systemType ?? null,
         };
         
         if (operation.parentClientId === null) {
@@ -291,9 +337,20 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
         if ('description' in operation) {
           task.description = operation.description ?? null;
         }
+        if ('categoryAllocations' in operation) {
+          task.categoryAllocations = normalizeTaskCategoryAllocations(operation.categoryAllocations, {
+            projectType: draft.project.type,
+          });
+        }
+        if ('lifestyleTraits' in operation) {
+          task.lifestyleTraits = normalizeLifestyleTraitAllocations(operation.lifestyleTraits);
+        }
       }
       break;
     }
+
+    case 'SET_RECURRENCE':
+      break;
     
     case 'DELETE_TASK': {
       const task = findTaskByClientId(draft.tasks, operation.clientId);
@@ -314,6 +371,11 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
         projectId: draft.project.id,
         parentTaskId: null,
         subtasks: subtree.subtasks?.map(reconstructTask),
+        categoryAllocations: normalizeTaskCategoryAllocations(subtree.categoryAllocations, {
+          projectType: draft.project.type,
+        }),
+        lifestyleTraits: normalizeLifestyleTraitAllocations(subtree.lifestyleTraits),
+        systemType: subtree.systemType ?? null,
         isEphemeral: false
       });
       
@@ -389,9 +451,16 @@ export const getInverseOperation = (
         dueDate: task?.dueDate,
         priority: task?.priority,
         description: task?.description,
+        categoryAllocations: normalizeTaskCategoryAllocations(task?.categoryAllocations, {
+          projectType: currentState.project.type,
+        }),
+        lifestyleTraits: normalizeLifestyleTraitAllocations(task?.lifestyleTraits),
         timestamp: Date.now()
       };
     }
+
+    case 'SET_RECURRENCE':
+      return null;
     
     case 'DELETE_TASK': {
       const task = findTaskByClientId(currentState.tasks, operation.clientId);
@@ -450,6 +519,9 @@ export const createTaskOp = (
     dueDate?: string | null;
     estimatedTimeMinutes?: number | null;
     priority?: number | null;
+    categoryAllocations?: TaskCategoryAllocation[];
+    lifestyleTraits?: LifestyleTraitAllocation[];
+    systemType?: string | null;
   }
 ): Operation => {
   return {
@@ -503,6 +575,8 @@ export const createUpdateMetadataOp = (
     dueDate?: string | null;
     priority?: number | null;
     description?: string | null;
+    categoryAllocations?: TaskCategoryAllocation[];
+    lifestyleTraits?: LifestyleTraitAllocation[];
   }
 ): Operation => {
   return {
@@ -511,4 +585,16 @@ export const createUpdateMetadataOp = (
     ...updates,
     timestamp: Date.now()
   } as Operation;
+};
+
+export const createSetRecurrenceOp = (
+  clientId: string,
+  recurrence: RecurrenceSchedule,
+): Operation => {
+  return {
+    type: 'SET_RECURRENCE',
+    clientId,
+    recurrence,
+    timestamp: Date.now(),
+  };
 };

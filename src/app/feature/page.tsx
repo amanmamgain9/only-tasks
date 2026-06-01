@@ -3,7 +3,7 @@ import SimpleMarketingPage from "@/features/marketing/components/SimpleMarketing
 
 export const metadata: Metadata = {
   title: "Features",
-  description: "Keyboard-first task management, scheduling views, and focused work planning in Plan My Workday.",
+  description: "Keyboard-first task management, date views, and focused work planning in Plan My Workday.",
 };
 
 export default function FeaturePage() {
@@ -11,8 +11,8 @@ export default function FeaturePage() {
     <SimpleMarketingPage
       eyebrow="Features"
       title="Task management as fast as your brain."
-      description="Plan My Workday keeps the fast task tree, keyboard movement, date views, and focus flow in one workspace."
-      points={["Keyboard-first task entry and navigation", "Nested task trees with schedule views", "Focused workspace under /app"]}
+      description="Plan My Workday keeps the fast task tree, keyboard movement, date views, and focus timer in one workspace."
+      points={["Keyboard-first task entry and navigation", "Nested task trees with date views", "Focused workspace under /app"]}
     />
   );
 }

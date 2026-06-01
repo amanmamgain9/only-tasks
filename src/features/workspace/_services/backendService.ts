@@ -1,4 +1,6 @@
-import type { ApiResponse, Project, SaveProjectInput } from "../types";
+import type { ProgressSummary } from "@/features/progress/types";
+import type { SaveTimeReviewInput, TimeReviewSummary } from "@/features/timeReview/types";
+import type { ApiResponse, Project, SaveProjectInput, TimerSettings, TimerStatus } from "../types";
 import type { EnhancedTaskTreeType, OperationBatch } from "../components/MyWorkplaceComponents/TaskTreeComponents/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -101,14 +103,6 @@ export const unarchiveProject = async (projectId: number): Promise<ApiResponse<P
   return parseResponse<Project>(response);
 };
 
-export const restoreProject = async (projectId: number): Promise<ApiResponse<Project>> => {
-  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/restore`, {
-    method: "POST",
-  });
-
-  return parseResponse<Project>(response);
-};
-
 export const getProjectTree = async (
   projectId: number,
   params?: {
@@ -148,4 +142,90 @@ export const applyOperationBatch = async (
   });
 
   return parseResponse<EnhancedTaskTreeType[]>(response);
+};
+
+export const getTimerStatus = async (): Promise<ApiResponse<TimerStatus> | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/timer`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    return await parseResponse<TimerStatus>(response);
+  } catch (error) {
+    console.error("Error fetching timer:", error);
+    return null;
+  }
+};
+
+export const getProgressSummary = async (timeZone: string): Promise<ApiResponse<ProgressSummary> | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/progress/summary${toQueryString({ timeZone })}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    return await parseResponse<ProgressSummary>(response);
+  } catch (error) {
+    console.error("Error fetching progress:", error);
+    return null;
+  }
+};
+
+export const getTodayTimeReview = async (timeZone: string): Promise<ApiResponse<TimeReviewSummary> | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/time-review/today${toQueryString({ timeZone })}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    return await parseResponse<TimeReviewSummary>(response);
+  } catch (error) {
+    console.error("Error fetching time review:", error);
+    return null;
+  }
+};
+
+export const saveTodayTimeReview = async (input: SaveTimeReviewInput): Promise<ApiResponse<TimeReviewSummary>> => {
+  const response = await fetch(`${API_BASE_URL}/api/time-review/today`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  return parseResponse<TimeReviewSummary>(response);
+};
+
+export const startTimer = async (input: {
+  phase?: TimerStatus["nextSession"]["phase"];
+  durationSeconds?: number;
+  taskId?: number | null;
+  clientMutationId?: string;
+}): Promise<ApiResponse<TimerStatus>> => {
+  const response = await fetch(`${API_BASE_URL}/api/timer/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  return parseResponse<TimerStatus>(response);
+};
+
+function postTimerAction(timerId: number, action: "pause" | "resume" | "skip" | "complete" | "reset") {
+  return fetch(`${API_BASE_URL}/api/timer/${timerId}/${action}`, {
+    method: "POST",
+  }).then((response) => parseResponse<TimerStatus>(response));
+}
+
+export const pauseTimer = (timerId: number) => postTimerAction(timerId, "pause");
+export const resumeTimer = (timerId: number) => postTimerAction(timerId, "resume");
+export const skipTimer = (timerId: number) => postTimerAction(timerId, "skip");
+export const completeTimer = (timerId: number) => postTimerAction(timerId, "complete");
+export const resetTimer = (timerId: number) => postTimerAction(timerId, "reset");
+
+export const saveTimerSettings = async (settings: TimerSettings): Promise<ApiResponse<TimerSettings>> => {
+  const response = await fetch(`${API_BASE_URL}/api/timer/settings`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+
+  return parseResponse<TimerSettings>(response);
 };

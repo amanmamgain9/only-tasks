@@ -45,6 +45,8 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
   
   const modalRef = useRef<HTMLDialogElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const handleCloseRef = useRef<() => void>(() => {});
+  const isImportingRef = useRef(isImporting);
 
   useEffect(() => {
     if (isOpen && modalRef.current) {
@@ -100,23 +102,28 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
   }, [isImporting, onClose]);
 
   useEffect(() => {
+    handleCloseRef.current = handleClose;
+    isImportingRef.current = isImporting;
+  }, [handleClose, isImporting]);
+
+  useEffect(() => {
     if (!isOpen) return;
 
     const handleDocumentKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !isImporting) {
+      if (event.key === 'Escape' && !isImportingRef.current) {
         event.preventDefault();
-        handleClose();
+        handleCloseRef.current();
       }
     };
 
     document.addEventListener('keydown', handleDocumentKeyDown);
     return () => document.removeEventListener('keydown', handleDocumentKeyDown);
-  }, [handleClose, isImporting, isOpen]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-950/50 flex items-center justify-center z-50 p-4">
       <dialog
         ref={modalRef}
         open
@@ -241,7 +248,7 @@ const ImportTasksModal: React.FC<ImportTasksModalProps> = ({ isOpen, onClose, on
                   className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
                   {isImporting && <Loader2 className="size-4 animate-spin" />}
-                  {isImporting ? 'Importing...' : `Import ${parsedData?.length || 0} Tasks`}
+                  {isImporting ? 'Importing' : `Import ${parsedData?.length || 0} Tasks`}
                 </button>
               </div>
             </div>
