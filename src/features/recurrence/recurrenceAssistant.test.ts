@@ -157,6 +157,18 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("rejects maximum quota wording instead of inverting it to at least", () => {
+    expect(parseRecurrencePrompt("at most 3 days a week", { todayDate: "2026-06-03" })).toMatchObject({
+      ok: false,
+      message: "Maximum-style repeat targets are not supported yet. Use an at-least target instead.",
+    });
+
+    expect(parseRecurrencePrompt("no more than 3 times a day", { todayDate: "2026-06-03" })).toMatchObject({
+      ok: false,
+      message: "Maximum-style repeat targets are not supported yet. Use an at-least target instead.",
+    });
+  });
+
   test("understands a human end-of-month phrase", () => {
     const result = parseRecurrencePrompt("every weekday until the end of June", { todayDate: "2026-06-03" });
 

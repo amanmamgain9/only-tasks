@@ -279,6 +279,16 @@ function parseQuota(text: string, unit: "day" | "week") {
   };
 }
 
+function hasUnsupportedQuotaCeiling(text: string) {
+  const numberPattern = `\\d+|${Object.keys(NUMBER_WORDS).join("|")}`;
+  const targetUnit = "x|times?|days?|sessions?|glasses?";
+  const period = "\\/\\s*(?:day|week)|(?:a|per|in\\s+a|each|every)\\s+(?:day|week)|daily|weekly";
+  const expression = new RegExp(
+    `\\b(?:at\\s*most|maximum|max|no\\s+more\\s+than|not\\s+more\\s+than|up\\s+to|less\\s+than|under)\\s+(${numberPattern})\\s*(?:${targetUnit})\\s*(?:${period})\\b`,
+  );
+  return expression.test(text);
+}
+
 function parseLooseWeeklyQuota(text: string) {
   const numberPattern = `\\d+|${Object.keys(NUMBER_WORDS).join("|")}`;
   const qualifier = "at\\s*least|atleast|minimum|min|at\\s+minimum";
@@ -493,6 +503,9 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
 
   if (/\b(month|monthly|year|yearly|annual|annually|quarter|quarterly)\b/.test(text)) {
     return reject("Monthly and yearly repeats are not supported by the current recurrence engine yet.");
+  }
+  if (hasUnsupportedQuotaCeiling(text)) {
+    return reject("Maximum-style repeat targets are not supported yet. Use an at-least target instead.");
   }
 
   const todayDate = normalizeDateInput(options.todayDate) ?? getLocalDateKey();

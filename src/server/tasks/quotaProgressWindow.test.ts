@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { getQuotaProgressWindow } from "./service";
+import { getQuotaProgressWindow, getQuotaReferenceDateForScheduledRange } from "./service";
 
 describe("quota progress windows", () => {
   test("counts a weekly quota from the schedule start during its first partial week", () => {
@@ -34,5 +34,33 @@ describe("quota progress windows", () => {
       periodStartDate: "2026-06-08",
       periodEndDateExclusive: "2026-06-15",
     });
+  });
+
+  test("keeps future-starting quota targets visible inside the selected week range", () => {
+    expect(getQuotaReferenceDateForScheduledRange({
+      schedule: {
+        mode: "weekly_quota",
+        startDate: "2026-06-06",
+        endDate: null,
+        targetCount: 3,
+        comparator: "at_least",
+      },
+      startDate: "2026-06-03",
+      endDateExclusive: "2026-06-08",
+    })).toBe("2026-06-06");
+  });
+
+  test("omits quota targets when their active dates do not overlap the selected range", () => {
+    expect(getQuotaReferenceDateForScheduledRange({
+      schedule: {
+        mode: "daily_quota",
+        startDate: "2026-06-06",
+        endDate: null,
+        targetCount: 8,
+        comparator: "at_least",
+      },
+      startDate: "2026-06-03",
+      endDateExclusive: "2026-06-04",
+    })).toBeNull();
   });
 });

@@ -44,11 +44,21 @@ function isQuotaRecurrence(schedule: RecurrenceScheduleInput | null | undefined)
   return schedule?.mode === "daily_quota" || schedule?.mode === "weekly_quota";
 }
 
-function isScheduleActiveOnDate(schedule: RecurrenceScheduleInput, dateKey: string) {
-  if (schedule.mode === "none") return false;
-  if (dateKey < schedule.startDate) return false;
-  if (schedule.endDate && dateKey > schedule.endDate) return false;
-  return true;
+export function getQuotaReferenceDateForScheduledRange(input: {
+  schedule: RecurrenceScheduleInput;
+  startDate: string;
+  endDateExclusive: string;
+}) {
+  const { schedule, startDate, endDateExclusive } = input;
+  if (schedule.mode === "none") return null;
+
+  const activeStartDate = schedule.startDate > startDate ? schedule.startDate : startDate;
+  const scheduleEndDateExclusive = schedule.endDate ? addDaysToDateKey(schedule.endDate, 1) : endDateExclusive;
+  const activeEndDateExclusive = scheduleEndDateExclusive < endDateExclusive
+    ? scheduleEndDateExclusive
+    : endDateExclusive;
+
+  return activeStartDate < activeEndDateExclusive ? activeStartDate : null;
 }
 
 export function getQuotaProgressWindow(input: {
@@ -97,7 +107,8 @@ function getQuotaTargetProgress(input: {
 async function getScheduledQuotaTargetTasks(input: {
   userId: number;
   projectId?: number;
-  referenceDate: string;
+  startDate: string;
+  endDateExclusive: string;
 }) {
   const tasks = await taskRepo.findTasksByUserId(input.userId, {
     projectId: input.projectId,
@@ -121,15 +132,21 @@ async function getScheduledQuotaTargetTasks(input: {
       startDate: series.startDate,
       endDate: series.endDate,
     });
-    if (!isQuotaRecurrence(recurrenceSchedule) || !isScheduleActiveOnDate(recurrenceSchedule, input.referenceDate)) {
+    if (!isQuotaRecurrence(recurrenceSchedule)) {
       return [];
     }
+    const referenceDate = getQuotaReferenceDateForScheduledRange({
+      schedule: recurrenceSchedule,
+      startDate: input.startDate,
+      endDateExclusive: input.endDateExclusive,
+    });
+    if (!referenceDate) return [];
 
     const recurrenceTargetProgress = getQuotaTargetProgress({
       userId: input.userId,
       seriesId: series.id,
       schedule: recurrenceSchedule,
-      todayDate: input.referenceDate,
+      todayDate: referenceDate,
     });
 
     return [{
@@ -351,7 +368,8 @@ export async function getScheduledTasks(
   const quotaTargetTasks = await getScheduledQuotaTargetTasks({
     userId,
     projectId: options.projectId,
-    referenceDate: options.dateRange === "tomorrow" ? startDate : todayDate,
+    startDate,
+    endDateExclusive,
   });
 
   const ancestorIds = new Set<number>();
