@@ -26,6 +26,8 @@ type ParseOptions = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DATE_MENTION_RE = /\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/g;
+const MAX_DAILY_QUOTA_TARGET = 99;
+const MAX_WEEKLY_QUOTA_TARGET = 31;
 
 const WEEKDAYS = [
   { value: 0, label: "Sunday", aliases: ["sunday", "sun"] },
@@ -263,13 +265,14 @@ function getEveryOtherInterval(text: string, unit: "day" | "week", hasNamedWeekd
 
 function parseQuota(text: string, unit: "day" | "week") {
   const numberPattern = `\\d+|${Object.keys(NUMBER_WORDS).join("|")}`;
+  const maxTargetCount = unit === "day" ? MAX_DAILY_QUOTA_TARGET : MAX_WEEKLY_QUOTA_TARGET;
   const expression = new RegExp(
     `\\b(?:(at\\s*least|atleast|minimum|min|at\\s+minimum)\\s+)?(${numberPattern})\\s*(?:x|times?|days?|sessions?|glasses?)\\s*(?:/\\s*${unit}|(?:a|per|in\\s+a|each|every)\\s+${unit}|${unit === "day" ? "daily" : "weekly"})\\b`,
   );
   const match = expression.exec(text);
   if (!match) return null;
   const targetCount = parseNumberToken(match[2]);
-  if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > 31) return null;
+  if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > maxTargetCount) return null;
   return {
     targetCount,
     comparator: match[1] ? "at_least" as const : undefined,
@@ -431,7 +434,7 @@ export function createRecurrenceAssistantResultFromSchedule(
     }
     recurrence = { mode: "daily", startDate, endDate, interval };
   } else if (schedule.mode === "daily_quota") {
-    if (!Number.isInteger(schedule.targetCount) || schedule.targetCount < 1 || schedule.targetCount > 31) {
+    if (!Number.isInteger(schedule.targetCount) || schedule.targetCount < 1 || schedule.targetCount > MAX_DAILY_QUOTA_TARGET) {
       return reject("The daily target count is invalid.");
     }
     recurrence = {

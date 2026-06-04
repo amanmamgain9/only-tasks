@@ -384,9 +384,9 @@ export async function getScheduledTasks(
   const taskMap = new Map<number, (typeof scheduledTasks)[number]>();
   categoryRoots.forEach((task) => taskMap.set(task.id, task));
   scheduledTasks.forEach((task) => taskMap.set(task.id, task));
-  quotaTargetTasks.forEach((task) => taskMap.set(task.id, task));
   ancestors.forEach((task) => taskMap.set(task.id, task));
   descendants.flat().forEach((task) => taskMap.set(task.id, task));
+  quotaTargetTasks.forEach((task) => taskMap.set(task.id, task));
 
   return buildTaskForest(Array.from(taskMap.values()));
 }

@@ -142,6 +142,21 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("allows high daily quota counts that the recurrence engine accepts", () => {
+    const result = parseRecurrencePrompt("do it 50 times a day", { todayDate: "2026-06-03" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      draft: {
+        recurrence: {
+          mode: "daily_quota",
+          startDate: "2026-06-03",
+          targetCount: 50,
+        },
+      },
+    });
+  });
+
   test("understands a human end-of-month phrase", () => {
     const result = parseRecurrencePrompt("every weekday until the end of June", { todayDate: "2026-06-03" });
 

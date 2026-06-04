@@ -178,6 +178,15 @@ function findActiveThread(input: {
     .get(input) as AssistantThreadRow | undefined;
 }
 
+function isSqliteUniqueConstraintError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "SQLITE_CONSTRAINT_UNIQUE"
+  );
+}
+
 function createThread(input: {
   userId: number;
   surface: string;
@@ -187,13 +196,22 @@ function createThread(input: {
   title: string;
   now: string;
 }) {
-  const result = sqlite
-    .prepare(
-      `INSERT INTO pmwd_assistant_threads
-       (user_id, surface, entity_type, entity_id, entity_client_id, status, title, created_at, updated_at)
-       VALUES (@userId, @surface, @entityType, @entityId, @entityClientId, 'active', @title, @now, @now)`,
-    )
-    .run(input);
+  let result: { lastInsertRowid: number | bigint };
+  try {
+    result = sqlite
+      .prepare(
+        `INSERT INTO pmwd_assistant_threads
+         (user_id, surface, entity_type, entity_id, entity_client_id, status, title, created_at, updated_at)
+         VALUES (@userId, @surface, @entityType, @entityId, @entityClientId, 'active', @title, @now, @now)`,
+      )
+      .run(input);
+  } catch (error) {
+    if (!isSqliteUniqueConstraintError(error)) throw error;
+
+    const existing = findActiveThread(input);
+    if (existing) return existing;
+    throw error;
+  }
 
   return sqlite
     .prepare("SELECT * FROM pmwd_assistant_threads WHERE id = ? LIMIT 1")
