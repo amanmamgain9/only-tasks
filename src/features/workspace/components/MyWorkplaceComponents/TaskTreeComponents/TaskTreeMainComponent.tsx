@@ -463,7 +463,9 @@ function TreeMainModals({ controller }: { controller: ReturnType<typeof useTreeM
         isOpen={controller.recurrenceNode !== null}
         onClose={() => controller.setRecurrenceNode(null)}
         onSave={controller.handleRecurrenceSave}
+        taskClientId={controller.recurrenceNode?.id ?? null}
         initialStartDate={controller.recurrenceNode?.dueDate || null}
+        initialRecurrence={controller.recurrenceNode?.recurrenceSchedule ?? null}
       />
     </>
   );

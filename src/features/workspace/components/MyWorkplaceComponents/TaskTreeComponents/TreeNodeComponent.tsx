@@ -110,6 +110,8 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
 
   const isCategoryRoot = node.systemType === 'category_root';
   const isRecurrenceTemplate = node.recurrenceRole === 'template';
+  const targetProgress = node.recurrenceTargetProgress ?? null;
+  const isRecurrenceTarget = Boolean(targetProgress);
   const showMakeRootButton = node.nodeType === 'task' && !isCategoryRoot && (node.title || '').trim().length > 0;
   const showDeleteButton = node.nodeType === 'task' && !isCategoryRoot && !node.isEphemeral;
   const showCalendarButton = !isCategoryRoot;
@@ -305,7 +307,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
         </div>
 
         <div className="flex-shrink-0 flex items-center h-6 mt-1">
-          {isCategoryRoot || isRecurrenceTemplate ? (
+          {isCategoryRoot || (isRecurrenceTemplate && !isRecurrenceTarget) ? (
             <div
               className="flex size-4 items-center justify-center rounded border border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
               title={isRecurrenceTemplate ? 'Recurring template' : undefined}
@@ -322,7 +324,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
                 ? 'bg-green-500 border-green-500'
                 : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
                 }`}
-              title="Toggle completion"
+              title={isRecurrenceTarget ? 'Add target completion' : 'Toggle completion'}
               aria-pressed={node.isCompleted}
             >
               {node.isCompleted && <Check className="size-2.5 text-white" />}
@@ -409,6 +411,20 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
               {rolloverLabel && (
                 <div className="ml-1 mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   {rolloverLabel}
+                </div>
+              )}
+              {targetProgress && (
+                <div className="ml-1 mt-0.5 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  <span>
+                    {targetProgress.completedCount}/{targetProgress.targetCount} {targetProgress.period === 'day' ? 'today' : 'this week'}
+                  </span>
+                  {targetProgress.completedCount >= targetProgress.targetCount ? (
+                    <span className="text-green-600 dark:text-green-400">target met</span>
+                  ) : (
+                    <span>
+                      {targetProgress.targetCount - targetProgress.completedCount} left
+                    </span>
+                  )}
                 </div>
               )}
             </>

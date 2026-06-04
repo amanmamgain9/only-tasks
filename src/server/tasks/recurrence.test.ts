@@ -2,7 +2,10 @@ import Database from "better-sqlite3";
 import { describe, expect, test } from "vitest";
 import { initializeDatabase } from "../db/init";
 import {
+  addRecurrenceTargetCompletionInDatabase,
+  getRecurrenceTargetCompletionCountInDatabase,
   materializeRecurringTasksForDateRangeInDatabase,
+  recurrenceScheduleFromStoredSeries,
   setTaskRecurrenceInDatabase,
 } from "./recurrence";
 
@@ -160,6 +163,54 @@ function getOccurrence(sqlite: Database.Database, templateTaskId: number, occurr
 }
 
 describe("task recurrence", () => {
+  test("converts stored active series rules back into schedule inputs for the tree", () => {
+    expect(recurrenceScheduleFromStoredSeries({
+      rule: JSON.stringify({ frequency: "weekly", interval: 1, weekdays: [1, 2, 3, 4, 5] }),
+      startDate: "2026-06-01",
+      endDate: null,
+    })).toEqual({
+      mode: "weekdays",
+      startDate: "2026-06-01",
+      endDate: null,
+    });
+
+    expect(recurrenceScheduleFromStoredSeries({
+      rule: JSON.stringify({ frequency: "weekly", interval: 2, weekdays: [5] }),
+      startDate: "2026-06-05",
+      endDate: "2026-08-01",
+    })).toEqual({
+      mode: "weekly",
+      startDate: "2026-06-05",
+      endDate: "2026-08-01",
+      interval: 2,
+      weekdays: [5],
+    });
+
+    expect(recurrenceScheduleFromStoredSeries({
+      rule: JSON.stringify({ frequency: "weekly_quota", targetCount: 3, comparator: "at_least" }),
+      startDate: "2026-06-03",
+      endDate: null,
+    })).toEqual({
+      mode: "weekly_quota",
+      startDate: "2026-06-03",
+      endDate: null,
+      targetCount: 3,
+      comparator: "at_least",
+    });
+
+    expect(recurrenceScheduleFromStoredSeries({
+      rule: JSON.stringify({ frequency: "daily_quota", targetCount: 8, comparator: "at_least" }),
+      startDate: "2026-06-03",
+      endDate: null,
+    })).toEqual({
+      mode: "daily_quota",
+      startDate: "2026-06-03",
+      endDate: null,
+      targetCount: 8,
+      comparator: "at_least",
+    });
+  });
+
   test("converts a task subtree into a template and materializes a dated occurrence subtree", () => {
     const sqlite = createTestDatabase();
     const { userId, projectId, taskId, childId } = seedTemplateTree(sqlite);
@@ -210,6 +261,82 @@ describe("task recurrence", () => {
       { occurrenceDate: "2026-06-05", count: 1 },
       { occurrenceDate: "2026-06-08", count: 1 },
     ]);
+  });
+
+  test("stores weekly quota recurrence without creating fake dated occurrences", () => {
+    const sqlite = createTestDatabase();
+    const { userId, projectId, taskId } = seedTemplateTree(sqlite);
+
+    setTaskRecurrenceInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      recurrence: {
+        mode: "weekly_quota",
+        startDate: "2026-06-03",
+        targetCount: 3,
+        comparator: "at_least",
+      },
+      timestamp: NOW,
+    });
+    materialize(sqlite, userId, projectId, "2026-06-03", "2026-06-10");
+
+    const template = sqlite.prepare("SELECT * FROM pmwd_tasks WHERE id = ?").get(taskId) as any;
+    const series = sqlite.prepare("SELECT * FROM pmwd_task_recurrence_series WHERE template_task_id = ?").get(taskId) as any;
+    const occurrences = sqlite
+      .prepare("SELECT COUNT(*) AS count FROM pmwd_tasks WHERE recurrence_role = 'occurrence_root'")
+      .get() as { count: number };
+
+    expect(template.recurrence_role).toBe("template");
+    expect(JSON.parse(series.rule)).toEqual({
+      frequency: "weekly_quota",
+      targetCount: 3,
+      comparator: "at_least",
+    });
+    expect(occurrences.count).toBe(0);
+  });
+
+  test("records quota target completions idempotently for a local date window", () => {
+    const sqlite = createTestDatabase();
+    const { userId } = seedTemplateTree(sqlite);
+
+    const { seriesId } = setTaskRecurrenceInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      recurrence: {
+        mode: "weekly_quota",
+        startDate: "2026-06-03",
+        targetCount: 3,
+        comparator: "at_least",
+      },
+      timestamp: NOW,
+    });
+
+    addRecurrenceTargetCompletionInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      localDate: "2026-06-03",
+      clientEventId: "event-1",
+      timestamp: NOW,
+    });
+    addRecurrenceTargetCompletionInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      localDate: "2026-06-03",
+      clientEventId: "event-1",
+      timestamp: NOW,
+    });
+
+    expect(getRecurrenceTargetCompletionCountInDatabase({
+      db: sqlite,
+      userId,
+      recurrenceSeriesId: seriesId!,
+      startDate: "2026-06-01",
+      endDateExclusive: "2026-06-08",
+    })).toBe(1);
   });
 
   test("keeps a subtask added to one occurrence out of the next generated occurrence", () => {

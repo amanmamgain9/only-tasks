@@ -203,6 +203,7 @@ const BACKEND_SYNCED_OPERATIONS = new Set([
   'CREATE_TASK',
   'UPDATE_TITLE',
   'TOGGLE_COMPLETE',
+  'ADD_RECURRENCE_TARGET_COMPLETION',
   'DELETE_TASK',
   'UPDATE_METADATA',
   'SET_RECURRENCE',
@@ -322,6 +323,16 @@ export const applyOperationToState = (draft: EditorState, operation: Operation):
       const task = findTaskByClientId(draft.tasks, operation.clientId);
       if (task) {
         task.isCompleted = operation.isCompleted;
+      }
+      break;
+    }
+
+    case 'ADD_RECURRENCE_TARGET_COMPLETION': {
+      const task = findTaskByClientId(draft.tasks, operation.clientId);
+      const progress = task?.recurrenceTargetProgress;
+      if (task && progress) {
+        progress.completedCount += operation.quantity;
+        task.isCompleted = progress.completedCount >= progress.targetCount;
       }
       break;
     }
@@ -447,6 +458,9 @@ export const getInverseOperation = (
         isCompleted: !operation.isCompleted,
         timestamp: Date.now()
       };
+
+    case 'ADD_RECURRENCE_TARGET_COMPLETION':
+      return null;
     
     case 'UPDATE_METADATA': {
       const task = findTaskByClientId(currentState.tasks, operation.clientId);
@@ -561,6 +575,20 @@ export const createToggleCompletionOp = (
     clientId,
     isCompleted,
     timestamp: Date.now()
+  };
+};
+
+export const createAddRecurrenceTargetCompletionOp = (
+  clientId: string,
+  localDate: string,
+): Operation => {
+  return {
+    type: 'ADD_RECURRENCE_TARGET_COMPLETION',
+    clientId,
+    localDate,
+    quantity: 1,
+    clientEventId: uuidv4(),
+    timestamp: Date.now(),
   };
 };
 

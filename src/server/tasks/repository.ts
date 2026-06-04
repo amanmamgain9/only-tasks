@@ -12,6 +12,7 @@ import {
   type UpdateTaskInput,
   updateTaskSchema,
 } from "../db/schema/tasks";
+import { taskRecurrenceSeries, type TaskRecurrenceSeries } from "../db/schema/recurrence";
 
 export interface CreateTaskDbInput extends CreateTaskInput {
   createdAt: string;
@@ -110,6 +111,22 @@ export async function findTasksByIds(userId: number, taskIds: number[]): Promise
     .from(tasks)
     .where(and(eq(tasks.userId, userId), inArray(tasks.id, taskIds), eq(tasks.deleted, 0), eq(tasks.archived, 0)))
     .orderBy(tasks.position, desc(tasks.createdAt));
+}
+
+export async function findActiveRecurrenceSeriesByTemplateIds(
+  userId: number,
+  templateTaskIds: number[],
+): Promise<TaskRecurrenceSeries[]> {
+  if (templateTaskIds.length === 0) return [];
+
+  return db
+    .select()
+    .from(taskRecurrenceSeries)
+    .where(and(
+      eq(taskRecurrenceSeries.userId, userId),
+      eq(taskRecurrenceSeries.status, "active"),
+      inArray(taskRecurrenceSeries.templateTaskId, templateTaskIds),
+    ));
 }
 
 export async function createTask(input: CreateTaskDbInput): Promise<Task> {

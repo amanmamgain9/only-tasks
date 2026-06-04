@@ -27,8 +27,19 @@ export interface RawImportTask {
 export type RecurrenceSchedule =
   | { mode: 'none' }
   | { mode: 'daily'; startDate: string; endDate?: string | null; interval?: number }
+  | { mode: 'daily_quota'; startDate: string; endDate?: string | null; targetCount: number; comparator?: 'at_least' }
   | { mode: 'weekdays'; startDate: string; endDate?: string | null }
-  | { mode: 'weekly'; startDate: string; endDate?: string | null; interval?: number; weekdays?: number[] };
+  | { mode: 'weekly'; startDate: string; endDate?: string | null; interval?: number; weekdays?: number[] }
+  | { mode: 'weekly_quota'; startDate: string; endDate?: string | null; targetCount: number; comparator?: 'at_least' };
+
+export type RecurrenceTargetProgress = {
+  period: 'day' | 'week';
+  targetCount: number;
+  completedCount: number;
+  localDate: string;
+  periodStartDate: string;
+  periodEndDateExclusive: string;
+};
 
 export type Operation = 
   | { type: 'TOGGLE_EXPANSION'; clientId: string; isExpanded: boolean; timestamp: number }
@@ -50,6 +61,7 @@ export type Operation =
   }
   | { type: 'UPDATE_TITLE'; clientId: string; title: string; timestamp: number }
   | { type: 'TOGGLE_COMPLETE'; clientId: string; isCompleted: boolean; timestamp: number }
+  | { type: 'ADD_RECURRENCE_TARGET_COMPLETION'; clientId: string; localDate: string; quantity: number; clientEventId: string; timestamp: number }
   | { type: 'DELETE_TASK'; clientId: string; timestamp: number }
   | { 
       type: 'UPDATE_METADATA'; 
@@ -126,6 +138,8 @@ export interface TreeNode {
   recurrenceOccurrenceDate?: string | null;
   recurrenceStatus?: 'scheduled' | 'skipped' | null;
   recurrenceIsOverride?: number | boolean | null;
+  recurrenceSchedule?: RecurrenceSchedule | null;
+  recurrenceTargetProgress?: RecurrenceTargetProgress | null;
   taskId?: number;
   isEphemeral?: boolean;
   position?: string;
