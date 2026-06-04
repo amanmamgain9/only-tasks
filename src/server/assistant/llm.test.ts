@@ -48,6 +48,21 @@ describe("recurrence LLM client", () => {
     })).resolves.toBeNull();
   });
 
+  test("honors the explicit LLM disabled kill switch", async () => {
+    clearLlmEnv();
+    process.env.PLANMYWORKDAY_LLM_API_KEY = "test-key";
+    process.env.PLANMYWORKDAY_LLM_DISABLED = "1";
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    expect(isRecurrenceLlmConfigured()).toBe(false);
+    await expect(resolveRecurrencePromptWithLlm({
+      prompt: "every weekday",
+      todayDate: "2026-06-03",
+    })).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   test("turns OpenAI-compatible JSON into a validated recurrence result", async () => {
     clearLlmEnv();
     process.env.PLANMYWORKDAY_LLM_API_KEY = "test-key";

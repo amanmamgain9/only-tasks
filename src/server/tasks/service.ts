@@ -51,15 +51,31 @@ function isScheduleActiveOnDate(schedule: RecurrenceScheduleInput, dateKey: stri
   return true;
 }
 
+export function getQuotaProgressWindow(input: {
+  schedule: Extract<RecurrenceScheduleInput, { mode: "daily_quota" | "weekly_quota" }>;
+  todayDate: string;
+}) {
+  const isDaily = input.schedule.mode === "daily_quota";
+  const naturalPeriodStartDate = isDaily ? input.todayDate : getWeekStartDateKey(input.todayDate, 1);
+  return {
+    period: isDaily ? "day" as const : "week" as const,
+    periodStartDate: naturalPeriodStartDate < input.schedule.startDate
+      ? input.schedule.startDate
+      : naturalPeriodStartDate,
+    periodEndDateExclusive: addDaysToDateKey(naturalPeriodStartDate, isDaily ? 1 : 7),
+  };
+}
+
 function getQuotaTargetProgress(input: {
   userId: number;
   seriesId: number;
   schedule: Extract<RecurrenceScheduleInput, { mode: "daily_quota" | "weekly_quota" }>;
   todayDate: string;
 }): RecurrenceTargetProgress {
-  const isDaily = input.schedule.mode === "daily_quota";
-  const periodStartDate = isDaily ? input.todayDate : getWeekStartDateKey(input.todayDate, 1);
-  const periodEndDateExclusive = addDaysToDateKey(periodStartDate, isDaily ? 1 : 7);
+  const { period, periodStartDate, periodEndDateExclusive } = getQuotaProgressWindow({
+    schedule: input.schedule,
+    todayDate: input.todayDate,
+  });
   const completedCount = getRecurrenceTargetCompletionCountInDatabase({
     db: sqlite,
     userId: input.userId,
@@ -69,7 +85,7 @@ function getQuotaTargetProgress(input: {
   });
 
   return {
-    period: isDaily ? "day" : "week",
+    period,
     targetCount: input.schedule.targetCount,
     completedCount,
     localDate: input.todayDate,

@@ -99,8 +99,14 @@ const RECURRENCE_SYSTEM_PROMPT = [
   "Output shape: { \"schedule\": <schedule-or-null>, \"message\": \"short human message\", \"confidence\": 0.0-1.0 }",
 ].join("\n");
 
-function envFlagDisabled(value: string | undefined) {
-  return value === "0" || value?.toLowerCase() === "false";
+function envFlagFalse(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "0" || normalized === "false";
+}
+
+function envFlagTrue(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "1" || normalized === "true";
 }
 
 function normalizeProvider(value: string | undefined): LlmProvider | null {
@@ -142,8 +148,8 @@ function getTimeoutMs() {
 }
 
 function getLlmConfig(): LlmConfig | null {
-  if (envFlagDisabled(process.env.PLANMYWORKDAY_LLM_ENABLED)) return null;
-  if (envFlagDisabled(process.env.PLANMYWORKDAY_LLM_DISABLED)) return null;
+  if (envFlagFalse(process.env.PLANMYWORKDAY_LLM_ENABLED)) return null;
+  if (envFlagTrue(process.env.PLANMYWORKDAY_LLM_DISABLED)) return null;
 
   const provider = inferProvider();
   const apiKey = getApiKey(provider).trim();
@@ -155,7 +161,7 @@ function getLlmConfig(): LlmConfig | null {
     baseUrl: getBaseUrl(provider).replace(/\/+$/, ""),
     model: getModel(provider),
     timeoutMs: getTimeoutMs(),
-    jsonMode: !envFlagDisabled(process.env.PLANMYWORKDAY_LLM_JSON_MODE),
+    jsonMode: !envFlagFalse(process.env.PLANMYWORKDAY_LLM_JSON_MODE),
   };
 }
 
