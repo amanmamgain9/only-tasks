@@ -169,6 +169,13 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("rejects exact quota wording instead of weakening it to at least", () => {
+    expect(parseRecurrencePrompt("exactly 3 times a week", { todayDate: "2026-06-03" })).toMatchObject({
+      ok: false,
+      message: "Exact repeat targets are not supported yet. Use an at-least target instead.",
+    });
+  });
+
   test("understands a human end-of-month phrase", () => {
     const result = parseRecurrencePrompt("every weekday until the end of June", { todayDate: "2026-06-03" });
 

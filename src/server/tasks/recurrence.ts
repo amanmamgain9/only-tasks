@@ -377,6 +377,9 @@ function deleteOutstandingOccurrencesForSeries(input: {
     .prepare(
       `UPDATE pmwd_tasks AS task
        SET deleted = 1,
+           recurrence_template_task_id = NULL,
+           recurrence_occurrence_date = NULL,
+           recurrence_status = NULL,
            updated_at = @now
        WHERE task.user_id = @userId
          AND task.recurrence_series_id = @seriesId

@@ -327,6 +327,21 @@ describe("task recurrence", () => {
       .get(daily.seriesId) as { count: number };
 
     expect(remainingOldOccurrences.count).toBe(0);
+
+    setDailyRecurrence(sqlite, userId, "2026-06-01");
+    materialize(sqlite, userId, projectId, "2026-06-01", "2026-06-04");
+
+    const regeneratedOccurrences = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM pmwd_tasks
+         WHERE recurrence_role = 'occurrence_root'
+           AND recurrence_occurrence_date BETWEEN '2026-06-01' AND '2026-06-03'
+           AND deleted = 0`,
+      )
+      .get() as { count: number };
+
+    expect(regeneratedOccurrences.count).toBe(3);
   });
 
   test("removes outstanding generated occurrences when recurrence is turned off", () => {

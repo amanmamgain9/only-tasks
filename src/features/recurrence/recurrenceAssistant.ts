@@ -310,6 +310,16 @@ function hasUnsupportedQuotaCeiling(text: string) {
   return expression.test(text);
 }
 
+function hasUnsupportedExactQuota(text: string) {
+  const numberPattern = `\\d+|${Object.keys(NUMBER_WORDS).join("|")}`;
+  const targetUnit = "x|times?|days?|sessions?|glasses?";
+  const period = "\\/\\s*(?:day|week)|(?:a|per|in\\s+a|each|every)\\s+(?:day|week)|daily|weekly";
+  const expression = new RegExp(
+    `\\b(?:exactly|only|just|precisely)\\s+(${numberPattern})\\s*(?:${targetUnit})\\s*(?:${period})\\b`,
+  );
+  return expression.test(text);
+}
+
 function parseLooseWeeklyQuota(text: string) {
   const numberPattern = `\\d+|${Object.keys(NUMBER_WORDS).join("|")}`;
   const qualifier = "at\\s*least|atleast|minimum|min|at\\s+minimum";
@@ -529,6 +539,9 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   }
   if (hasUnsupportedQuotaCeiling(text)) {
     return reject("Maximum-style repeat targets are not supported yet. Use an at-least target instead.");
+  }
+  if (hasUnsupportedExactQuota(text)) {
+    return reject("Exact repeat targets are not supported yet. Use an at-least target instead.");
   }
 
   const todayDate = normalizeDateInput(options.todayDate) ?? getLocalDateKey();
