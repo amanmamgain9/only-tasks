@@ -14,6 +14,17 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("allows bare start wording without requiring an explicit start date", () => {
+    const result = parseRecurrencePrompt("start every day", { todayDate: "2026-06-03" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      draft: {
+        recurrence: { mode: "daily", startDate: "2026-06-03" },
+      },
+    });
+  });
+
   test("keeps Monday through Friday phrases out of weekend previews", () => {
     const result = parseRecurrencePrompt("Monday through Friday until 2026-06-09", { todayDate: "2026-06-05" });
 

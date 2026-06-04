@@ -240,6 +240,20 @@ function parseStartDateAfterPrefix(text: string, todayDate: string) {
     ?? parseMonthDayAfterPrefix(text, START_PREFIX, todayDate);
 }
 
+function hasStartDateCandidate(text: string) {
+  const monthPattern = Object.keys(MONTH_NAMES).join("|");
+  const tokenPattern = [
+    "today",
+    "tomorrow",
+    "next\\s+week",
+    "next\\s+[a-z]+",
+    "\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}",
+    `(?:${monthPattern})\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?`,
+  ].join("|");
+  const expression = new RegExp(`\\b(?:${START_PREFIX})(?:\\s+on)?\\s+(?:${tokenPattern})\\b`);
+  return expression.test(text);
+}
+
 function parseStartDate(text: string, todayDate: string, initialStartDate: string | null, endDate: string | null) {
   const start = parseStartDateAfterPrefix(text, todayDate);
   if (start) return start;
@@ -582,7 +596,7 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   const hasWeekly = /\b(weekly|every week|each week)\b/.test(text) || intervalWeeks !== null || mentionedWeekdays.length > 0;
   const hasStartInstruction = /\b(starting|starts|start|from|beginning|begins|begin)\b/.test(text);
   const hasEndInstruction = /\b(until|ending|ends|end|stopping|stop)\b/.test(text) || (!hasWeekdayRangePhrase && /\bthrough\b/.test(text));
-  if (hasStartInstruction && !explicitStartDate) {
+  if (hasStartInstruction && hasStartDateCandidate(text) && !explicitStartDate) {
     return reject("The repeat start date is invalid.");
   }
   if (hasEndInstruction && !endDate) {
