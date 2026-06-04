@@ -576,11 +576,12 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   const mentionedWeekdays = getMentionedWeekdays(text);
   const intervalDays = getInterval(text, "day") ?? getEveryOtherInterval(text, "day", mentionedWeekdays.length > 0);
   const intervalWeeks = getInterval(text, "week") ?? getEveryOtherInterval(text, "week", mentionedWeekdays.length > 0);
+  const hasWeekdayRangePhrase = /\b(monday through friday|mon through fri|mon-fri)\b/.test(text);
   const hasWeekdaysKeyword = /\b(weekdays|weekday|workdays|work days|business days|monday through friday|mon through fri|mon-fri)\b/.test(text);
   const hasDaily = /\b(daily|every day|each day)\b/.test(text) || intervalDays !== null;
   const hasWeekly = /\b(weekly|every week|each week)\b/.test(text) || intervalWeeks !== null || mentionedWeekdays.length > 0;
   const hasStartInstruction = /\b(starting|starts|start|from|beginning|begins|begin)\b/.test(text);
-  const hasEndInstruction = /\b(until|through|ending|ends|end|stopping|stop)\b/.test(text);
+  const hasEndInstruction = /\b(until|ending|ends|end|stopping|stop)\b/.test(text) || (!hasWeekdayRangePhrase && /\bthrough\b/.test(text));
   if (hasStartInstruction && !explicitStartDate) {
     return reject("The repeat start date is invalid.");
   }

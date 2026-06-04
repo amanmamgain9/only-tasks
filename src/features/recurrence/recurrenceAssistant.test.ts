@@ -26,6 +26,17 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("treats weekday range phrases as weekdays without requiring an end date", () => {
+    const result = parseRecurrencePrompt("Monday through Friday", { todayDate: "2026-06-05" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      draft: {
+        recurrence: { mode: "weekdays", startDate: "2026-06-05", endDate: null },
+      },
+    });
+  });
+
   test("parses interval weekly phrases with named weekdays", () => {
     const result = parseRecurrencePrompt("every two weeks on Friday", { todayDate: "2026-06-03" });
 
