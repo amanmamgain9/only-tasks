@@ -353,7 +353,7 @@ export async function getScheduledTasks(
     pathIds.forEach((id) => ancestorIds.add(id));
   }
 
-  const descendantPaths = scheduledTasks.map((task) => `${task.path}${task.id}/`);
+  const descendantPaths = [...scheduledTasks, ...quotaTargetTasks].map((task) => `${task.path}${task.id}/`);
   const [descendants, ancestors] = await Promise.all([
     Promise.all(
       descendantPaths.map((pathPrefix) =>

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getWorkspaceUserIdFromRequest, UnauthorizedError } from "@/server/auth";
 import { toWebRequest } from "@/server/api/helpers";
 import { submitRecurrenceAssistantMessage } from "@/server/assistant/service";
+import { BillingRequiredError } from "@/server/billing/enforcement";
 
 const bodySchema = z.object({
   taskClientId: z.string().min(1),
@@ -32,6 +33,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    if (error instanceof BillingRequiredError) {
+      res.status(402).json({ success: false, error: "Active plan required" });
       return;
     }
 

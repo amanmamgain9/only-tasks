@@ -5,7 +5,7 @@ import {
   type RecurrenceAssistantResult,
   type RecurrenceAssistantSchedule,
 } from "@/features/recurrence/recurrenceAssistant";
-import { resolveRecurrencePromptWithLlm } from "@/server/assistant/llm";
+import { resolveRecurrencePromptWithLlm, type RecurrenceLlmMetadata } from "@/server/assistant/llm";
 import { sqlite } from "@/server/db/client";
 import * as taskRepo from "@/server/tasks/repository";
 import { recurrenceScheduleFromStoredSeries } from "@/server/tasks/recurrence";
@@ -125,13 +125,35 @@ function toThreadDTO(row: AssistantThreadRow): AssistantThreadDTO {
   };
 }
 
+function sanitizeLlmMetadataForClient(metadata: RecurrenceLlmMetadata | null | undefined) {
+  if (!metadata) return null;
+
+  return {
+    provider: metadata.provider,
+    model: metadata.model,
+    usedJsonMode: metadata.usedJsonMode,
+    status: metadata.error ? "error" : "ok",
+  };
+}
+
+function sanitizeStructuredPayloadForClient(payload: unknown) {
+  if (!payload || typeof payload !== "object") return payload;
+  const candidate = payload as { type?: unknown; llm?: RecurrenceLlmMetadata | null };
+  if (candidate.type !== "recurrence_assistant_result") return payload;
+
+  return {
+    ...candidate,
+    llm: sanitizeLlmMetadataForClient(candidate.llm),
+  };
+}
+
 function toMessageDTO(row: AssistantMessageRow): AssistantMessageDTO {
   return {
     id: row.id,
     threadId: row.thread_id,
     role: assistantRoleSchema.parse(row.role),
     content: row.content,
-    structuredPayload: parsePayload(row.structured_payload),
+    structuredPayload: sanitizeStructuredPayloadForClient(parsePayload(row.structured_payload)),
     createdAt: row.created_at,
   };
 }
@@ -429,7 +451,7 @@ export async function submitRecurrenceAssistantMessage(input: {
         type: "recurrence_assistant_result",
         result,
         source: resultSource,
-        llm: llmResolution?.metadata ?? null,
+        llm: sanitizeLlmMetadataForClient(llmResolution?.metadata),
       },
       now,
     });
