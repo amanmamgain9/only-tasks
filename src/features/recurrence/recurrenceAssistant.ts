@@ -432,8 +432,10 @@ export function createRecurrenceAssistantResultFromSchedule(
   }
 
   const startDate = normalizeDateInput(schedule.startDate);
+  const hasEndDateInput = schedule.endDate !== undefined && schedule.endDate !== null;
   const endDate = normalizeDateInput(schedule.endDate);
   if (!startDate) return reject("The repeat start date is invalid.");
+  if (hasEndDateInput && !endDate) return reject("The repeat end date is invalid.");
   if (endDate && endDate < startDate) return reject("The end date is before the start date.");
 
   let recurrence: RecurrenceAssistantSchedule;

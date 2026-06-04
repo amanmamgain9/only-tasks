@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseRecurrencePrompt, summarizeRecurrenceSchedule } from "./recurrenceAssistant";
+import { createRecurrenceAssistantResultFromSchedule, parseRecurrencePrompt, summarizeRecurrenceSchedule } from "./recurrenceAssistant";
 
 describe("recurrence assistant", () => {
   test("turns a daily phrase into a deterministic daily schedule", () => {
@@ -195,6 +195,17 @@ describe("recurrence assistant", () => {
     expect(result).toMatchObject({
       ok: false,
       message: "The end date is before the start date.",
+    });
+  });
+
+  test("rejects malformed provided end dates instead of dropping them", () => {
+    expect(createRecurrenceAssistantResultFromSchedule({
+      mode: "daily",
+      startDate: "2026-06-03",
+      endDate: "2026-02-31",
+    })).toMatchObject({
+      ok: false,
+      message: "The repeat end date is invalid.",
     });
   });
 

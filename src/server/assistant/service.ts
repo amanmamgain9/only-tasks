@@ -315,6 +315,14 @@ function resultToAssistantContent(result: RecurrenceAssistantResult) {
   return result.draft.summary;
 }
 
+export function selectRecurrenceAssistantResult(input: {
+  deterministicResult: RecurrenceAssistantResult;
+  llmResult: RecurrenceAssistantResult | null | undefined;
+}) {
+  if (input.llmResult?.ok) return input.llmResult;
+  return input.deterministicResult;
+}
+
 async function getTaskForAssistant(userId: number, taskClientId: string) {
   const task = await taskRepo.getTaskByClientId(taskClientId);
   if (!task || task.userId !== userId) {
@@ -325,6 +333,9 @@ async function getTaskForAssistant(userId: number, taskClientId: string) {
 
 async function getCurrentTaskRecurrence(userId: number, taskClientId: string) {
   const task = await getTaskForAssistant(userId, taskClientId);
+  if (task.recurrenceRole === "occurrence_root" || task.recurrenceRole === "occurrence_child") {
+    throw new Error("Edit the recurring template, not a generated occurrence.");
+  }
   if (task.recurrenceRole !== "template") {
     return { task, currentRecurrence: null as RecurrenceAssistantSchedule | null };
   }
@@ -516,8 +527,11 @@ export async function submitRecurrenceAssistantMessage(input: {
       existingSchedule: recurrenceContext,
     })
     : null;
-  const result = llmResolution?.result ?? deterministicResult;
-  const resultSource = llmResolution?.result
+  const result = selectRecurrenceAssistantResult({
+    deterministicResult,
+    llmResult: llmResolution?.result,
+  });
+  const resultSource = llmResolution?.result?.ok
     ? "llm"
     : llmResolution
       ? "deterministic_fallback_after_llm"
