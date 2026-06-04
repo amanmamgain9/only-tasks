@@ -152,6 +152,17 @@ export function initializeDatabase(sqlite: Database.Database) {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS pmwd_assistant_llm_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      thread_id INTEGER NOT NULL,
+      surface TEXT NOT NULL,
+      prompt_chars INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (thread_id) REFERENCES pmwd_assistant_threads(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS auth_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -358,5 +369,11 @@ export function initializeDatabase(sqlite: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS pmwd_assistant_messages_thread_id_idx
     ON pmwd_assistant_messages(thread_id, id);
+
+    CREATE INDEX IF NOT EXISTS pmwd_assistant_llm_usage_user_surface_created_idx
+    ON pmwd_assistant_llm_usage(user_id, surface, created_at);
+
+    CREATE INDEX IF NOT EXISTS pmwd_assistant_llm_usage_thread_created_idx
+    ON pmwd_assistant_llm_usage(thread_id, created_at);
   `);
 }

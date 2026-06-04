@@ -5,12 +5,16 @@ import {
   type RecurrenceAssistantResult,
   type RecurrenceAssistantSchedule,
 } from "@/features/recurrence/recurrenceAssistant";
-import { resolveRecurrencePromptWithLlm, type RecurrenceLlmMetadata } from "@/server/assistant/llm";
+import { isRecurrenceLlmConfigured, resolveRecurrencePromptWithLlm, type RecurrenceLlmMetadata } from "@/server/assistant/llm";
 import { sqlite } from "@/server/db/client";
 import * as taskRepo from "@/server/tasks/repository";
 import { recurrenceScheduleFromStoredSeries } from "@/server/tasks/recurrence";
 
 const TASK_RECURRENCE_SURFACE = "task_recurrence";
+const LLM_USER_WINDOW_MS = 15 * 60 * 1000;
+const LLM_THREAD_WINDOW_MS = 5 * 60 * 1000;
+const LLM_USER_WINDOW_LIMIT = 30;
+const LLM_THREAD_WINDOW_LIMIT = 10;
 
 const assistantRoleSchema = z.enum(["assistant", "user", "system"]);
 const recurrenceScheduleSchema = z.discriminatedUnion("mode", [
@@ -338,10 +342,76 @@ async function getCurrentTaskRecurrence(userId: number, taskClientId: string) {
   };
 }
 
-function getLatestDraftSchedule(messages: AssistantMessageDTO[]) {
-  const latestResult = findLatestRecurrenceResult(messages);
-  if (latestResult?.ok) return recurrenceScheduleSchema.parse(latestResult.draft.recurrence);
+export function getLatestDraftSchedule(messages: AssistantMessageDTO[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const payload = messages[index]?.structuredPayload;
+    if (!payload || typeof payload !== "object") continue;
+    const candidate = payload as { type?: unknown; result?: unknown };
+    if (candidate.type !== "recurrence_assistant_result") continue;
+    const result = candidate.result as RecurrenceAssistantResult;
+    if (result?.ok) return recurrenceScheduleSchema.parse(result.draft.recurrence);
+  }
   return null;
+}
+
+function countRecentLlmUsage(input: {
+  userId?: number;
+  threadId?: number;
+  surface?: string;
+  since: string;
+}) {
+  const clauses = ["created_at >= @since"];
+  if (input.userId !== undefined) clauses.push("user_id = @userId");
+  if (input.threadId !== undefined) clauses.push("thread_id = @threadId");
+  if (input.surface !== undefined) clauses.push("surface = @surface");
+
+  const row = sqlite
+    .prepare(`SELECT COUNT(*) AS count FROM pmwd_assistant_llm_usage WHERE ${clauses.join(" AND ")}`)
+    .get(input) as { count: number };
+  return row.count;
+}
+
+function reserveRecurrenceLlmUsage(input: {
+  userId: number;
+  threadId: number;
+  prompt: string;
+  now?: Date;
+}) {
+  const now = input.now ?? new Date();
+  const nowMs = now.getTime();
+  const nowIso = now.toISOString();
+  const userSince = new Date(nowMs - LLM_USER_WINDOW_MS).toISOString();
+  const threadSince = new Date(nowMs - LLM_THREAD_WINDOW_MS).toISOString();
+
+  return sqlite.transaction(() => {
+    const userCount = countRecentLlmUsage({
+      userId: input.userId,
+      surface: TASK_RECURRENCE_SURFACE,
+      since: userSince,
+    });
+    if (userCount >= LLM_USER_WINDOW_LIMIT) return false;
+
+    const threadCount = countRecentLlmUsage({
+      threadId: input.threadId,
+      since: threadSince,
+    });
+    if (threadCount >= LLM_THREAD_WINDOW_LIMIT) return false;
+
+    sqlite
+      .prepare(
+        `INSERT INTO pmwd_assistant_llm_usage
+         (user_id, thread_id, surface, prompt_chars, created_at)
+         VALUES (@userId, @threadId, @surface, @promptChars, @createdAt)`,
+      )
+      .run({
+        userId: input.userId,
+        threadId: input.threadId,
+        surface: TASK_RECURRENCE_SURFACE,
+        promptChars: input.prompt.length,
+        createdAt: nowIso,
+      });
+    return true;
+  })();
 }
 
 function isUntouchedRecurrenceStarter(messages: AssistantMessageDTO[]) {
@@ -434,12 +504,18 @@ export async function submitRecurrenceAssistantMessage(input: {
     initialStartDate: input.initialStartDate,
     existingSchedule: recurrenceContext,
   });
-  const llmResolution = await resolveRecurrencePromptWithLlm({
+  const llmResolution = isRecurrenceLlmConfigured() && reserveRecurrenceLlmUsage({
+    userId: input.userId,
+    threadId: existingThread.thread.id,
     prompt: parsedPrompt,
-    todayDate: input.todayDate,
-    initialStartDate: input.initialStartDate,
-    existingSchedule: recurrenceContext,
-  });
+  })
+    ? await resolveRecurrencePromptWithLlm({
+      prompt: parsedPrompt,
+      todayDate: input.todayDate,
+      initialStartDate: input.initialStartDate,
+      existingSchedule: recurrenceContext,
+    })
+    : null;
   const result = llmResolution?.result ?? deterministicResult;
   const resultSource = llmResolution?.result
     ? "llm"
