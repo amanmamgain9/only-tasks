@@ -324,6 +324,7 @@ describe("recurrence assistant", () => {
   test("anchors named-weekday edits from the existing recurrence start", () => {
     const result = parseRecurrencePrompt("move it to Mondays", {
       todayDate: "2026-06-03",
+      initialStartDate: "2026-06-03",
       existingSchedule: { mode: "weekly", startDate: "2026-07-01", endDate: "2026-08-01", interval: 2, weekdays: [5] },
     });
 
@@ -337,6 +338,21 @@ describe("recurrence assistant", () => {
           interval: 2,
           weekdays: [1],
         },
+      },
+    });
+  });
+
+  test("keeps existing draft start date when a follow-up only changes the end date", () => {
+    const result = parseRecurrencePrompt("until the end of August", {
+      todayDate: "2026-06-03",
+      initialStartDate: "2026-06-03",
+      existingSchedule: { mode: "daily", startDate: "2026-07-01", interval: 1 },
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      draft: {
+        recurrence: { mode: "daily", startDate: "2026-07-01", endDate: "2026-08-31", interval: 1 },
       },
     });
   });

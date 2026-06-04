@@ -79,6 +79,7 @@ export interface Task {
   recurrenceIsOverride?: number | boolean | null;
   recurrenceSchedule?: TaskRecurrenceSchedule | null;
   recurrenceTargetProgress?: RecurrenceTargetProgress | null;
+  recurrenceTargetTaskClientId?: string | null;
   createdAt: string;
   updatedAt: string;
   subtasks?: Task[];

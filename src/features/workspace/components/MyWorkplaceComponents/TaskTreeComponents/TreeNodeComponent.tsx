@@ -117,18 +117,18 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   const isRecurrenceTemplate = node.recurrenceRole === 'template';
   const targetProgress = node.recurrenceTargetProgress ?? null;
   const isRecurrenceTarget = Boolean(targetProgress);
-  const showMakeRootButton = node.nodeType === 'task' && !isCategoryRoot && (node.title || '').trim().length > 0;
-  const showDeleteButton = node.nodeType === 'task' && !isCategoryRoot && !node.isEphemeral;
-  const showCalendarButton = !isCategoryRoot;
-  const showRepeatButton = !isCategoryRoot && !node.isEphemeral && (node.title || '').trim().length > 0;
-  const showMenuButton = !isCategoryRoot;
+  const showMakeRootButton = node.nodeType === 'task' && !isCategoryRoot && !isRecurrenceTarget && (node.title || '').trim().length > 0;
+  const showDeleteButton = node.nodeType === 'task' && !isCategoryRoot && !isRecurrenceTarget && !node.isEphemeral;
+  const showCalendarButton = !isCategoryRoot && !isRecurrenceTarget;
+  const showRepeatButton = !isCategoryRoot && !isRecurrenceTarget && !node.isEphemeral && (node.title || '').trim().length > 0;
+  const showMenuButton = !isCategoryRoot && !isRecurrenceTarget;
   const categoryAllocations = useMemo(
     () => normalizeTaskCategoryAllocations(node.categoryAllocations),
     [node.categoryAllocations],
   );
   const primaryCategory = categoryAllocations[0];
   const isLifestyleTask = primaryCategory?.category === 'lifestyle';
-  const showLifestyleTraitsButton = node.nodeType === 'task' && !isCategoryRoot && !node.isEphemeral && isLifestyleTask && (node.title || '').trim().length > 0;
+  const showLifestyleTraitsButton = node.nodeType === 'task' && !isCategoryRoot && !isRecurrenceTarget && !node.isEphemeral && isLifestyleTask && (node.title || '').trim().length > 0;
   const lifestyleTraits = useMemo(
     () => normalizeLifestyleTraitAllocations(node.lifestyleTraits),
     [node.lifestyleTraits],
@@ -371,7 +371,8 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
                 ref={titleInputRef}
                 aria-label="Task title"
                 value={node.title || ''}
-                onChange={handleInputChange}
+                onChange={isRecurrenceTarget ? undefined : handleInputChange}
+                readOnly={isRecurrenceTarget}
                 data-entrypoint-focus
                 data-focusable
                 className={`w-full bg-transparent border-none outline-none text-sm py-1 pr-16 pl-1 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-500 focus:rounded resize-none overflow-hidden ${node.isCompleted

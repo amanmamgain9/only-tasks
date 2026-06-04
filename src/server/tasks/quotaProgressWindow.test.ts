@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { getQuotaProgressWindow, getQuotaReferenceDateForScheduledRange } from "./quotaProgress";
+import {
+  getQuotaProgressWindow,
+  getQuotaReferenceDateForScheduledRange,
+  getQuotaReferenceDatesForScheduledRange,
+} from "./quotaProgress";
 
 describe("quota progress windows", () => {
   test("counts a weekly quota from the schedule start during its first partial week", () => {
@@ -62,5 +66,33 @@ describe("quota progress windows", () => {
       startDate: "2026-06-03",
       endDateExclusive: "2026-06-04",
     })).toBeNull();
+  });
+
+  test("enumerates each active daily quota target inside a scheduled range", () => {
+    expect(getQuotaReferenceDatesForScheduledRange({
+      schedule: {
+        mode: "daily_quota",
+        startDate: "2026-06-04",
+        endDate: "2026-06-06",
+        targetCount: 8,
+        comparator: "at_least",
+      },
+      startDate: "2026-06-03",
+      endDateExclusive: "2026-06-08",
+    })).toEqual(["2026-06-04", "2026-06-05", "2026-06-06"]);
+  });
+
+  test("keeps weekly quota targets as one target for the active week", () => {
+    expect(getQuotaReferenceDatesForScheduledRange({
+      schedule: {
+        mode: "weekly_quota",
+        startDate: "2026-06-04",
+        endDate: null,
+        targetCount: 3,
+        comparator: "at_least",
+      },
+      startDate: "2026-06-03",
+      endDateExclusive: "2026-06-08",
+    })).toEqual(["2026-06-04"]);
   });
 });

@@ -15,7 +15,7 @@ import {
   type RecurrenceScheduleInput,
 } from "./recurrence";
 import { formatLocalDateKey, normalizeTimeZone } from "../progress/timezone";
-import { getQuotaProgressWindow, getQuotaReferenceDateForScheduledRange } from "./quotaProgress";
+import { getQuotaProgressWindow, getQuotaReferenceDatesForScheduledRange } from "./quotaProgress";
 import { getScheduledDateRange, type ScheduledDateRange } from "./scheduledDateRange";
 import { appendRolloverHistory, dateKeyToDueDate, dueDateToDateKey } from "./rolloverMetadata";
 import { sqlite } from "../db/client";
@@ -73,6 +73,10 @@ function getQuotaTargetProgress(input: {
   };
 }
 
+function getVirtualQuotaTargetId(input: { seriesId: number; index: number }) {
+  return -((input.seriesId * 1000) + input.index + 1);
+}
+
 async function getScheduledQuotaTargetTasks(input: {
   userId: number;
   projectId?: number;
@@ -104,26 +108,34 @@ async function getScheduledQuotaTargetTasks(input: {
     if (!isQuotaRecurrence(recurrenceSchedule)) {
       return [];
     }
-    const referenceDate = getQuotaReferenceDateForScheduledRange({
+    const referenceDates = getQuotaReferenceDatesForScheduledRange({
       schedule: recurrenceSchedule,
       startDate: input.startDate,
       endDateExclusive: input.endDateExclusive,
     });
-    if (!referenceDate) return [];
+    if (referenceDates.length === 0) return [];
 
-    const recurrenceTargetProgress = getQuotaTargetProgress({
-      userId: input.userId,
-      seriesId: series.id,
-      schedule: recurrenceSchedule,
-      todayDate: referenceDate,
+    return referenceDates.map((referenceDate, index) => {
+      const recurrenceTargetProgress = getQuotaTargetProgress({
+        userId: input.userId,
+        seriesId: series.id,
+        schedule: recurrenceSchedule,
+        todayDate: referenceDate,
+      });
+      const isDailyQuota = recurrenceSchedule.mode === "daily_quota";
+      const sourceClientId = task.clientId;
+
+      return {
+        ...task,
+        id: isDailyQuota ? getVirtualQuotaTargetId({ seriesId: series.id, index }) : task.id,
+        clientId: isDailyQuota && sourceClientId ? `${sourceClientId}::quota::${referenceDate}` : task.clientId,
+        dueDate: isDailyQuota ? dateKeyToDueDate(referenceDate) : task.dueDate,
+        isCompleted: recurrenceTargetProgress.completedCount >= recurrenceTargetProgress.targetCount ? 1 : 0,
+        recurrenceSchedule,
+        recurrenceTargetProgress,
+        recurrenceTargetTaskClientId: isDailyQuota ? sourceClientId : null,
+      };
     });
-
-    return [{
-      ...task,
-      isCompleted: recurrenceTargetProgress.completedCount >= recurrenceTargetProgress.targetCount ? 1 : 0,
-      recurrenceSchedule,
-      recurrenceTargetProgress,
-    }];
   });
 }
 

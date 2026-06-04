@@ -17,6 +17,7 @@ export interface TaskTreeNode extends Omit<Task, "isCompleted" | "deleted" | "ar
   archived: boolean;
   recurrenceSchedule?: RecurrenceScheduleInput | null;
   recurrenceTargetProgress?: RecurrenceTargetProgress | null;
+  recurrenceTargetTaskClientId?: string | null;
 }
 
 export function buildTaskForest(existingTasks: Task[]): TaskTreeNode[] {

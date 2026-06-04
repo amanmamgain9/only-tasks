@@ -138,6 +138,7 @@ const taskToTreeNode = (
     recurrenceIsOverride: task.recurrenceIsOverride ?? null,
     recurrenceSchedule: task.recurrenceSchedule ?? null,
     recurrenceTargetProgress: task.recurrenceTargetProgress ?? null,
+    recurrenceTargetTaskClientId: task.recurrenceTargetTaskClientId ?? null,
     position: task.position,
     children: children.length > 0 ? children : undefined,
     taskId: task.id,

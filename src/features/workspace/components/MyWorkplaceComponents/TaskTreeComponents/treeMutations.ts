@@ -581,10 +581,12 @@ export const createToggleCompletionOp = (
 export const createAddRecurrenceTargetCompletionOp = (
   clientId: string,
   localDate: string,
+  sourceClientId?: string,
 ): Operation => {
   return {
     type: 'ADD_RECURRENCE_TARGET_COMPLETION',
     clientId,
+    sourceClientId,
     localDate,
     quantity: 1,
     clientEventId: uuidv4(),

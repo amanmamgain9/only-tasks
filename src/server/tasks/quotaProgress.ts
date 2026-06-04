@@ -18,6 +18,28 @@ export function getQuotaReferenceDateForScheduledRange(input: {
   return activeStartDate < activeEndDateExclusive ? activeStartDate : null;
 }
 
+export function getQuotaReferenceDatesForScheduledRange(input: {
+  schedule: RecurrenceScheduleInput;
+  startDate: string;
+  endDateExclusive: string;
+}) {
+  const referenceDate = getQuotaReferenceDateForScheduledRange(input);
+  if (!referenceDate) return [];
+  if (input.schedule.mode !== "daily_quota") return [referenceDate];
+
+  const scheduleEndDateExclusive = input.schedule.endDate
+    ? addDaysToDateKey(input.schedule.endDate, 1)
+    : input.endDateExclusive;
+  const activeEndDateExclusive = scheduleEndDateExclusive < input.endDateExclusive
+    ? scheduleEndDateExclusive
+    : input.endDateExclusive;
+  const dates: string[] = [];
+  for (let cursor = referenceDate; cursor < activeEndDateExclusive; cursor = addDaysToDateKey(cursor, 1)) {
+    dates.push(cursor);
+  }
+  return dates;
+}
+
 export function getQuotaProgressWindow(input: {
   schedule: Extract<RecurrenceScheduleInput, { mode: "daily_quota" | "weekly_quota" }>;
   todayDate: string;

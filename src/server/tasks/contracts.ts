@@ -57,6 +57,7 @@ const operationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("ADD_RECURRENCE_TARGET_COMPLETION"),
     clientId: z.string(),
+    sourceClientId: z.string().optional(),
     localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     quantity: z.number().int().min(1).max(99).default(1),
     clientEventId: z.string(),

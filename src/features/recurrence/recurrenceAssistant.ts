@@ -583,7 +583,8 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
 
   const endDate = parseEndDate(text, todayDate);
   const explicitStartDate = parseStartDateAfterPrefix(text, todayDate);
-  let startDate = parseStartDate(text, todayDate, initialStartDate, endDate);
+  const startFallbackDate = existingStartDate ?? initialStartDate;
+  let startDate = parseStartDate(text, todayDate, startFallbackDate, endDate);
   const dailyQuota = parseQuota(text, "day");
   const weeklyQuota = parseQuota(text, "week");
   const looseWeeklyQuota = parseLooseWeeklyQuota(text);

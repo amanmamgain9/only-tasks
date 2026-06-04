@@ -94,7 +94,7 @@ async function handleAddRecurrenceTargetCompletion(
 ) {
   await addRecurrenceTargetCompletion({
     userId,
-    clientId: operation.clientId,
+    clientId: operation.sourceClientId ?? operation.clientId,
     localDate: operation.localDate,
     quantity: operation.quantity,
     clientEventId: operation.clientEventId,

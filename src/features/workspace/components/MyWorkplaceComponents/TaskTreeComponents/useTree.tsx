@@ -465,6 +465,7 @@ export const createEditorStore = (
           const operation = createAddRecurrenceTargetCompletionOp(
             clientId,
             task.recurrenceTargetProgress.localDate,
+            task.recurrenceTargetTaskClientId ?? clientId,
           );
           get().applyOperation(operation, 'addRecurrenceTargetCompletion');
           void get().saveToBackend();

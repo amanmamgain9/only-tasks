@@ -61,7 +61,7 @@ export type Operation =
   }
   | { type: 'UPDATE_TITLE'; clientId: string; title: string; timestamp: number }
   | { type: 'TOGGLE_COMPLETE'; clientId: string; isCompleted: boolean; timestamp: number }
-  | { type: 'ADD_RECURRENCE_TARGET_COMPLETION'; clientId: string; localDate: string; quantity: number; clientEventId: string; timestamp: number }
+  | { type: 'ADD_RECURRENCE_TARGET_COMPLETION'; clientId: string; sourceClientId?: string; localDate: string; quantity: number; clientEventId: string; timestamp: number }
   | { type: 'DELETE_TASK'; clientId: string; timestamp: number }
   | { 
       type: 'UPDATE_METADATA'; 
@@ -140,6 +140,7 @@ export interface TreeNode {
   recurrenceIsOverride?: number | boolean | null;
   recurrenceSchedule?: RecurrenceSchedule | null;
   recurrenceTargetProgress?: RecurrenceTargetProgress | null;
+  recurrenceTargetTaskClientId?: string | null;
   taskId?: number;
   isEphemeral?: boolean;
   position?: string;
