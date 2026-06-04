@@ -116,9 +116,9 @@ function normalizeProvider(value: string | undefined): LlmProvider | null {
 }
 
 function inferProvider() {
+  if (process.env.PLANMYWORKDAY_LLM_BASE_URL) return "custom";
   const configured = normalizeProvider(process.env.PLANMYWORKDAY_LLM_PROVIDER);
   if (configured) return configured;
-  if (process.env.PLANMYWORKDAY_LLM_BASE_URL) return "custom";
   if (process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY) return "kimi";
   return "openai";
 }
@@ -133,6 +133,7 @@ function getApiKey(provider: LlmProvider) {
 function getBaseUrl(provider: LlmProvider) {
   if (process.env.PLANMYWORKDAY_LLM_BASE_URL) return process.env.PLANMYWORKDAY_LLM_BASE_URL;
   if (provider === "kimi") return "https://api.moonshot.ai/v1";
+  if (provider === "custom") return "";
   return "https://api.openai.com/v1";
 }
 
@@ -155,11 +156,13 @@ function getLlmConfig(): LlmConfig | null {
   const provider = inferProvider();
   const apiKey = getApiKey(provider).trim();
   if (!apiKey) return null;
+  const baseUrl = getBaseUrl(provider).replace(/\/+$/, "");
+  if (!baseUrl) return null;
 
   return {
     provider,
     apiKey,
-    baseUrl: getBaseUrl(provider).replace(/\/+$/, ""),
+    baseUrl,
     model: getModel(provider),
     timeoutMs: getTimeoutMs(),
     jsonMode: !envFlagFalse(process.env.PLANMYWORKDAY_LLM_JSON_MODE),

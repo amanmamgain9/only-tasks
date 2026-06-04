@@ -80,6 +80,7 @@ describe("recurrence LLM client", () => {
 
   test("requires the explicit app key for custom LLM endpoints", async () => {
     clearLlmEnv();
+    process.env.PLANMYWORKDAY_LLM_PROVIDER = "openai";
     process.env.PLANMYWORKDAY_LLM_BASE_URL = "https://llm.example.test/v1";
     process.env.OPENAI_API_KEY = "openai-key";
     const fetchMock = vi.fn();
