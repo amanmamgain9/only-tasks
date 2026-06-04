@@ -357,6 +357,36 @@ describe("task recurrence", () => {
     expect(remainingOldOccurrences.count).toBe(0);
   });
 
+  test("preserves a generated occurrence subtree when any child was completed", () => {
+    const sqlite = createTestDatabase();
+    const { userId, projectId, taskId, childId } = seedTemplateTree(sqlite);
+
+    setDailyRecurrence(sqlite, userId, "2026-06-01");
+    materialize(sqlite, userId, projectId, "2026-06-01", "2026-06-02");
+    const occurrence = getOccurrence(sqlite, taskId, "2026-06-01");
+    const childOccurrence = getOccurrence(sqlite, childId, "2026-06-01");
+    sqlite
+      .prepare("UPDATE pmwd_tasks SET is_completed = 1, completed_at = ? WHERE id = ?")
+      .run("2026-06-01T12:00:00.000Z", childOccurrence.id);
+
+    setTaskRecurrenceInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      recurrence: { mode: "none" },
+      timestamp: NOW + 1000,
+    });
+
+    const rows = sqlite
+      .prepare("SELECT id, deleted FROM pmwd_tasks WHERE id IN (?, ?) ORDER BY id")
+      .all(occurrence.id, childOccurrence.id) as Array<{ id: number; deleted: number }>;
+
+    expect(rows).toEqual([
+      { id: occurrence.id, deleted: 0 },
+      { id: childOccurrence.id, deleted: 0 },
+    ]);
+  });
+
   test("records quota target completions idempotently for a local date window", () => {
     const sqlite = createTestDatabase();
     const { userId } = seedTemplateTree(sqlite);

@@ -232,7 +232,10 @@ const RecurrenceModal: React.FC<RecurrenceModalProps> = (props) => {
   const currentRecurrence = state.thread?.currentRecurrence ?? initialRecurrence ?? null;
   const hasExistingRecurrence = Boolean(currentRecurrence && currentRecurrence.mode !== 'none');
   const canSaveLatestResult = Boolean(
-    latestResult?.ok && !recurrenceMatches(latestResult.draft.recurrence, currentRecurrence),
+    !state.isSending &&
+    !state.isLoadingThread &&
+    latestResult?.ok &&
+    !recurrenceMatches(latestResult.draft.recurrence, currentRecurrence),
   );
   const saveLabel = latestResult?.ok && latestResult.draft.recurrence.mode === 'none'
     ? 'Remove repeat'

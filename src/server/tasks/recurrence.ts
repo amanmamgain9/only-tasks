@@ -375,14 +375,23 @@ function deleteOutstandingOccurrencesForSeries(input: {
 }) {
   input.db
     .prepare(
-      `UPDATE pmwd_tasks
+      `UPDATE pmwd_tasks AS task
        SET deleted = 1,
            updated_at = @now
-       WHERE user_id = @userId
-         AND recurrence_series_id = @seriesId
-         AND recurrence_role IN ('occurrence_root', 'occurrence_child')
-         AND is_completed = 0
-         AND deleted = 0`,
+       WHERE task.user_id = @userId
+         AND task.recurrence_series_id = @seriesId
+         AND task.recurrence_role IN ('occurrence_root', 'occurrence_child')
+         AND task.recurrence_occurrence_date IS NOT NULL
+         AND task.deleted = 0
+         AND NOT EXISTS (
+           SELECT 1
+           FROM pmwd_tasks AS preserved
+           WHERE preserved.user_id = task.user_id
+             AND preserved.recurrence_series_id = task.recurrence_series_id
+             AND preserved.recurrence_occurrence_date = task.recurrence_occurrence_date
+             AND preserved.is_completed = 1
+             AND preserved.deleted = 0
+         )`,
     )
     .run({
       userId: input.userId,
