@@ -213,6 +213,26 @@ function parseDateAfterPrefix(text: string, prefix: string, todayDate: string) {
   return parseRelativeDateToken(match[1], todayDate);
 }
 
+function parseMonthDayAfterPrefix(text: string, prefix: string, todayDate: string) {
+  const monthPattern = Object.keys(MONTH_NAMES).join("|");
+  const expression = new RegExp(`\\b(?:${prefix})(?:\\s+on)?\\s+(${monthPattern})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`);
+  const match = expression.exec(text);
+  if (!match) return null;
+
+  const month = MONTH_NAMES[match[1]];
+  const day = Number.parseInt(match[2], 10);
+  const todayYear = Number.parseInt(todayDate.slice(0, 4), 10);
+  const todayMonth = Number.parseInt(todayDate.slice(5, 7), 10);
+  const todayDay = Number.parseInt(todayDate.slice(8, 10), 10);
+  const year = match[3]
+    ? Number.parseInt(match[3], 10)
+    : month < todayMonth || (month === todayMonth && day < todayDay)
+      ? todayYear + 1
+      : todayYear;
+
+  return dateKeyFromParts(year.toString(), month.toString(), day.toString());
+}
+
 function parseStartDate(text: string, todayDate: string, initialStartDate: string | null, endDate: string | null) {
   const start = parseDateAfterPrefix(text, "starting|starts|start|from|beginning|begins|begin", todayDate);
   if (start) return start;
@@ -225,7 +245,8 @@ function parseStartDate(text: string, todayDate: string, initialStartDate: strin
 
 function parseEndDate(text: string, todayDate: string) {
   return parseEndOfMonthMention(text, todayDate)
-    ?? parseDateAfterPrefix(text, "until|through|ending|ends|end|stopping|stop", todayDate);
+    ?? parseDateAfterPrefix(text, "until|through|ending|ends|end|stopping|stop", todayDate)
+    ?? parseMonthDayAfterPrefix(text, "until|through|ending|ends|end|stopping|stop", todayDate);
 }
 
 function getNextWeekdayDate(todayDate: string, weekday: number, includeToday: boolean) {
@@ -539,6 +560,9 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   const hasWeekly = /\b(weekly|every week|each week)\b/.test(text) || intervalWeeks !== null || mentionedWeekdays.length > 0;
   const hasStartInstruction = /\b(starting|starts|start|from|beginning|begins|begin)\b/.test(text);
   const hasEndInstruction = /\b(until|through|ending|ends|end|stopping|stop)\b/.test(text);
+  if (hasEndInstruction && !endDate) {
+    return reject("The repeat end date is invalid.");
+  }
   const existingEndDate = options.existingSchedule && options.existingSchedule.mode !== "none"
     ? options.existingSchedule.endDate ?? null
     : null;

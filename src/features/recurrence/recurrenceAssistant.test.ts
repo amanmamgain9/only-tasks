@@ -180,6 +180,26 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("understands human month-day end dates", () => {
+    const result = parseRecurrencePrompt("every day until July 4", { todayDate: "2026-06-03" });
+
+    expect(result).toMatchObject({
+      ok: true,
+      draft: {
+        recurrence: { mode: "daily", startDate: "2026-06-03", endDate: "2026-07-04" },
+      },
+    });
+  });
+
+  test("rejects unparseable end-date instructions instead of clearing the end date", () => {
+    const result = parseRecurrencePrompt("every day until 2026-02-31", { todayDate: "2026-06-03" });
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: "The repeat end date is invalid.",
+    });
+  });
+
   test("rejects monthly phrases because the recurrence engine does not support them", () => {
     const result = parseRecurrencePrompt("every month on the 7th", { todayDate: "2026-06-03" });
 
