@@ -512,6 +512,12 @@ function deactivateTemplateSeries(input: {
          WHERE id = @id`,
       )
       .run({ id: series.id, now: input.now });
+    deleteOutstandingOccurrencesForSeries({
+      db: input.db,
+      userId: input.userId,
+      seriesId: series.id,
+      now: input.now,
+    });
   }
 
   const pathPrefix = `${input.task.path}${input.task.id}/%`;
