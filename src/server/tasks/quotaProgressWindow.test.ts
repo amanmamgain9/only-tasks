@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { getQuotaProgressWindow, getQuotaReferenceDateForScheduledRange } from "./service";
+import { getQuotaProgressWindow, getQuotaReferenceDateForScheduledRange } from "./quotaProgress";
 
 describe("quota progress windows", () => {
   test("counts a weekly quota from the schedule start during its first partial week", () => {

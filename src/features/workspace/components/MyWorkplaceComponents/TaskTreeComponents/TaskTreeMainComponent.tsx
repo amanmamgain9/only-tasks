@@ -32,6 +32,10 @@ function getBrowserDateKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+function getDateKeyFromDueDate(value: string | null | undefined) {
+  return value?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
+}
+
 function getRootNode(projectData: Project, tasks: any[], currentRootTaskId: string | null) {
   if (currentRootTaskId === null) {
     return {
@@ -111,6 +115,7 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
   const bulkImportTasks = useStore((state) => state.bulkImportTasks);
   const updateMetadata = useStore((state) => state.updateMetadata);
   const setRecurrence = useStore((state) => state.setRecurrence);
+  const flushPendingChanges = useStore((state) => state.flushPendingChanges);
 
   useEffect(() => {
     loadProjectTree();
@@ -277,17 +282,29 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     });
   }, [visibleNodes]);
 
+  const openRecurrenceNode = useCallback(async (node: VisibleNode | null) => {
+    if (!node || node.nodeType !== 'task' || node.systemType === 'category_root') return;
+
+    try {
+      await flushPendingChanges({ reloadAfterSave: true });
+      setRecurrenceNode(node);
+    } catch (error) {
+      console.error('Failed to save task before opening recurrence assistant:', error);
+    }
+  }, [flushPendingChanges]);
+
   const handleRepeatClick = useCallback((nodeIndex: number) => {
+    const node = visibleNodes[nodeIndex] ?? null;
     requestAnimationFrame(() => {
-      setRecurrenceNode(visibleNodes[nodeIndex] ?? null);
+      void openRecurrenceNode(node);
     });
-  }, [visibleNodes]);
+  }, [openRecurrenceNode, visibleNodes]);
 
   const handleOpenRecurrenceFromSchedule = useCallback(() => {
     if (!scheduleNode) return;
-    setRecurrenceNode(scheduleNode);
     setScheduleNode(null);
-  }, [scheduleNode]);
+    void openRecurrenceNode(scheduleNode);
+  }, [openRecurrenceNode, scheduleNode]);
 
   const handleScheduleSave = useCallback((data: { dueDate: string | null }) => {
     if (!scheduleNode) return;
@@ -464,7 +481,7 @@ function TreeMainModals({ controller }: { controller: ReturnType<typeof useTreeM
         onClose={() => controller.setRecurrenceNode(null)}
         onSave={controller.handleRecurrenceSave}
         taskClientId={controller.recurrenceNode?.id ?? null}
-        initialStartDate={controller.recurrenceNode?.dueDate || null}
+        initialStartDate={getDateKeyFromDueDate(controller.recurrenceNode?.dueDate)}
         initialRecurrence={controller.recurrenceNode?.recurrenceSchedule ?? null}
       />
     </>

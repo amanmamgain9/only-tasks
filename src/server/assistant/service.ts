@@ -9,6 +9,7 @@ import { isRecurrenceLlmConfigured, resolveRecurrencePromptWithLlm, type Recurre
 import { sqlite } from "@/server/db/client";
 import * as taskRepo from "@/server/tasks/repository";
 import { recurrenceScheduleFromStoredSeries } from "@/server/tasks/recurrence";
+import { getLatestDraftSchedule, selectRecurrenceAssistantResult } from "./resultSelection";
 
 const TASK_RECURRENCE_SURFACE = "task_recurrence";
 const LLM_USER_WINDOW_MS = 15 * 60 * 1000;
@@ -17,41 +18,6 @@ const LLM_USER_WINDOW_LIMIT = 30;
 const LLM_THREAD_WINDOW_LIMIT = 10;
 
 const assistantRoleSchema = z.enum(["assistant", "user", "system"]);
-const recurrenceScheduleSchema = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("none") }),
-  z.object({
-    mode: z.literal("daily"),
-    startDate: z.string(),
-    endDate: z.string().nullable().optional(),
-    interval: z.number().int().positive().optional(),
-  }),
-  z.object({
-    mode: z.literal("daily_quota"),
-    startDate: z.string(),
-    endDate: z.string().nullable().optional(),
-    targetCount: z.number().int().positive(),
-    comparator: z.literal("at_least").optional(),
-  }),
-  z.object({
-    mode: z.literal("weekdays"),
-    startDate: z.string(),
-    endDate: z.string().nullable().optional(),
-  }),
-  z.object({
-    mode: z.literal("weekly"),
-    startDate: z.string(),
-    endDate: z.string().nullable().optional(),
-    interval: z.number().int().positive().optional(),
-    weekdays: z.array(z.number().int().min(0).max(6)).optional(),
-  }),
-  z.object({
-    mode: z.literal("weekly_quota"),
-    startDate: z.string(),
-    endDate: z.string().nullable().optional(),
-    targetCount: z.number().int().positive(),
-    comparator: z.literal("at_least").optional(),
-  }),
-]);
 
 type AssistantThreadRow = {
   id: number;
@@ -315,19 +281,6 @@ function resultToAssistantContent(result: RecurrenceAssistantResult) {
   return result.draft.summary;
 }
 
-function isHardDeterministicRejection(result: RecurrenceAssistantResult) {
-  return !result.ok && result.message !== "I could not find a daily, weekday, or weekly repeat pattern.";
-}
-
-export function selectRecurrenceAssistantResult(input: {
-  deterministicResult: RecurrenceAssistantResult;
-  llmResult: RecurrenceAssistantResult | null | undefined;
-}) {
-  if (isHardDeterministicRejection(input.deterministicResult)) return input.deterministicResult;
-  if (input.llmResult?.ok) return input.llmResult;
-  return input.deterministicResult;
-}
-
 async function getTaskForAssistant(userId: number, taskClientId: string) {
   const task = await taskRepo.getTaskByClientId(taskClientId);
   if (!task || task.userId !== userId) {
@@ -356,18 +309,6 @@ async function getCurrentTaskRecurrence(userId: number, taskClientId: string) {
       endDate: series.endDate,
     }) as RecurrenceAssistantSchedule,
   };
-}
-
-export function getLatestDraftSchedule(messages: AssistantMessageDTO[]) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const payload = messages[index]?.structuredPayload;
-    if (!payload || typeof payload !== "object") continue;
-    const candidate = payload as { type?: unknown; result?: unknown };
-    if (candidate.type !== "recurrence_assistant_result") continue;
-    const result = candidate.result as RecurrenceAssistantResult;
-    if (result?.ok) return recurrenceScheduleSchema.parse(result.draft.recurrence);
-  }
-  return null;
 }
 
 function countRecentLlmUsage(input: {

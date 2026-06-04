@@ -111,6 +111,7 @@ type Store = {
   canUndo: () => boolean;
   canRedo: () => boolean;
   saveToBackend: () => Promise<void>;
+  flushPendingChanges: (options?: { reloadAfterSave?: boolean }) => Promise<void>;
 
   getCurrentRootTasks: () => EnhancedTaskTreeType[];
 
@@ -172,6 +173,8 @@ export const createEditorStore = (
   dueDateFilter?: 'today' | 'tomorrow' | 'this-week',
   chatId?: number // ✅ NEW PARAMETER
 ) => {
+  let saveInFlight: Promise<void> | null = null;
+
   return create<Store>()(
     subscribeWithSelector((set, get) => ({
       isLoading: false,
@@ -340,7 +343,11 @@ export const createEditorStore = (
       saveToBackend: async () => {
         const { unsavedOperations, autosave } = get();
 
-        if (autosave.isSaving || unsavedOperations.length === 0) return;
+        if (autosave.isSaving) {
+          if (saveInFlight) await saveInFlight;
+          return;
+        }
+        if (unsavedOperations.length === 0) return;
 
         const operationsToSave = [...unsavedOperations];
         clearSaveTimer();
@@ -350,7 +357,7 @@ export const createEditorStore = (
           autosave: { ...state.autosave, isSaving: true, saveError: null }
         }));
 
-        try {
+        const runSave = async () => {
           const batch: OperationBatch = {
             operations: operationsToSave,
             batchId: uuidv4(),
@@ -383,17 +390,48 @@ export const createEditorStore = (
           } else {
             throw new Error('Operation batch failed');
           }
-        } catch (error) {
-          set(state => ({
-            unsavedOperations: [...operationsToSave, ...state.unsavedOperations],
-            autosave: {
-              ...state.autosave,
-              isDirty: true,
-              isSaving: false,
-              saveError: error instanceof Error ? error.message : 'Save failed',
+        };
+
+        saveInFlight = runSave()
+          .catch((error) => {
+            set(state => ({
+              unsavedOperations: [...operationsToSave, ...state.unsavedOperations],
+              autosave: {
+                ...state.autosave,
+                isDirty: true,
+                isSaving: false,
+                saveError: error instanceof Error ? error.message : 'Save failed',
+              }
+            }));
+          })
+          .finally(() => {
+            saveInFlight = null;
+          });
+
+        await saveInFlight;
+      },
+
+      flushPendingChanges: async (options) => {
+        clearSaveTimer();
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          await get().saveToBackend();
+
+          const { autosave, unsavedOperations } = get();
+          if (!autosave.isSaving && unsavedOperations.length === 0) {
+            if (options?.reloadAfterSave) {
+              await get().loadProjectTree();
             }
-          }));
+            return;
+          }
+
+          if (autosave.saveError) {
+            throw new Error(autosave.saveError);
+          }
         }
+
+        const saveError = get().autosave.saveError;
+        throw new Error(saveError || 'Pending task changes did not finish saving');
       },
 
       getCurrentRootTasks: () => {

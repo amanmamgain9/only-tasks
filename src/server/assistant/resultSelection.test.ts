@@ -1,8 +1,12 @@
 import { describe, expect, test } from "vitest";
 import type { RecurrenceAssistantResult } from "@/features/recurrence/recurrenceAssistant";
-import { getLatestDraftSchedule, selectRecurrenceAssistantResult, type AssistantMessageDTO } from "./service";
+import {
+  getLatestDraftSchedule,
+  selectRecurrenceAssistantResult,
+  type AssistantMessageWithPayload,
+} from "./resultSelection";
 
-describe("assistant service", () => {
+describe("recurrence assistant result selection", () => {
   test("does not let an LLM rejection override a deterministic draft", () => {
     const deterministicResult: RecurrenceAssistantResult = {
       ok: true,
@@ -80,12 +84,8 @@ describe("assistant service", () => {
   });
 
   test("keeps the latest valid recurrence draft after a failed assistant turn", () => {
-    const messages: AssistantMessageDTO[] = [
+    const messages: AssistantMessageWithPayload[] = [
       {
-        id: 1,
-        threadId: 1,
-        role: "assistant",
-        content: "Every weekday starting Jun 3, 2026",
         structuredPayload: {
           type: "recurrence_assistant_result",
           result: {
@@ -97,13 +97,8 @@ describe("assistant service", () => {
             },
           },
         },
-        createdAt: "2026-06-03T10:00:00.000Z",
       },
       {
-        id: 2,
-        threadId: 1,
-        role: "assistant",
-        content: "I could not find a repeat pattern.",
         structuredPayload: {
           type: "recurrence_assistant_result",
           result: {
@@ -112,7 +107,6 @@ describe("assistant service", () => {
             suggestions: [],
           },
         },
-        createdAt: "2026-06-03T10:01:00.000Z",
       },
     ];
 
