@@ -1,5 +1,6 @@
 import type { ProgressSummary } from "@/features/progress/types";
 import type { SaveTimeReviewInput, TimeReviewSummary } from "@/features/timeReview/types";
+import type { RecurrenceAssistantThread } from "@/features/ai/types";
 import type { ApiResponse, Project, SaveProjectInput, TimerSettings, TimerStatus } from "../types";
 import type { EnhancedTaskTreeType, OperationBatch } from "../components/MyWorkplaceComponents/TaskTreeComponents/types";
 
@@ -146,6 +147,32 @@ export const applyOperationBatch = async (
   });
 
   return parseResponse<EnhancedTaskTreeType[]>(response);
+};
+
+export const getRecurrenceAssistantThread = async (
+  taskClientId: string,
+): Promise<ApiResponse<RecurrenceAssistantThread>> => {
+  const response = await fetch(`${API_BASE_URL}/api/assistant/recurrence/thread${toQueryString({ taskClientId })}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  return parseResponse<RecurrenceAssistantThread>(response);
+};
+
+export const sendRecurrenceAssistantMessage = async (input: {
+  taskClientId: string;
+  prompt: string;
+  todayDate?: string;
+  initialStartDate?: string | null;
+}): Promise<ApiResponse<RecurrenceAssistantThread>> => {
+  const response = await fetch(`${API_BASE_URL}/api/assistant/recurrence/message`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  return parseResponse<RecurrenceAssistantThread>(response);
 };
 
 export const getTimerStatus = async (): Promise<ApiResponse<TimerStatus> | null> => {

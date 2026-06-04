@@ -40,6 +40,7 @@ import {
   createTaskOp,
   createUpdateTitleOp,
   createToggleCompletionOp,
+  createAddRecurrenceTargetCompletionOp,
   createDeleteTaskOp,
   createSetRecurrenceOp,
   createUpdateMetadataOp,
@@ -421,6 +422,16 @@ export const createEditorStore = (
       toggleCompletion: ({ clientId }) => {
         const task = findTaskByClientId(get().editor.tasks, clientId);
         if (!task || task.isEphemeral) return;
+
+        if (task.recurrenceTargetProgress) {
+          const operation = createAddRecurrenceTargetCompletionOp(
+            clientId,
+            task.recurrenceTargetProgress.localDate,
+          );
+          get().applyOperation(operation, 'addRecurrenceTargetCompletion');
+          void get().saveToBackend();
+          return;
+        }
 
         const operation = createToggleCompletionOp(clientId, !task.isCompleted);
         get().applyOperation(operation, 'toggleCompletion');

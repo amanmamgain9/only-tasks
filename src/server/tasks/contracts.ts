@@ -55,6 +55,14 @@ const operationSchema = z.discriminatedUnion("type", [
     timestamp: z.number(),
   }),
   z.object({
+    type: z.literal("ADD_RECURRENCE_TARGET_COMPLETION"),
+    clientId: z.string(),
+    localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    quantity: z.number().int().min(1).max(99).default(1),
+    clientEventId: z.string(),
+    timestamp: z.number(),
+  }),
+  z.object({
     type: z.literal("UPDATE_METADATA"),
     clientId: z.string(),
     estimatedTimeMinutes: z.number().nullable().optional(),

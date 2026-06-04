@@ -1,5 +1,5 @@
 import * as taskRepo from "./repository";
-import { buildTaskForest, type TaskTreeNode } from "./tree";
+import { buildTaskForest, type RecurrenceTargetProgress, type TaskTreeNode } from "./tree";
 import { randomUUID } from "node:crypto";
 import { generateKeyBetween } from "fractional-indexing";
 import {
@@ -8,10 +8,16 @@ import {
   serializeTaskCategoryAllocations,
   type TaskCategoryId,
 } from "@/features/categories/taskCategories";
-import { materializeRecurringTasksForDateRange } from "./recurrence";
-import { formatLocalDateKey, normalizeTimeZone } from "../progress/timezone";
+import {
+  getRecurrenceTargetCompletionCountInDatabase,
+  materializeRecurringTasksForDateRange,
+  recurrenceScheduleFromStoredSeries,
+  type RecurrenceScheduleInput,
+} from "./recurrence";
+import { addDaysToDateKey, formatLocalDateKey, getWeekStartDateKey, normalizeTimeZone } from "../progress/timezone";
 import { getScheduledDateRange, type ScheduledDateRange } from "./scheduledDateRange";
 import { appendRolloverHistory, dateKeyToDueDate, dueDateToDateKey } from "./rolloverMetadata";
+import { sqlite } from "../db/client";
 
 const CATEGORY_ROOT_SYSTEM_TYPE = "category_root";
 
@@ -32,6 +38,94 @@ function shouldRolloverTask(task: Awaited<ReturnType<typeof taskRepo.findTasksBy
   if (task.systemType === CATEGORY_ROOT_SYSTEM_TYPE) return false;
   if (task.recurrenceRole) return false;
   return Boolean(task.dueDate);
+}
+
+function isQuotaRecurrence(schedule: RecurrenceScheduleInput | null | undefined) {
+  return schedule?.mode === "daily_quota" || schedule?.mode === "weekly_quota";
+}
+
+function isScheduleActiveOnDate(schedule: RecurrenceScheduleInput, dateKey: string) {
+  if (schedule.mode === "none") return false;
+  if (dateKey < schedule.startDate) return false;
+  if (schedule.endDate && dateKey > schedule.endDate) return false;
+  return true;
+}
+
+function getQuotaTargetProgress(input: {
+  userId: number;
+  seriesId: number;
+  schedule: Extract<RecurrenceScheduleInput, { mode: "daily_quota" | "weekly_quota" }>;
+  todayDate: string;
+}): RecurrenceTargetProgress {
+  const isDaily = input.schedule.mode === "daily_quota";
+  const periodStartDate = isDaily ? input.todayDate : getWeekStartDateKey(input.todayDate, 1);
+  const periodEndDateExclusive = addDaysToDateKey(periodStartDate, isDaily ? 1 : 7);
+  const completedCount = getRecurrenceTargetCompletionCountInDatabase({
+    db: sqlite,
+    userId: input.userId,
+    recurrenceSeriesId: input.seriesId,
+    startDate: periodStartDate,
+    endDateExclusive: periodEndDateExclusive,
+  });
+
+  return {
+    period: isDaily ? "day" : "week",
+    targetCount: input.schedule.targetCount,
+    completedCount,
+    localDate: input.todayDate,
+    periodStartDate,
+    periodEndDateExclusive,
+  };
+}
+
+async function getScheduledQuotaTargetTasks(input: {
+  userId: number;
+  projectId?: number;
+  dateRange: ScheduledDateRange;
+  todayDate: string;
+}) {
+  if (input.dateRange === "tomorrow") return [];
+
+  const tasks = await taskRepo.findTasksByUserId(input.userId, {
+    projectId: input.projectId,
+    includeCompleted: true,
+    includeDeleted: false,
+    includeArchived: false,
+    excludeRecurrenceOccurrences: true,
+  });
+  const templates = tasks.filter((task) => task.recurrenceRole === "template");
+  const activeSeries = await taskRepo.findActiveRecurrenceSeriesByTemplateIds(
+    input.userId,
+    templates.map((task) => task.id),
+  );
+  const seriesByTemplateId = new Map(activeSeries.map((series) => [series.templateTaskId, series]));
+
+  return templates.flatMap((task) => {
+    const series = seriesByTemplateId.get(task.id);
+    if (!series) return [];
+    const recurrenceSchedule = recurrenceScheduleFromStoredSeries({
+      rule: series.rule,
+      startDate: series.startDate,
+      endDate: series.endDate,
+    });
+    if (!isQuotaRecurrence(recurrenceSchedule) || !isScheduleActiveOnDate(recurrenceSchedule, input.todayDate)) {
+      return [];
+    }
+
+    const recurrenceTargetProgress = getQuotaTargetProgress({
+      userId: input.userId,
+      seriesId: series.id,
+      schedule: recurrenceSchedule,
+      todayDate: input.todayDate,
+    });
+
+    return [{
+      ...task,
+      isCompleted: recurrenceTargetProgress.completedCount >= recurrenceTargetProgress.targetCount ? 1 : 0,
+      recurrenceSchedule,
+      recurrenceTargetProgress,
+    }];
+  });
 }
 
 async function rolloverPastOpenScheduledTasks(input: {
@@ -75,7 +169,25 @@ export async function getUserTasks(
   options: Parameters<typeof taskRepo.findTasksByUserId>[1] = {},
 ): Promise<TaskTreeNode[]> {
   const existingTasks = await taskRepo.findTasksByUserId(userId, options);
-  return buildTaskForest(existingTasks);
+  const templateTaskIds = existingTasks
+    .filter((task) => task.recurrenceRole === "template")
+    .map((task) => task.id);
+  const activeSeries = await taskRepo.findActiveRecurrenceSeriesByTemplateIds(userId, templateTaskIds);
+  const seriesByTemplateId = new Map(activeSeries.map((series) => [series.templateTaskId, series]));
+  const tasksWithRecurrenceSchedules = existingTasks.map((task) => {
+    if (task.recurrenceRole !== "template") return task;
+    const series = seriesByTemplateId.get(task.id);
+    if (!series) return { ...task, recurrenceSchedule: null };
+    return {
+      ...task,
+      recurrenceSchedule: recurrenceScheduleFromStoredSeries({
+        rule: series.rule,
+        startDate: series.startDate,
+        endDate: series.endDate,
+      }),
+    };
+  });
+  return buildTaskForest(tasksWithRecurrenceSchedules);
 }
 
 function getRootCategory(task: { categoryAllocations: string | null }): TaskCategoryId | null {
@@ -223,9 +335,15 @@ export async function getScheduledTasks(
     includeDeleted: false,
     includeArchived: false,
   })).filter((task) => task.recurrenceRole !== "template");
+  const quotaTargetTasks = await getScheduledQuotaTargetTasks({
+    userId,
+    projectId: options.projectId,
+    dateRange: options.dateRange,
+    todayDate,
+  });
 
   const ancestorIds = new Set<number>();
-  for (const task of scheduledTasks) {
+  for (const task of [...scheduledTasks, ...quotaTargetTasks]) {
     const pathIds = task.path
       .split("/")
       .filter(Boolean)
@@ -254,6 +372,7 @@ export async function getScheduledTasks(
   const taskMap = new Map<number, (typeof scheduledTasks)[number]>();
   categoryRoots.forEach((task) => taskMap.set(task.id, task));
   scheduledTasks.forEach((task) => taskMap.set(task.id, task));
+  quotaTargetTasks.forEach((task) => taskMap.set(task.id, task));
   ancestors.forEach((task) => taskMap.set(task.id, task));
   descendants.flat().forEach((task) => taskMap.set(task.id, task));
 

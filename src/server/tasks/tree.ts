@@ -1,10 +1,22 @@
 import type { Task } from "../db/schema/tasks";
+import type { RecurrenceScheduleInput } from "./recurrence";
+
+export type RecurrenceTargetProgress = {
+  period: "day" | "week";
+  targetCount: number;
+  completedCount: number;
+  localDate: string;
+  periodStartDate: string;
+  periodEndDateExclusive: string;
+};
 
 export interface TaskTreeNode extends Omit<Task, "isCompleted" | "deleted" | "archived"> {
   subtasks?: TaskTreeNode[];
   isCompleted: boolean;
   deleted: boolean;
   archived: boolean;
+  recurrenceSchedule?: RecurrenceScheduleInput | null;
+  recurrenceTargetProgress?: RecurrenceTargetProgress | null;
 }
 
 export function buildTaskForest(existingTasks: Task[]): TaskTreeNode[] {

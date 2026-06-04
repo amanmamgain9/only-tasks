@@ -18,6 +18,13 @@ export const recurrenceScheduleSchema = z.discriminatedUnion("mode", [
     interval: z.number().int().min(1).max(365).optional(),
   }),
   z.object({
+    mode: z.literal("daily_quota"),
+    startDate: dateKeySchema,
+    endDate: dateKeySchema.nullable().optional(),
+    targetCount: z.number().int().min(1).max(99),
+    comparator: z.literal("at_least").optional(),
+  }),
+  z.object({
     mode: z.literal("weekdays"),
     startDate: dateKeySchema,
     endDate: dateKeySchema.nullable().optional(),
@@ -29,13 +36,22 @@ export const recurrenceScheduleSchema = z.discriminatedUnion("mode", [
     interval: z.number().int().min(1).max(52).optional(),
     weekdays: z.array(weekdaySchema).min(1).max(7).optional(),
   }),
+  z.object({
+    mode: z.literal("weekly_quota"),
+    startDate: dateKeySchema,
+    endDate: dateKeySchema.nullable().optional(),
+    targetCount: z.number().int().min(1).max(31),
+    comparator: z.literal("at_least").optional(),
+  }),
 ]);
 
 export type RecurrenceScheduleInput = z.infer<typeof recurrenceScheduleSchema>;
 
 export type NormalizedRecurrenceRule =
   | { frequency: "daily"; interval: number }
-  | { frequency: "weekly"; interval: number; weekdays: number[] };
+  | { frequency: "daily_quota"; targetCount: number; comparator: "at_least" }
+  | { frequency: "weekly"; interval: number; weekdays: number[] }
+  | { frequency: "weekly_quota"; targetCount: number; comparator: "at_least" };
 
 export type RecurrenceSeriesRow = {
   id: number;
@@ -143,11 +159,35 @@ export function normalizeRecurrenceSchedule(input: RecurrenceScheduleInput): {
     };
   }
 
+  if (schedule.mode === "daily_quota") {
+    return {
+      startDate: schedule.startDate,
+      endDate: schedule.endDate ?? null,
+      rule: {
+        frequency: "daily_quota",
+        targetCount: schedule.targetCount,
+        comparator: schedule.comparator ?? "at_least",
+      },
+    };
+  }
+
   if (schedule.mode === "weekdays") {
     return {
       startDate: schedule.startDate,
       endDate: schedule.endDate ?? null,
       rule: { frequency: "weekly", interval: 1, weekdays: [1, 2, 3, 4, 5] },
+    };
+  }
+
+  if (schedule.mode === "weekly_quota") {
+    return {
+      startDate: schedule.startDate,
+      endDate: schedule.endDate ?? null,
+      rule: {
+        frequency: "weekly_quota",
+        targetCount: schedule.targetCount,
+        comparator: schedule.comparator ?? "at_least",
+      },
     };
   }
 
@@ -167,12 +207,76 @@ function parseStoredRule(value: string): NormalizedRecurrenceRule {
   const ruleSchema = z.discriminatedUnion("frequency", [
     z.object({ frequency: z.literal("daily"), interval: z.number().int().min(1).max(365) }),
     z.object({
+      frequency: z.literal("daily_quota"),
+      targetCount: z.number().int().min(1).max(99),
+      comparator: z.literal("at_least").default("at_least"),
+    }),
+    z.object({
       frequency: z.literal("weekly"),
       interval: z.number().int().min(1).max(52),
       weekdays: z.array(weekdaySchema).min(1).max(7).transform(uniqueWeekdays),
     }),
+    z.object({
+      frequency: z.literal("weekly_quota"),
+      targetCount: z.number().int().min(1).max(31),
+      comparator: z.literal("at_least").default("at_least"),
+    }),
   ]);
   return ruleSchema.parse(parsed);
+}
+
+export function recurrenceScheduleFromStoredSeries(input: {
+  rule: string;
+  startDate: string;
+  endDate?: string | null;
+}): RecurrenceScheduleInput {
+  const rule = parseStoredRule(input.rule);
+  const endDate = input.endDate ?? null;
+
+  if (rule.frequency === "daily") {
+    return {
+      mode: "daily",
+      startDate: input.startDate,
+      endDate,
+      interval: rule.interval === 1 ? undefined : rule.interval,
+    };
+  }
+
+  if (rule.frequency === "daily_quota") {
+    return {
+      mode: "daily_quota",
+      startDate: input.startDate,
+      endDate,
+      targetCount: rule.targetCount,
+      comparator: rule.comparator,
+    };
+  }
+
+  if (rule.frequency === "weekly_quota") {
+    return {
+      mode: "weekly_quota",
+      startDate: input.startDate,
+      endDate,
+      targetCount: rule.targetCount,
+      comparator: rule.comparator,
+    };
+  }
+
+  if (rule.interval === 1 && rule.weekdays.join(",") === "1,2,3,4,5") {
+    return {
+      mode: "weekdays",
+      startDate: input.startDate,
+      endDate,
+    };
+  }
+
+  return {
+    mode: "weekly",
+    startDate: input.startDate,
+    endDate,
+    interval: rule.interval === 1 ? undefined : rule.interval,
+    weekdays: rule.weekdays,
+  };
 }
 
 function stringifyRule(rule: NormalizedRecurrenceRule) {
@@ -180,6 +284,9 @@ function stringifyRule(rule: NormalizedRecurrenceRule) {
 }
 
 function shouldOccurOnDate(rule: NormalizedRecurrenceRule, startDate: string, date: string) {
+  if (rule.frequency === "daily_quota") return false;
+  if (rule.frequency === "weekly_quota") return false;
+
   const daysSinceStart = diffDays(startDate, date);
   if (daysSinceStart < 0) return false;
 
@@ -198,6 +305,9 @@ export function enumerateOccurrenceDates(input: {
   rangeStartDate: string;
   rangeEndDateExclusive: string;
 }) {
+  if (input.rule.frequency === "daily_quota") return [];
+  if (input.rule.frequency === "weekly_quota") return [];
+
   assertDateKey(input.startDate);
   assertDateKey(input.rangeStartDate);
   assertDateKey(input.rangeEndDateExclusive);
@@ -406,6 +516,95 @@ export async function setTaskRecurrence(input: {
   timestamp: number;
 }) {
   return setTaskRecurrenceInDatabase({ db: sqlite, ...input });
+}
+
+function isQuotaRule(rule: NormalizedRecurrenceRule) {
+  return rule.frequency === "daily_quota" || rule.frequency === "weekly_quota";
+}
+
+export function addRecurrenceTargetCompletionInDatabase(input: {
+  db: Database.Database;
+  userId: number;
+  clientId: string;
+  localDate: string;
+  quantity?: number;
+  clientEventId: string;
+  timestamp: number;
+}) {
+  return input.db.transaction(() => {
+    assertDateKey(input.localDate);
+    const quantity = input.quantity ?? 1;
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      throw new Error("Invalid recurrence target completion quantity.");
+    }
+
+    const task = getTaskByClientIdInDatabase(input.db, input.userId, input.clientId);
+    if (!task) throw new Error(`Task not found for clientId: ${input.clientId}`);
+    if (task.recurrence_role !== "template") {
+      throw new Error("Target completions can only be recorded on recurring templates.");
+    }
+
+    const series = findActiveSeriesForTemplate(input.db, input.userId, task.id);
+    if (!series) throw new Error("Active recurrence target not found.");
+    const rule = parseStoredRule(series.rule);
+    if (!isQuotaRule(rule)) throw new Error("This recurrence is not a target quota.");
+    if (input.localDate < series.start_date || (series.end_date && input.localDate > series.end_date)) {
+      throw new Error("Completion date is outside the recurrence target window.");
+    }
+
+    const now = new Date(input.timestamp).toISOString();
+    input.db
+      .prepare(
+        `INSERT OR IGNORE INTO pmwd_task_recurrence_completion_events
+         (user_id, recurrence_series_id, template_task_id, local_date, quantity, completed_at, client_event_id, created_at, updated_at)
+         VALUES (@userId, @seriesId, @templateTaskId, @localDate, @quantity, @completedAt, @clientEventId, @now, @now)`,
+      )
+      .run({
+        userId: input.userId,
+        seriesId: series.id,
+        templateTaskId: task.id,
+        localDate: input.localDate,
+        quantity,
+        completedAt: now,
+        clientEventId: input.clientEventId,
+        now,
+      });
+
+    return { seriesId: series.id, templateTaskId: task.id };
+  })();
+}
+
+export async function addRecurrenceTargetCompletion(input: {
+  userId: number;
+  clientId: string;
+  localDate: string;
+  quantity?: number;
+  clientEventId: string;
+  timestamp: number;
+}) {
+  return addRecurrenceTargetCompletionInDatabase({ db: sqlite, ...input });
+}
+
+export function getRecurrenceTargetCompletionCountInDatabase(input: {
+  db: Database.Database;
+  userId: number;
+  recurrenceSeriesId: number;
+  startDate: string;
+  endDateExclusive: string;
+}) {
+  assertDateKey(input.startDate);
+  assertDateKey(input.endDateExclusive);
+  const row = input.db
+    .prepare(
+      `SELECT COALESCE(SUM(quantity), 0) AS count
+       FROM pmwd_task_recurrence_completion_events
+       WHERE user_id = @userId
+         AND recurrence_series_id = @recurrenceSeriesId
+         AND local_date >= @startDate
+         AND local_date < @endDateExclusive`,
+    )
+    .get(input) as { count: number } | undefined;
+  return row?.count ?? 0;
 }
 
 function findOccurrenceForTemplateDate(input: {

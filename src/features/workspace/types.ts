@@ -1,5 +1,22 @@
 import type { LifestyleTraitAllocation, TaskCategoryAllocation } from "@/features/categories/taskCategories";
 
+export type TaskRecurrenceSchedule =
+  | { mode: "none" }
+  | { mode: "daily"; startDate: string; endDate?: string | null; interval?: number }
+  | { mode: "daily_quota"; startDate: string; endDate?: string | null; targetCount: number; comparator?: "at_least" }
+  | { mode: "weekdays"; startDate: string; endDate?: string | null }
+  | { mode: "weekly"; startDate: string; endDate?: string | null; interval?: number; weekdays?: number[] }
+  | { mode: "weekly_quota"; startDate: string; endDate?: string | null; targetCount: number; comparator?: "at_least" };
+
+export type RecurrenceTargetProgress = {
+  period: "day" | "week";
+  targetCount: number;
+  completedCount: number;
+  localDate: string;
+  periodStartDate: string;
+  periodEndDateExclusive: string;
+};
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -60,6 +77,8 @@ export interface Task {
   recurrenceOccurrenceDate?: string | null;
   recurrenceStatus?: "scheduled" | "skipped" | null;
   recurrenceIsOverride?: number | boolean | null;
+  recurrenceSchedule?: TaskRecurrenceSchedule | null;
+  recurrenceTargetProgress?: RecurrenceTargetProgress | null;
   createdAt: string;
   updatedAt: string;
   subtasks?: Task[];

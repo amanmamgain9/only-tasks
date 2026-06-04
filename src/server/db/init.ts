@@ -110,6 +110,48 @@ export function initializeDatabase(sqlite: Database.Database) {
       FOREIGN KEY (template_task_id) REFERENCES pmwd_tasks(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS pmwd_task_recurrence_completion_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      recurrence_series_id INTEGER NOT NULL,
+      template_task_id INTEGER NOT NULL,
+      local_date TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      completed_at TEXT NOT NULL,
+      client_event_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (recurrence_series_id) REFERENCES pmwd_task_recurrence_series(id) ON DELETE CASCADE,
+      FOREIGN KEY (template_task_id) REFERENCES pmwd_tasks(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pmwd_assistant_threads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      surface TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id INTEGER,
+      entity_client_id TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      title TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS pmwd_assistant_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      thread_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      structured_payload TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (thread_id) REFERENCES pmwd_assistant_threads(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS auth_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -289,6 +331,13 @@ export function initializeDatabase(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS pmwd_task_recurrence_series_user_status_idx
     ON pmwd_task_recurrence_series(user_id, status);
 
+    CREATE INDEX IF NOT EXISTS pmwd_task_recurrence_completion_events_series_date_idx
+    ON pmwd_task_recurrence_completion_events(user_id, recurrence_series_id, local_date);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_task_recurrence_completion_events_client_event_unique
+    ON pmwd_task_recurrence_completion_events(user_id, client_event_id)
+    WHERE client_event_id IS NOT NULL;
+
     CREATE UNIQUE INDEX IF NOT EXISTS pmwd_tasks_recurrence_template_date_unique
     ON pmwd_tasks(user_id, recurrence_template_task_id, recurrence_occurrence_date)
     WHERE recurrence_template_task_id IS NOT NULL
@@ -297,5 +346,17 @@ export function initializeDatabase(sqlite: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS pmwd_tasks_recurrence_series_idx
     ON pmwd_tasks(user_id, recurrence_series_id, recurrence_occurrence_date);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_assistant_threads_active_entity_unique
+    ON pmwd_assistant_threads(user_id, surface, entity_type, entity_client_id)
+    WHERE status = 'active'
+      AND entity_type IS NOT NULL
+      AND entity_client_id IS NOT NULL;
+
+    CREATE INDEX IF NOT EXISTS pmwd_assistant_threads_user_surface_idx
+    ON pmwd_assistant_threads(user_id, surface, status);
+
+    CREATE INDEX IF NOT EXISTS pmwd_assistant_messages_thread_id_idx
+    ON pmwd_assistant_messages(thread_id, id);
   `);
 }

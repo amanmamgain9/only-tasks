@@ -4,6 +4,7 @@ import * as positioning from "./positioning";
 import * as projectRepo from "../projects/repository";
 import type { Operation, OperationBatch, SubtreeNode } from "./contracts";
 import {
+  addRecurrenceTargetCompletion,
   getRecurrenceMetadataForNewChild,
   isOccurrenceRole,
   setTaskRecurrence,
@@ -84,6 +85,20 @@ async function handleToggleComplete(
     completedAt: operation.isCompleted ? timestampISO : null,
     ...getOccurrenceOverrideUpdate(task),
     updatedAt: timestampISO,
+  });
+}
+
+async function handleAddRecurrenceTargetCompletion(
+  operation: Extract<Operation, { type: "ADD_RECURRENCE_TARGET_COMPLETION" }>,
+  userId: number,
+) {
+  await addRecurrenceTargetCompletion({
+    userId,
+    clientId: operation.clientId,
+    localDate: operation.localDate,
+    quantity: operation.quantity,
+    clientEventId: operation.clientEventId,
+    timestamp: operation.timestamp,
   });
 }
 
@@ -288,6 +303,9 @@ export async function applyOperationBatch(batch: OperationBatch, userId: number)
         return;
       case "TOGGLE_COMPLETE":
         await handleToggleComplete(operation, userId);
+        return;
+      case "ADD_RECURRENCE_TARGET_COMPLETION":
+        await handleAddRecurrenceTargetCompletion(operation, userId);
         return;
       case "UPDATE_METADATA":
         await handleUpdateMetadata(operation, userId);
