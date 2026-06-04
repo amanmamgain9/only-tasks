@@ -566,7 +566,7 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
     recurrence = { mode: "weekdays", startDate, endDate };
   } else if (mentionedWeekdays.length > 0) {
     startDate = parseDateAfterPrefix(text, "starting|starts|start|from|beginning|begins|begin", todayDate)
-      ?? getNextMatchingWeekdayDate(todayDate, mentionedWeekdays);
+      ?? getNextMatchingWeekdayDate(startDate, mentionedWeekdays);
     if (endDate && endDate < startDate) return reject("The end date is before the first matching day.");
     recurrence = {
       mode: "weekly",

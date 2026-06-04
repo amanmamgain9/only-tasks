@@ -78,6 +78,11 @@ function getRolloverLabel(node: VisibleNode) {
   return `Rolled from ${formatDateKeyLabel(originalDate)}`;
 }
 
+function getTargetProgressPeriodLabel(targetProgress: NonNullable<VisibleNode['recurrenceTargetProgress']>) {
+  if (targetProgress.period === 'week') return 'this week';
+  return formatDateKeyLabel(targetProgress.localDate);
+}
+
 const TreeNodeComponent: React.FC<TreeNodeProps> = ({
   node,
   nodeIndex,
@@ -416,7 +421,7 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
               {targetProgress && (
                 <div className="ml-1 mt-0.5 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   <span>
-                    {targetProgress.completedCount}/{targetProgress.targetCount} {targetProgress.period === 'day' ? 'today' : 'this week'}
+                    {targetProgress.completedCount}/{targetProgress.targetCount} {getTargetProgressPeriodLabel(targetProgress)}
                   </span>
                   {targetProgress.completedCount >= targetProgress.targetCount ? (
                     <span className="text-green-600 dark:text-green-400">target met</span>
