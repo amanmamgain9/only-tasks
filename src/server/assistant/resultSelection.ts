@@ -44,15 +44,15 @@ export type AssistantMessageWithPayload = {
   structuredPayload: unknown | null;
 };
 
-function isHardDeterministicRejection(result: RecurrenceAssistantResult) {
-  return !result.ok && result.message !== "I could not find a daily, weekday, or weekly repeat pattern.";
+function isGenericDeterministicMiss(result: RecurrenceAssistantResult) {
+  return !result.ok && result.message === "I could not find a daily, weekday, or weekly repeat pattern.";
 }
 
 export function selectRecurrenceAssistantResult(input: {
   deterministicResult: RecurrenceAssistantResult;
   llmResult: RecurrenceAssistantResult | null | undefined;
 }) {
-  if (isHardDeterministicRejection(input.deterministicResult)) return input.deterministicResult;
+  if (!isGenericDeterministicMiss(input.deterministicResult)) return input.deterministicResult;
   if (input.llmResult?.ok) return input.llmResult;
   return input.deterministicResult;
 }

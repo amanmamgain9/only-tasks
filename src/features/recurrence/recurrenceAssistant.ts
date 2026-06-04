@@ -633,6 +633,8 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
     };
   } else if (hasWeekdaysKeyword) {
     recurrence = { mode: "weekdays", startDate, endDate: nextEndDate };
+  } else if (hasDaily) {
+    recurrence = { mode: "daily", startDate, endDate: nextEndDate, interval: intervalDays ?? 1 };
   } else if (mentionedWeekdays.length > 0) {
     startDate = explicitStartDate ?? getNextMatchingWeekdayDate(startDate, mentionedWeekdays);
     if (nextEndDate && nextEndDate < startDate) return reject("The end date is before the first matching day.");
@@ -646,8 +648,6 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
       interval: intervalWeeks ?? existingWeeklyInterval ?? 1,
       weekdays: mentionedWeekdays,
     };
-  } else if (hasDaily) {
-    recurrence = { mode: "daily", startDate, endDate: nextEndDate, interval: intervalDays ?? 1 };
   } else if (hasWeekly) {
     recurrence = {
       mode: "weekly",

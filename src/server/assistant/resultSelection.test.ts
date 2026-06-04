@@ -27,6 +27,30 @@ describe("recurrence assistant result selection", () => {
     })).toBe(deterministicResult);
   });
 
+  test("does not let an LLM draft override a deterministic draft", () => {
+    const deterministicResult: RecurrenceAssistantResult = {
+      ok: true,
+      draft: {
+        recurrence: { mode: "weekdays", startDate: "2026-06-03" },
+        summary: "Every weekday starting Jun 3, 2026",
+        previewDates: [],
+      },
+    };
+    const llmResult: RecurrenceAssistantResult = {
+      ok: true,
+      draft: {
+        recurrence: { mode: "weekly", startDate: "2026-06-03", weekdays: [1] },
+        summary: "Every Monday starting Jun 3, 2026",
+        previewDates: [],
+      },
+    };
+
+    expect(selectRecurrenceAssistantResult({
+      deterministicResult,
+      llmResult,
+    })).toBe(deterministicResult);
+  });
+
   test("does not let the LLM override deterministic hard quota rejections", () => {
     const deterministicResult: RecurrenceAssistantResult = {
       ok: false,

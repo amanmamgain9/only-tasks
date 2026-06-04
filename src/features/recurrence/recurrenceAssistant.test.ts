@@ -220,6 +220,22 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("keeps explicit daily cadence when weekday words describe boundaries", () => {
+    expect(parseRecurrencePrompt("daily starting next Monday", { todayDate: "2026-06-03" })).toMatchObject({
+      ok: true,
+      draft: {
+        recurrence: { mode: "daily", startDate: "2026-06-08", interval: 1 },
+      },
+    });
+
+    expect(parseRecurrencePrompt("every day until next Monday", { todayDate: "2026-06-03" })).toMatchObject({
+      ok: true,
+      draft: {
+        recurrence: { mode: "daily", startDate: "2026-06-03", endDate: "2026-06-08", interval: 1 },
+      },
+    });
+  });
+
   test("rejects unparseable end-date instructions instead of clearing the end date", () => {
     const result = parseRecurrencePrompt("every day until 2026-02-31", { todayDate: "2026-06-03" });
 
