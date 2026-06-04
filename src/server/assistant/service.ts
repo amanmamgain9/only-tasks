@@ -9,7 +9,7 @@ import { isRecurrenceLlmConfigured, resolveRecurrencePromptWithLlm, type Recurre
 import { sqlite } from "@/server/db/client";
 import * as taskRepo from "@/server/tasks/repository";
 import { recurrenceScheduleFromStoredSeries } from "@/server/tasks/recurrence";
-import { getLatestDraftSchedule, selectRecurrenceAssistantResult, shouldAttemptRecurrenceLlm } from "./resultSelection";
+import { getLatestDraftSchedule, selectRecurrenceAssistantResult } from "./resultSelection";
 
 const TASK_RECURRENCE_SURFACE = "task_recurrence";
 const LLM_USER_WINDOW_MS = 15 * 60 * 1000;
@@ -456,12 +456,7 @@ export async function submitRecurrenceAssistantMessage(input: {
   });
   const latestDraftSchedule = getLatestDraftSchedule(existingThread.messages);
   const recurrenceContext = latestDraftSchedule ?? existingThread.currentRecurrence;
-  const deterministicResult = parseRecurrencePrompt(parsedPrompt, {
-    todayDate: input.todayDate,
-    initialStartDate: input.initialStartDate,
-    existingSchedule: recurrenceContext,
-  });
-  const llmResolution = shouldAttemptRecurrenceLlm(deterministicResult) && isRecurrenceLlmConfigured() && reserveRecurrenceLlmUsage({
+  const llmResolution = isRecurrenceLlmConfigured() && reserveRecurrenceLlmUsage({
     userId: input.userId,
     threadId: existingThread.thread.id,
     prompt: parsedPrompt,
@@ -473,6 +468,11 @@ export async function submitRecurrenceAssistantMessage(input: {
       existingSchedule: recurrenceContext,
     })
     : null;
+  const deterministicResult = parseRecurrencePrompt(parsedPrompt, {
+    todayDate: input.todayDate,
+    initialStartDate: input.initialStartDate,
+    existingSchedule: recurrenceContext,
+  });
   const result = selectRecurrenceAssistantResult({
     deterministicResult,
     llmResult: llmResolution?.result,

@@ -44,19 +44,10 @@ export type AssistantMessageWithPayload = {
   structuredPayload: unknown | null;
 };
 
-function isGenericDeterministicMiss(result: RecurrenceAssistantResult) {
-  return !result.ok && result.message === "I could not find a daily, weekday, or weekly repeat pattern.";
-}
-
-export function shouldAttemptRecurrenceLlm(deterministicResult: RecurrenceAssistantResult) {
-  return isGenericDeterministicMiss(deterministicResult);
-}
-
 export function selectRecurrenceAssistantResult(input: {
   deterministicResult: RecurrenceAssistantResult;
   llmResult: RecurrenceAssistantResult | null | undefined;
 }) {
-  if (!shouldAttemptRecurrenceLlm(input.deterministicResult)) return input.deterministicResult;
   if (input.llmResult?.ok) return input.llmResult;
   return input.deterministicResult;
 }
