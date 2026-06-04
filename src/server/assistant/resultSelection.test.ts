@@ -3,6 +3,7 @@ import type { RecurrenceAssistantResult } from "@/features/recurrence/recurrence
 import {
   getLatestDraftSchedule,
   selectRecurrenceAssistantResult,
+  shouldAttemptRecurrenceLlm,
   type AssistantMessageWithPayload,
 } from "./resultSelection";
 
@@ -105,6 +106,29 @@ describe("recurrence assistant result selection", () => {
       deterministicResult: monthlyRejection,
       llmResult,
     })).toBe(monthlyRejection);
+  });
+
+  test("only attempts the LLM for generic parser misses", () => {
+    expect(shouldAttemptRecurrenceLlm({
+      ok: true,
+      draft: {
+        recurrence: { mode: "weekdays", startDate: "2026-06-03" },
+        summary: "Every weekday starting Jun 3, 2026",
+        previewDates: [],
+      },
+    })).toBe(false);
+
+    expect(shouldAttemptRecurrenceLlm({
+      ok: false,
+      message: "Exact repeat targets are not supported yet. Use an at-least target instead.",
+      suggestions: [],
+    })).toBe(false);
+
+    expect(shouldAttemptRecurrenceLlm({
+      ok: false,
+      message: "I could not find a daily, weekday, or weekly repeat pattern.",
+      suggestions: [],
+    })).toBe(true);
   });
 
   test("keeps the latest valid recurrence draft after a failed assistant turn", () => {

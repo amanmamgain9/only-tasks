@@ -9,7 +9,7 @@ import { isRecurrenceLlmConfigured, resolveRecurrencePromptWithLlm, type Recurre
 import { sqlite } from "@/server/db/client";
 import * as taskRepo from "@/server/tasks/repository";
 import { recurrenceScheduleFromStoredSeries } from "@/server/tasks/recurrence";
-import { getLatestDraftSchedule, selectRecurrenceAssistantResult } from "./resultSelection";
+import { getLatestDraftSchedule, selectRecurrenceAssistantResult, shouldAttemptRecurrenceLlm } from "./resultSelection";
 
 const TASK_RECURRENCE_SURFACE = "task_recurrence";
 const LLM_USER_WINDOW_MS = 15 * 60 * 1000;
@@ -461,7 +461,7 @@ export async function submitRecurrenceAssistantMessage(input: {
     initialStartDate: input.initialStartDate,
     existingSchedule: recurrenceContext,
   });
-  const llmResolution = isRecurrenceLlmConfigured() && reserveRecurrenceLlmUsage({
+  const llmResolution = shouldAttemptRecurrenceLlm(deterministicResult) && isRecurrenceLlmConfigured() && reserveRecurrenceLlmUsage({
     userId: input.userId,
     threadId: existingThread.thread.id,
     prompt: parsedPrompt,
