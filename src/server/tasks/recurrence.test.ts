@@ -402,6 +402,32 @@ describe("task recurrence", () => {
     ]);
   });
 
+  test("preserves a generated occurrence subtree when it has a user override", () => {
+    const sqlite = createTestDatabase();
+    const { userId, projectId, taskId } = seedTemplateTree(sqlite);
+
+    setDailyRecurrence(sqlite, userId, "2026-06-01");
+    materialize(sqlite, userId, projectId, "2026-06-01", "2026-06-02");
+    const occurrence = getOccurrence(sqlite, taskId, "2026-06-01");
+    sqlite
+      .prepare("UPDATE pmwd_tasks SET recurrence_is_override = 1 WHERE id = ?")
+      .run(occurrence.id);
+
+    setTaskRecurrenceInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      recurrence: { mode: "none" },
+      timestamp: NOW + 1000,
+    });
+
+    const row = sqlite
+      .prepare("SELECT deleted FROM pmwd_tasks WHERE id = ?")
+      .get(occurrence.id) as { deleted: number };
+
+    expect(row.deleted).toBe(0);
+  });
+
   test("records quota target completions idempotently for a local date window", () => {
     const sqlite = createTestDatabase();
     const { userId } = seedTemplateTree(sqlite);

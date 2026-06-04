@@ -392,7 +392,7 @@ function deleteOutstandingOccurrencesForSeries(input: {
            WHERE preserved.user_id = task.user_id
              AND preserved.recurrence_series_id = task.recurrence_series_id
              AND preserved.recurrence_occurrence_date = task.recurrence_occurrence_date
-             AND preserved.is_completed = 1
+             AND (preserved.is_completed = 1 OR preserved.recurrence_is_override = 1)
              AND preserved.deleted = 0
          )`,
     )

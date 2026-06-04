@@ -26,6 +26,8 @@ type ParseOptions = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DATE_MENTION_RE = /\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/g;
+const START_PREFIX = "starting|starts|start|from|beginning|begins|begin";
+const END_PREFIX = "until|through|ending|ends|end|stopping|stop";
 const MAX_DAILY_QUOTA_TARGET = 99;
 const MAX_WEEKLY_QUOTA_TARGET = 31;
 
@@ -233,8 +235,13 @@ function parseMonthDayAfterPrefix(text: string, prefix: string, todayDate: strin
   return dateKeyFromParts(year.toString(), month.toString(), day.toString());
 }
 
+function parseStartDateAfterPrefix(text: string, todayDate: string) {
+  return parseDateAfterPrefix(text, START_PREFIX, todayDate)
+    ?? parseMonthDayAfterPrefix(text, START_PREFIX, todayDate);
+}
+
 function parseStartDate(text: string, todayDate: string, initialStartDate: string | null, endDate: string | null) {
-  const start = parseDateAfterPrefix(text, "starting|starts|start|from|beginning|begins|begin", todayDate);
+  const start = parseStartDateAfterPrefix(text, todayDate);
   if (start) return start;
 
   const dateMention = getDateMentions(text).find((mention) => mention.dateKey !== endDate);
@@ -245,8 +252,8 @@ function parseStartDate(text: string, todayDate: string, initialStartDate: strin
 
 function parseEndDate(text: string, todayDate: string) {
   return parseEndOfMonthMention(text, todayDate)
-    ?? parseDateAfterPrefix(text, "until|through|ending|ends|end|stopping|stop", todayDate)
-    ?? parseMonthDayAfterPrefix(text, "until|through|ending|ends|end|stopping|stop", todayDate);
+    ?? parseDateAfterPrefix(text, END_PREFIX, todayDate)
+    ?? parseMonthDayAfterPrefix(text, END_PREFIX, todayDate);
 }
 
 function getNextWeekdayDate(todayDate: string, weekday: number, includeToday: boolean) {
@@ -561,6 +568,7 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   }
 
   const endDate = parseEndDate(text, todayDate);
+  const explicitStartDate = parseStartDateAfterPrefix(text, todayDate);
   let startDate = parseStartDate(text, todayDate, initialStartDate, endDate);
   const dailyQuota = parseQuota(text, "day");
   const weeklyQuota = parseQuota(text, "week");
@@ -573,6 +581,9 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   const hasWeekly = /\b(weekly|every week|each week)\b/.test(text) || intervalWeeks !== null || mentionedWeekdays.length > 0;
   const hasStartInstruction = /\b(starting|starts|start|from|beginning|begins|begin)\b/.test(text);
   const hasEndInstruction = /\b(until|through|ending|ends|end|stopping|stop)\b/.test(text);
+  if (hasStartInstruction && !explicitStartDate) {
+    return reject("The repeat start date is invalid.");
+  }
   if (hasEndInstruction && !endDate) {
     return reject("The repeat end date is invalid.");
   }
@@ -608,8 +619,7 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   } else if (hasWeekdaysKeyword) {
     recurrence = { mode: "weekdays", startDate, endDate: nextEndDate };
   } else if (mentionedWeekdays.length > 0) {
-    startDate = parseDateAfterPrefix(text, "starting|starts|start|from|beginning|begins|begin", todayDate)
-      ?? getNextMatchingWeekdayDate(startDate, mentionedWeekdays);
+    startDate = explicitStartDate ?? getNextMatchingWeekdayDate(startDate, mentionedWeekdays);
     if (nextEndDate && nextEndDate < startDate) return reject("The end date is before the first matching day.");
     const existingWeeklyInterval = options.existingSchedule?.mode === "weekly"
       ? options.existingSchedule.interval

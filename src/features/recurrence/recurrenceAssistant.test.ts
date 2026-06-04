@@ -225,6 +225,13 @@ describe("recurrence assistant", () => {
     });
   });
 
+  test("rejects malformed explicit start dates instead of falling back to today", () => {
+    expect(parseRecurrencePrompt("daily from 2026-02-31", { todayDate: "2026-06-03" })).toMatchObject({
+      ok: false,
+      message: "The repeat start date is invalid.",
+    });
+  });
+
   test("rejects malformed provided end dates instead of dropping them", () => {
     expect(createRecurrenceAssistantResultFromSchedule({
       mode: "daily",
