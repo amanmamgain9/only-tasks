@@ -23,6 +23,32 @@ describe("assistant service", () => {
     })).toBe(deterministicResult);
   });
 
+  test("does not let the LLM override deterministic hard quota rejections", () => {
+    const deterministicResult: RecurrenceAssistantResult = {
+      ok: false,
+      message: "Exact repeat targets are not supported yet. Use an at-least target instead.",
+      suggestions: [],
+    };
+    const llmResult: RecurrenceAssistantResult = {
+      ok: true,
+      draft: {
+        recurrence: {
+          mode: "weekly_quota",
+          startDate: "2026-06-03",
+          targetCount: 3,
+          comparator: "at_least",
+        },
+        summary: "At least 3 times per week starting Jun 3, 2026",
+        previewDates: [],
+      },
+    };
+
+    expect(selectRecurrenceAssistantResult({
+      deterministicResult,
+      llmResult,
+    })).toBe(deterministicResult);
+  });
+
   test("keeps the latest valid recurrence draft after a failed assistant turn", () => {
     const messages: AssistantMessageDTO[] = [
       {

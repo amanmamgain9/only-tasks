@@ -315,10 +315,18 @@ function resultToAssistantContent(result: RecurrenceAssistantResult) {
   return result.draft.summary;
 }
 
+function isHardDeterministicRejection(result: RecurrenceAssistantResult) {
+  return !result.ok && (
+    result.message.startsWith("Maximum-style repeat targets are not supported") ||
+    result.message.startsWith("Exact repeat targets are not supported")
+  );
+}
+
 export function selectRecurrenceAssistantResult(input: {
   deterministicResult: RecurrenceAssistantResult;
   llmResult: RecurrenceAssistantResult | null | undefined;
 }) {
+  if (isHardDeterministicRejection(input.deterministicResult)) return input.deterministicResult;
   if (input.llmResult?.ok) return input.llmResult;
   return input.deterministicResult;
 }
