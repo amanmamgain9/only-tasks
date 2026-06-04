@@ -5,11 +5,24 @@ import { toWebRequest } from "@/server/api/helpers";
 import { submitRecurrenceAssistantMessage } from "@/server/assistant/service";
 import { BillingRequiredError } from "@/server/billing/enforcement";
 
+const dateKeySchema = z.string()
+  .length(10)
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    return (
+      parsed.getUTCFullYear() === year &&
+      parsed.getUTCMonth() === month - 1 &&
+      parsed.getUTCDate() === day
+    );
+  }, "Invalid date");
+
 const bodySchema = z.object({
   taskClientId: z.string().min(1),
   prompt: z.string().trim().min(1).max(1000),
-  todayDate: z.string().optional(),
-  initialStartDate: z.string().nullable().optional(),
+  todayDate: dateKeySchema.optional(),
+  initialStartDate: dateKeySchema.nullable().optional(),
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

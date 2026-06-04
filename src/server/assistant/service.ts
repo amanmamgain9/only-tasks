@@ -316,10 +316,7 @@ function resultToAssistantContent(result: RecurrenceAssistantResult) {
 }
 
 function isHardDeterministicRejection(result: RecurrenceAssistantResult) {
-  return !result.ok && (
-    result.message.startsWith("Maximum-style repeat targets are not supported") ||
-    result.message.startsWith("Exact repeat targets are not supported")
-  );
+  return !result.ok && result.message !== "I could not find a daily, weekday, or weekly repeat pattern.";
 }
 
 export function selectRecurrenceAssistantResult(input: {

@@ -49,6 +49,36 @@ describe("assistant service", () => {
     })).toBe(deterministicResult);
   });
 
+  test("only lets the LLM rescue generic parser misses", () => {
+    const genericMiss: RecurrenceAssistantResult = {
+      ok: false,
+      message: "I could not find a daily, weekday, or weekly repeat pattern.",
+      suggestions: [],
+    };
+    const monthlyRejection: RecurrenceAssistantResult = {
+      ok: false,
+      message: "Monthly and yearly repeats are not supported by the current recurrence engine yet.",
+      suggestions: [],
+    };
+    const llmResult: RecurrenceAssistantResult = {
+      ok: true,
+      draft: {
+        recurrence: { mode: "daily", startDate: "2026-06-03", interval: 1 },
+        summary: "Every day starting Jun 3, 2026",
+        previewDates: [],
+      },
+    };
+
+    expect(selectRecurrenceAssistantResult({
+      deterministicResult: genericMiss,
+      llmResult,
+    })).toBe(llmResult);
+    expect(selectRecurrenceAssistantResult({
+      deterministicResult: monthlyRejection,
+      llmResult,
+    })).toBe(monthlyRejection);
+  });
+
   test("keeps the latest valid recurrence draft after a failed assistant turn", () => {
     const messages: AssistantMessageDTO[] = [
       {
