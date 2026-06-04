@@ -241,7 +241,7 @@ describe("recurrence assistant", () => {
   test("anchors named-weekday edits from the existing recurrence start", () => {
     const result = parseRecurrencePrompt("move it to Mondays", {
       todayDate: "2026-06-03",
-      existingSchedule: { mode: "weekly", startDate: "2026-07-01", weekdays: [5] },
+      existingSchedule: { mode: "weekly", startDate: "2026-07-01", endDate: "2026-08-01", interval: 2, weekdays: [5] },
     });
 
     expect(result).toMatchObject({
@@ -250,6 +250,8 @@ describe("recurrence assistant", () => {
         recurrence: {
           mode: "weekly",
           startDate: "2026-07-06",
+          endDate: "2026-08-01",
+          interval: 2,
           weekdays: [1],
         },
       },

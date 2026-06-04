@@ -296,6 +296,39 @@ describe("task recurrence", () => {
     expect(occurrences.count).toBe(0);
   });
 
+  test("removes outstanding generated occurrences when converting a dated repeat to a quota target", () => {
+    const sqlite = createTestDatabase();
+    const { userId, projectId } = seedTemplateTree(sqlite);
+
+    const daily = setDailyRecurrence(sqlite, userId, "2026-06-01");
+    materialize(sqlite, userId, projectId, "2026-06-01", "2026-06-04");
+
+    setTaskRecurrenceInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      recurrence: {
+        mode: "weekly_quota",
+        startDate: "2026-06-03",
+        targetCount: 3,
+        comparator: "at_least",
+      },
+      timestamp: NOW + 1000,
+    });
+
+    const remainingOldOccurrences = sqlite
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM pmwd_tasks
+         WHERE recurrence_series_id = ?
+           AND recurrence_role IN ('occurrence_root', 'occurrence_child')
+           AND deleted = 0`,
+      )
+      .get(daily.seriesId) as { count: number };
+
+    expect(remainingOldOccurrences.count).toBe(0);
+  });
+
   test("records quota target completions idempotently for a local date window", () => {
     const sqlite = createTestDatabase();
     const { userId } = seedTemplateTree(sqlite);

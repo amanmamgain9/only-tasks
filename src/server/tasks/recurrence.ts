@@ -367,6 +367,30 @@ function shouldRotateActiveSeries(input: {
   return changed && (isQuotaRule(existingRule) || isQuotaRule(input.nextRule));
 }
 
+function deleteOutstandingOccurrencesForSeries(input: {
+  db: Database.Database;
+  userId: number;
+  seriesId: number;
+  now: string;
+}) {
+  input.db
+    .prepare(
+      `UPDATE pmwd_tasks
+       SET deleted = 1,
+           updated_at = @now
+       WHERE user_id = @userId
+         AND recurrence_series_id = @seriesId
+         AND recurrence_role IN ('occurrence_root', 'occurrence_child')
+         AND is_completed = 0
+         AND deleted = 0`,
+    )
+    .run({
+      userId: input.userId,
+      seriesId: input.seriesId,
+      now: input.now,
+    });
+}
+
 function upsertActiveSeries(input: {
   db: Database.Database;
   userId: number;
@@ -407,6 +431,15 @@ function upsertActiveSeries(input: {
          WHERE id = @id`,
       )
       .run({ id: existing.id, now: input.now });
+
+    if (isQuotaRule(input.rule)) {
+      deleteOutstandingOccurrencesForSeries({
+        db: input.db,
+        userId: input.userId,
+        seriesId: existing.id,
+        now: input.now,
+      });
+    }
   }
 
   const result = input.db

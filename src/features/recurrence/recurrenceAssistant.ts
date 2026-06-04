@@ -537,6 +537,10 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
   const hasWeekly = /\b(weekly|every week|each week)\b/.test(text) || intervalWeeks !== null || mentionedWeekdays.length > 0;
   const hasStartInstruction = /\b(starting|starts|start|from|beginning|begins|begin)\b/.test(text);
   const hasEndInstruction = /\b(until|through|ending|ends|end|stopping|stop)\b/.test(text);
+  const existingEndDate = options.existingSchedule && options.existingSchedule.mode !== "none"
+    ? options.existingSchedule.endDate ?? null
+    : null;
+  const nextEndDate = hasEndInstruction ? endDate : existingEndDate;
 
   if (endDate && endDate < startDate) {
     return reject("The end date is before the start date.");
@@ -548,7 +552,7 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
     recurrence = {
       mode: "daily_quota",
       startDate,
-      endDate,
+      endDate: nextEndDate,
       targetCount: dailyQuota.targetCount,
       comparator: dailyQuota.comparator ?? "at_least",
     };
@@ -558,30 +562,33 @@ export function parseRecurrencePrompt(prompt: string, options: ParseOptions = {}
     recurrence = {
       mode: "weekly_quota",
       startDate,
-      endDate,
+      endDate: nextEndDate,
       targetCount: quota.targetCount,
       comparator: quota.comparator ?? "at_least",
     };
   } else if (hasWeekdaysKeyword) {
-    recurrence = { mode: "weekdays", startDate, endDate };
+    recurrence = { mode: "weekdays", startDate, endDate: nextEndDate };
   } else if (mentionedWeekdays.length > 0) {
     startDate = parseDateAfterPrefix(text, "starting|starts|start|from|beginning|begins|begin", todayDate)
       ?? getNextMatchingWeekdayDate(startDate, mentionedWeekdays);
-    if (endDate && endDate < startDate) return reject("The end date is before the first matching day.");
+    if (nextEndDate && nextEndDate < startDate) return reject("The end date is before the first matching day.");
+    const existingWeeklyInterval = options.existingSchedule?.mode === "weekly"
+      ? options.existingSchedule.interval
+      : null;
     recurrence = {
       mode: "weekly",
       startDate,
-      endDate,
-      interval: intervalWeeks ?? 1,
+      endDate: nextEndDate,
+      interval: intervalWeeks ?? existingWeeklyInterval ?? 1,
       weekdays: mentionedWeekdays,
     };
   } else if (hasDaily) {
-    recurrence = { mode: "daily", startDate, endDate, interval: intervalDays ?? 1 };
+    recurrence = { mode: "daily", startDate, endDate: nextEndDate, interval: intervalDays ?? 1 };
   } else if (hasWeekly) {
     recurrence = {
       mode: "weekly",
       startDate,
-      endDate,
+      endDate: nextEndDate,
       interval: intervalWeeks ?? 1,
       weekdays: [getUtcWeekday(startDate)],
     };
