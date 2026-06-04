@@ -339,6 +339,54 @@ describe("task recurrence", () => {
     })).toBe(1);
   });
 
+  test("rotates quota series so old completion events do not count after rule changes", () => {
+    const sqlite = createTestDatabase();
+    const { userId } = seedTemplateTree(sqlite);
+
+    const first = setTaskRecurrenceInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      recurrence: {
+        mode: "weekly_quota",
+        startDate: "2026-06-03",
+        targetCount: 3,
+        comparator: "at_least",
+      },
+      timestamp: NOW,
+    });
+    addRecurrenceTargetCompletionInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      localDate: "2026-06-03",
+      clientEventId: "event-before-change",
+      timestamp: NOW,
+    });
+
+    const second = setTaskRecurrenceInDatabase({
+      db: sqlite,
+      userId,
+      clientId: "task-review",
+      recurrence: {
+        mode: "weekly_quota",
+        startDate: "2026-06-03",
+        targetCount: 5,
+        comparator: "at_least",
+      },
+      timestamp: NOW + 1000,
+    });
+
+    expect(second.seriesId).not.toBe(first.seriesId);
+    expect(getRecurrenceTargetCompletionCountInDatabase({
+      db: sqlite,
+      userId,
+      recurrenceSeriesId: second.seriesId!,
+      startDate: "2026-06-01",
+      endDateExclusive: "2026-06-08",
+    })).toBe(0);
+  });
+
   test("keeps a subtask added to one occurrence out of the next generated occurrence", () => {
     const sqlite = createTestDatabase();
     const { userId, projectId, taskId } = seedTemplateTree(sqlite);

@@ -63,6 +63,36 @@ describe("recurrence LLM client", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  test("does not send provider-specific keys to a mismatched endpoint", async () => {
+    clearLlmEnv();
+    process.env.PLANMYWORKDAY_LLM_PROVIDER = "openai";
+    process.env.KIMI_API_KEY = "kimi-key";
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    expect(isRecurrenceLlmConfigured()).toBe(false);
+    await expect(resolveRecurrencePromptWithLlm({
+      prompt: "every weekday",
+      todayDate: "2026-06-03",
+    })).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("requires the explicit app key for custom LLM endpoints", async () => {
+    clearLlmEnv();
+    process.env.PLANMYWORKDAY_LLM_BASE_URL = "https://llm.example.test/v1";
+    process.env.OPENAI_API_KEY = "openai-key";
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    expect(isRecurrenceLlmConfigured()).toBe(false);
+    await expect(resolveRecurrencePromptWithLlm({
+      prompt: "every weekday",
+      todayDate: "2026-06-03",
+    })).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   test("turns OpenAI-compatible JSON into a validated recurrence result", async () => {
     clearLlmEnv();
     process.env.PLANMYWORKDAY_LLM_API_KEY = "test-key";

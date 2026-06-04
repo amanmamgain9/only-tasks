@@ -348,6 +348,25 @@ function findActiveSeriesForTemplate(db: Database.Database, userId: number, temp
     .get(userId, templateTaskId) as RecurrenceSeriesRow | undefined;
 }
 
+function isQuotaRule(rule: NormalizedRecurrenceRule) {
+  return rule.frequency === "daily_quota" || rule.frequency === "weekly_quota";
+}
+
+function shouldRotateActiveSeries(input: {
+  existing: RecurrenceSeriesRow;
+  nextRule: NormalizedRecurrenceRule;
+  nextStartDate: string;
+  nextEndDate: string | null;
+}) {
+  const existingRule = parseStoredRule(input.existing.rule);
+  const changed =
+    stringifyRule(existingRule) !== stringifyRule(input.nextRule) ||
+    input.existing.start_date !== input.nextStartDate ||
+    (input.existing.end_date ?? null) !== input.nextEndDate;
+
+  return changed && (isQuotaRule(existingRule) || isQuotaRule(input.nextRule));
+}
+
 function upsertActiveSeries(input: {
   db: Database.Database;
   userId: number;
@@ -359,20 +378,35 @@ function upsertActiveSeries(input: {
 }) {
   const existing = findActiveSeriesForTemplate(input.db, input.userId, input.templateTaskId);
   if (existing) {
+    if (!shouldRotateActiveSeries({
+      existing,
+      nextRule: input.rule,
+      nextStartDate: input.startDate,
+      nextEndDate: input.endDate,
+    })) {
+      input.db
+        .prepare(
+          `UPDATE pmwd_task_recurrence_series
+           SET rule = @rule, start_date = @startDate, end_date = @endDate, updated_at = @now
+           WHERE id = @id`,
+        )
+        .run({
+          id: existing.id,
+          rule: stringifyRule(input.rule),
+          startDate: input.startDate,
+          endDate: input.endDate,
+          now: input.now,
+        });
+      return existing.id;
+    }
+
     input.db
       .prepare(
         `UPDATE pmwd_task_recurrence_series
-         SET rule = @rule, start_date = @startDate, end_date = @endDate, updated_at = @now
+         SET status = 'inactive', updated_at = @now
          WHERE id = @id`,
       )
-      .run({
-        id: existing.id,
-        rule: stringifyRule(input.rule),
-        startDate: input.startDate,
-        endDate: input.endDate,
-        now: input.now,
-      });
-    return existing.id;
+      .run({ id: existing.id, now: input.now });
   }
 
   const result = input.db
@@ -516,10 +550,6 @@ export async function setTaskRecurrence(input: {
   timestamp: number;
 }) {
   return setTaskRecurrenceInDatabase({ db: sqlite, ...input });
-}
-
-function isQuotaRule(rule: NormalizedRecurrenceRule) {
-  return rule.frequency === "daily_quota" || rule.frequency === "weekly_quota";
 }
 
 export function addRecurrenceTargetCompletionInDatabase(input: {

@@ -126,7 +126,8 @@ function inferProvider() {
 function getApiKey(provider: LlmProvider) {
   if (process.env.PLANMYWORKDAY_LLM_API_KEY) return process.env.PLANMYWORKDAY_LLM_API_KEY;
   if (provider === "kimi") return process.env.KIMI_API_KEY ?? process.env.MOONSHOT_API_KEY ?? "";
-  return process.env.OPENAI_API_KEY ?? process.env.KIMI_API_KEY ?? process.env.MOONSHOT_API_KEY ?? "";
+  if (provider === "openai") return process.env.OPENAI_API_KEY ?? "";
+  return "";
 }
 
 function getBaseUrl(provider: LlmProvider) {
