@@ -97,11 +97,8 @@ function getQuotaTargetProgress(input: {
 async function getScheduledQuotaTargetTasks(input: {
   userId: number;
   projectId?: number;
-  dateRange: ScheduledDateRange;
-  todayDate: string;
+  referenceDate: string;
 }) {
-  if (input.dateRange === "tomorrow") return [];
-
   const tasks = await taskRepo.findTasksByUserId(input.userId, {
     projectId: input.projectId,
     includeCompleted: true,
@@ -124,7 +121,7 @@ async function getScheduledQuotaTargetTasks(input: {
       startDate: series.startDate,
       endDate: series.endDate,
     });
-    if (!isQuotaRecurrence(recurrenceSchedule) || !isScheduleActiveOnDate(recurrenceSchedule, input.todayDate)) {
+    if (!isQuotaRecurrence(recurrenceSchedule) || !isScheduleActiveOnDate(recurrenceSchedule, input.referenceDate)) {
       return [];
     }
 
@@ -132,7 +129,7 @@ async function getScheduledQuotaTargetTasks(input: {
       userId: input.userId,
       seriesId: series.id,
       schedule: recurrenceSchedule,
-      todayDate: input.todayDate,
+      todayDate: input.referenceDate,
     });
 
     return [{
@@ -354,8 +351,7 @@ export async function getScheduledTasks(
   const quotaTargetTasks = await getScheduledQuotaTargetTasks({
     userId,
     projectId: options.projectId,
-    dateRange: options.dateRange,
-    todayDate,
+    referenceDate: options.dateRange === "tomorrow" ? startDate : todayDate,
   });
 
   const ancestorIds = new Set<number>();
