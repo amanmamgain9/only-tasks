@@ -1,10 +1,11 @@
 // MyWorkdayTasksComponent.tsx - single category-root tree workspace
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Calendar, CalendarDays, Sunrise } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProjects } from "../../_hooks/useScheduleManagement";
+import WorkspaceAgentPanel from "../AgentComponents/WorkspaceAgentPanel";
 import DailyTargetsStrip from "../TargetComponents/DailyTargetsStrip";
 import TreeMainComponent from "./TaskTreeComponents/TaskTreeMainComponent";
 import type { Project } from "../../types";
@@ -82,6 +83,7 @@ interface MyDayTasksComponentProps {
 }
 
 const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({ dueDateFilter, chatId }) => {
+  const [agentRevision, setAgentRevision] = useState(0);
   const { data: projectsData, isLoading: projectsLoading } = useProjects({
     status: "active",
     chatId,
@@ -91,9 +93,17 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({ dueDateFilter
   const workspaceProject = useMemo(() => getWorkspaceProject(allProjects), [allProjects]);
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full space-y-2" data-layout="vertical">
+      {workspaceProject ? (
+        <WorkspaceAgentPanel
+          projectId={workspaceProject.id}
+          currentView={dueDateFilter}
+          onWorkspaceChanged={() => setAgentRevision((value) => value + 1)}
+        />
+      ) : null}
+
       {dueDateFilter ? (
-        <div className="mb-2 rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div data-order="1" className="mb-2 rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <DateViewHeader
             dueDateFilter={dueDateFilter}
             reviewHref={dueDateFilter === "today" ? "/workspace/day-review" : undefined}
@@ -102,7 +112,7 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({ dueDateFilter
       ) : null}
 
       {dueDateFilter === "today" ? (
-        <div data-order="1">
+        <div data-order="2">
           <DailyTargetsStrip />
         </div>
       ) : null}
@@ -110,7 +120,7 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({ dueDateFilter
       <div
         className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
         data-layout="vertical"
-        data-order={dueDateFilter === "today" ? "2" : "1"}
+        data-order={dueDateFilter === "today" ? "3" : dueDateFilter ? "2" : "1"}
       >
         {projectsLoading ? (
           <LoadingState />
@@ -119,7 +129,7 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({ dueDateFilter
             project={workspaceProject}
             dueDateFilter={dueDateFilter}
             chatId={chatId}
-            key={`${workspaceProject.id}-${dueDateFilter || "all"}-${chatId || "none"}`}
+            key={`${workspaceProject.id}-${dueDateFilter || "all"}-${chatId || "none"}-${agentRevision}`}
           />
         ) : (
           <div className="px-4 py-8 text-center">

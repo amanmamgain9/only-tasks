@@ -10,7 +10,6 @@ import {
   ChevronDown,
   CreditCard,
   BarChart3,
-  ListTodo,
   LogOut,
   Sunrise,
   UserRound,
@@ -33,12 +32,6 @@ const navItems: Array<{
   icon: ComponentType<{ className?: string }>;
   filter?: DueDateFilter;
 }> = [
-  {
-    href: "/workspace/all-tasks",
-    label: "All Tasks",
-    shortLabel: "Tasks",
-    icon: ListTodo,
-  },
   {
     href: "/workspace/today",
     label: "Today",
@@ -285,7 +278,7 @@ export default function WorkspaceSidebar({ regionOrder, viewer }: WorkspaceSideb
         data-order={regionOrder}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95 lg:hidden"
       >
-        <div data-layout="horizontal" className="grid grid-cols-6 gap-1">
+        <div data-layout="horizontal" className="grid grid-cols-5 gap-1">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isItemActive(pathname, item.href);

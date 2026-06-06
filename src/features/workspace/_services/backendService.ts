@@ -1,7 +1,7 @@
 import type { ProgressSummary } from "@/features/progress/types";
 import type { DailyTargetDefinition, SaveDailyTargetsInput } from "@/features/dailyTargets/types";
 import type { SaveTimeReviewInput, TimeReviewSummary } from "@/features/timeReview/types";
-import type { RecurrenceAssistantThread } from "@/features/ai/types";
+import type { RecurrenceAssistantThread, WorkspaceAgentThread } from "@/features/ai/types";
 import type { ApiResponse, Project, SaveProjectInput, TimerSettings, TimerStatus } from "../types";
 import type { EnhancedTaskTreeType, OperationBatch } from "../components/MyWorkplaceComponents/TaskTreeComponents/types";
 
@@ -174,6 +174,32 @@ export const sendRecurrenceAssistantMessage = async (input: {
   });
 
   return parseResponse<RecurrenceAssistantThread>(response);
+};
+
+export const getWorkspaceAgentThread = async (
+  projectId?: number | null,
+): Promise<ApiResponse<WorkspaceAgentThread>> => {
+  const response = await fetch(`${API_BASE_URL}/api/assistant/workspace/thread${toQueryString({ projectId })}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  return parseResponse<WorkspaceAgentThread>(response);
+};
+
+export const sendWorkspaceAgentMessage = async (input: {
+  projectId?: number | null;
+  prompt: string;
+  timeZone?: string | null;
+  currentView?: "today" | "tomorrow" | "this-week";
+}): Promise<ApiResponse<WorkspaceAgentThread>> => {
+  const response = await fetch(`${API_BASE_URL}/api/assistant/workspace/message`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  return parseResponse<WorkspaceAgentThread>(response);
 };
 
 export const getTimerStatus = async (): Promise<ApiResponse<TimerStatus> | null> => {
