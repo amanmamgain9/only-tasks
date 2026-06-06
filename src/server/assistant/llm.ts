@@ -115,43 +115,47 @@ function normalizeProvider(value: string | undefined): LlmProvider | null {
   return null;
 }
 
+function readEnv(name: string) {
+  return process.env[name];
+}
+
 function inferProvider() {
-  if (process.env.PLANMYWORKDAY_LLM_BASE_URL) return "custom";
-  const configured = normalizeProvider(process.env.PLANMYWORKDAY_LLM_PROVIDER);
+  if (readEnv("PLANMYWORKDAY_LLM_BASE_URL")) return "custom";
+  const configured = normalizeProvider(readEnv("PLANMYWORKDAY_LLM_PROVIDER"));
   if (configured) return configured;
-  if (process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY) return "kimi";
+  if (readEnv("KIMI_API_KEY") || readEnv("MOONSHOT_API_KEY")) return "kimi";
   return "openai";
 }
 
 function getApiKey(provider: LlmProvider) {
-  if (process.env.PLANMYWORKDAY_LLM_API_KEY) return process.env.PLANMYWORKDAY_LLM_API_KEY;
-  if (provider === "kimi") return process.env.KIMI_API_KEY ?? process.env.MOONSHOT_API_KEY ?? "";
-  if (provider === "openai") return process.env.OPENAI_API_KEY ?? "";
+  if (readEnv("PLANMYWORKDAY_LLM_API_KEY")) return readEnv("PLANMYWORKDAY_LLM_API_KEY") ?? "";
+  if (provider === "kimi") return readEnv("KIMI_API_KEY") ?? readEnv("MOONSHOT_API_KEY") ?? "";
+  if (provider === "openai") return readEnv("OPENAI_API_KEY") ?? "";
   return "";
 }
 
 function getBaseUrl(provider: LlmProvider) {
-  if (process.env.PLANMYWORKDAY_LLM_BASE_URL) return process.env.PLANMYWORKDAY_LLM_BASE_URL;
+  if (readEnv("PLANMYWORKDAY_LLM_BASE_URL")) return readEnv("PLANMYWORKDAY_LLM_BASE_URL") ?? "";
   if (provider === "kimi") return "https://api.moonshot.ai/v1";
   if (provider === "custom") return "";
   return "https://api.openai.com/v1";
 }
 
 function getModel(provider: LlmProvider) {
-  if (process.env.PLANMYWORKDAY_LLM_MODEL) return process.env.PLANMYWORKDAY_LLM_MODEL;
-  if (provider === "kimi") return process.env.KIMI_MODEL ?? process.env.MOONSHOT_MODEL ?? "moonshot-v1-8k";
-  return process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  if (readEnv("PLANMYWORKDAY_LLM_MODEL")) return readEnv("PLANMYWORKDAY_LLM_MODEL") ?? "";
+  if (provider === "kimi") return readEnv("KIMI_MODEL") ?? readEnv("MOONSHOT_MODEL") ?? "moonshot-v1-8k";
+  return readEnv("OPENAI_MODEL") ?? "gpt-4o-mini";
 }
 
 function getTimeoutMs() {
-  const configured = Number.parseInt(process.env.PLANMYWORKDAY_LLM_TIMEOUT_MS ?? "", 10);
+  const configured = Number.parseInt(readEnv("PLANMYWORKDAY_LLM_TIMEOUT_MS") ?? "", 10);
   if (!Number.isFinite(configured)) return 12_000;
   return Math.min(Math.max(configured, 1_000), 60_000);
 }
 
 function getLlmConfig(): LlmConfig | null {
-  if (envFlagFalse(process.env.PLANMYWORKDAY_LLM_ENABLED)) return null;
-  if (envFlagTrue(process.env.PLANMYWORKDAY_LLM_DISABLED)) return null;
+  if (envFlagFalse(readEnv("PLANMYWORKDAY_LLM_ENABLED"))) return null;
+  if (envFlagTrue(readEnv("PLANMYWORKDAY_LLM_DISABLED"))) return null;
 
   const provider = inferProvider();
   const apiKey = getApiKey(provider).trim();
@@ -165,7 +169,7 @@ function getLlmConfig(): LlmConfig | null {
     baseUrl,
     model: getModel(provider),
     timeoutMs: getTimeoutMs(),
-    jsonMode: !envFlagFalse(process.env.PLANMYWORKDAY_LLM_JSON_MODE),
+    jsonMode: !envFlagFalse(readEnv("PLANMYWORKDAY_LLM_JSON_MODE")),
   };
 }
 

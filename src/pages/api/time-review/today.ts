@@ -15,9 +15,17 @@ const entrySchema = z.object({
   endMinute: z.number().int().min(0).max(24 * 60).nullable().optional(),
 });
 
+const targetEntrySchema = z.object({
+  category: z.enum(["job", "side_project", "chore", "lifestyle"]),
+  actualMinutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
+  actualCount: z.number().int().min(0).max(99).nullable().optional(),
+  status: z.literal("confirmed").optional(),
+});
+
 const saveSchema = z.object({
   timeZone: z.string().optional().default("UTC"),
   entries: z.array(entrySchema),
+  targetEntries: z.array(targetEntrySchema).optional(),
   settings: z.object({
     workdayRolloverTime: z.string().optional(),
     middayReviewEnabled: z.boolean().optional(),

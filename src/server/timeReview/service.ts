@@ -1,9 +1,15 @@
 import { sqlite } from "@/server/db/client";
 import {
+  TASK_CATEGORY_DEFINITIONS,
   normalizeLifestyleTraitAllocations,
   normalizeTaskCategoryAllocations,
+  type TaskCategoryId,
   type ProjectCategorySeed,
 } from "@/features/categories/taskCategories";
+import {
+  isDailyTargetScheduledForDate,
+  listDailyTargetsForUser,
+} from "@/server/dailyTargets/service";
 import { addDaysToDateKey } from "@/server/progress/timezone";
 import { materializeRecurringTasksForDateRangeInDatabase } from "@/server/tasks/recurrence";
 import type {
@@ -12,6 +18,8 @@ import type {
   TimeReviewPlannedTask,
   TimeReviewSettings,
   TimeReviewSummary,
+  TimeReviewTarget,
+  TimeReviewTargetEntryInput,
   TimeReviewTask,
 } from "@/features/timeReview/types";
 import {
@@ -20,6 +28,7 @@ import {
   getWorkdayWindow,
   normalizeTimeOfDay,
 } from "./workday";
+import { calculateReviewedMinutesForSummary } from "./reviewedMinutes";
 
 type SettingsRow = {
   workdayRolloverTime: string;
@@ -57,6 +66,17 @@ type PlannedTaskRow = {
   estimatedTimeMinutes: number | null;
   categoryAllocations: string | null;
   lifestyleTraits: string | null;
+};
+
+type TargetReviewRow = {
+  targetId: number | null;
+  category: string;
+  targetKind: "time" | "count";
+  targetMinutes: number | null;
+  targetCount: number | null;
+  actualMinutes: number | null;
+  actualCount: number | null;
+  reviewStatus: "confirmed" | "draft";
 };
 
 const getSettingsQuery = sqlite.prepare(`
@@ -179,6 +199,42 @@ const deleteReviewQuery = sqlite.prepare(`
     AND workday_date = @workdayDate
 `);
 
+const targetReviewsQuery = sqlite.prepare(`
+  SELECT
+    target_id AS targetId,
+    category,
+    target_kind AS targetKind,
+    target_minutes AS targetMinutes,
+    target_count AS targetCount,
+    actual_minutes AS actualMinutes,
+    actual_count AS actualCount,
+    review_status AS reviewStatus
+  FROM pmwd_daily_target_reviews
+  WHERE user_id = @userId
+    AND workday_date = @workdayDate
+`);
+
+const upsertTargetReviewQuery = sqlite.prepare(`
+  INSERT INTO pmwd_daily_target_reviews (
+    user_id, target_id, category, workday_date, target_kind, target_minutes, target_count,
+    actual_minutes, actual_count, review_status, review_window, created_at, updated_at
+  )
+  VALUES (
+    @userId, @targetId, @category, @workdayDate, @targetKind, @targetMinutes, @targetCount,
+    @actualMinutes, @actualCount, 'confirmed', @reviewWindow, @now, @now
+  )
+  ON CONFLICT(user_id, category, workday_date) DO UPDATE SET
+    target_id = excluded.target_id,
+    target_kind = excluded.target_kind,
+    target_minutes = excluded.target_minutes,
+    target_count = excluded.target_count,
+    actual_minutes = excluded.actual_minutes,
+    actual_count = excluded.actual_count,
+    review_status = excluded.review_status,
+    review_window = excluded.review_window,
+    updated_at = excluded.updated_at
+`);
+
 function toSettings(row: SettingsRow | undefined): TimeReviewSettings {
   return {
     workdayRolloverTime: normalizeTimeOfDay(row?.workdayRolloverTime, "00:00"),
@@ -220,6 +276,152 @@ function normalizeEntry(entry: TimeReviewEntryInput) {
 function getProjectType(value: string | null): ProjectCategorySeed | null {
   if (value === "main" || value === "side_project" || value === "chore") return value;
   return null;
+}
+
+function percent(done: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.min(999, Math.round((done / total) * 100));
+}
+
+function taskHasCategory(
+  task: Pick<TimeReviewTask | TimeReviewPlannedTask, "categoryAllocations">,
+  category: TaskCategoryId,
+) {
+  return task.categoryAllocations.some((allocation) => allocation.category === category);
+}
+
+function buildCategoryTaskCounts(tasks: TimeReviewTask[], plannedTasks: TimeReviewPlannedTask[]) {
+  const completed = new Map<TaskCategoryId, number>();
+  const planned = new Map<TaskCategoryId, number>();
+  const completedPlanned = new Map<TaskCategoryId, number>();
+
+  for (const definition of TASK_CATEGORY_DEFINITIONS) {
+    completed.set(definition.id, 0);
+    planned.set(definition.id, 0);
+    completedPlanned.set(definition.id, 0);
+  }
+
+  for (const task of tasks) {
+    for (const definition of TASK_CATEGORY_DEFINITIONS) {
+      if (taskHasCategory(task, definition.id)) {
+        completed.set(definition.id, (completed.get(definition.id) ?? 0) + 1);
+      }
+    }
+  }
+
+  for (const task of plannedTasks) {
+    for (const definition of TASK_CATEGORY_DEFINITIONS) {
+      if (!taskHasCategory(task, definition.id)) continue;
+      planned.set(definition.id, (planned.get(definition.id) ?? 0) + 1);
+      if (task.isCompleted) {
+        completedPlanned.set(definition.id, (completedPlanned.get(definition.id) ?? 0) + 1);
+      }
+    }
+  }
+
+  return { completed, planned, completedPlanned };
+}
+
+function buildCategoryTimeRollup(tasks: TimeReviewTask[]) {
+  const minutes = new Map<TaskCategoryId, number>();
+  for (const definition of TASK_CATEGORY_DEFINITIONS) {
+    minutes.set(definition.id, 0);
+  }
+
+  for (const task of tasks) {
+    if (task.durationMinutes <= 0) continue;
+    for (const allocation of task.categoryAllocations) {
+      minutes.set(
+        allocation.category,
+        (minutes.get(allocation.category) ?? 0) + task.durationMinutes * (allocation.weight / 100),
+      );
+    }
+  }
+
+  return minutes;
+}
+
+function normalizeTargetEntry(entry: TimeReviewTargetEntryInput) {
+  return {
+    category: entry.category,
+    actualMinutes: entry.actualMinutes === null || entry.actualMinutes === undefined
+      ? null
+      : Math.max(0, Math.min(24 * 60, Math.round(Number(entry.actualMinutes) || 0))),
+    actualCount: entry.actualCount === null || entry.actualCount === undefined
+      ? null
+      : Math.max(0, Math.min(99, Math.round(Number(entry.actualCount) || 0))),
+  };
+}
+
+function isKnownCategory(value: string): value is TaskCategoryId {
+  return TASK_CATEGORY_DEFINITIONS.some((definition) => definition.id === value);
+}
+
+function buildTargets(input: {
+  userId: number;
+  workdayDate: string;
+  tasks: TimeReviewTask[];
+  plannedTasks: TimeReviewPlannedTask[];
+}): TimeReviewTarget[] {
+  const definitions = listDailyTargetsForUser(input.userId);
+  const reviewRows = targetReviewsQuery.all({
+    userId: input.userId,
+    workdayDate: input.workdayDate,
+  }) as TargetReviewRow[];
+  const reviewByCategory = new Map(
+    reviewRows
+      .filter((row): row is TargetReviewRow & { category: TaskCategoryId } => isKnownCategory(row.category))
+      .map((row) => [row.category, row]),
+  );
+  const counts = buildCategoryTaskCounts(input.tasks, input.plannedTasks);
+  const taskTimeRollup = buildCategoryTimeRollup(input.tasks);
+
+  return definitions.map((definition) => {
+    const review = reviewByCategory.get(definition.category);
+    const kind = review?.targetKind ?? definition.kind;
+    const targetMinutes = kind === "time"
+      ? review?.targetMinutes ?? definition.targetMinutes
+      : null;
+    const targetCount = kind === "count"
+      ? review?.targetCount ?? definition.targetCount
+      : null;
+    const appliesToday = review
+      ? true
+      : definition.enabled && isDailyTargetScheduledForDate(definition.schedule, input.workdayDate);
+    const completedTasks = counts.completed.get(definition.category) ?? 0;
+    const plannedTasks = counts.planned.get(definition.category) ?? 0;
+    const completedPlannedTasks = counts.completedPlanned.get(definition.category) ?? 0;
+    const rolledUpMinutes = Math.round(taskTimeRollup.get(definition.category) ?? 0);
+    const reviewedMinutes = review?.actualMinutes ?? rolledUpMinutes;
+    const reviewedCount = review?.actualCount ?? completedTasks;
+    const reviewSource = review
+      ? "target_review"
+      : kind === "time" && rolledUpMinutes > 0
+        ? "task_time_rollup"
+        : kind === "count" && completedTasks > 0
+          ? "completed_tasks"
+          : "none";
+    const progressValue = kind === "time"
+      ? percent(reviewedMinutes, targetMinutes ?? 0)
+      : percent(reviewedCount, targetCount ?? 0);
+
+    return {
+      ...definition,
+      kind,
+      targetMinutes,
+      targetCount,
+      appliesToday,
+      completedTasks,
+      plannedTasks,
+      completedPlannedTasks,
+      reviewedMinutes,
+      reviewedCount,
+      reviewStatus: review ? "confirmed" : "draft",
+      reviewSource,
+      progressPercent: progressValue,
+      met: appliesToday && progressValue >= 100,
+    };
+  });
 }
 
 function buildSummary(input: {
@@ -288,8 +490,26 @@ function buildSummary(input: {
   }));
 
   const reviewedTasks = tasks.filter((task) => task.durationMinutes > 0).length;
-  const reviewedMinutes = tasks.reduce((sum, task) => sum + task.durationMinutes, 0);
+  const taskReviewedMinutes = tasks.reduce((sum, task) => sum + task.durationMinutes, 0);
   const reviewWindow = getReviewWindow(window.minutesUntilRollover);
+  const targets = buildTargets({
+    userId: input.userId,
+    workdayDate: window.workdayDate,
+    tasks,
+    plannedTasks,
+  });
+  const confirmedTargetReviews = targets.filter((target) => target.reviewStatus === "confirmed");
+  const { reviewedMinutes, targetReviewedMinutes } = calculateReviewedMinutesForSummary({ tasks, targets });
+  const activeReviewTargets = targets.filter((target) => target.enabled && target.appliesToday);
+  const targetReviewComplete = activeReviewTargets.length > 0
+    && activeReviewTargets.every((target) => target.reviewStatus === "confirmed");
+  const taskReviewComplete = activeReviewTargets.length === 0 && tasks.length > 0 && reviewedTasks >= tasks.length;
+  const phaseCompletedUnits = activeReviewTargets.length > 0 ? activeReviewTargets.length : tasks.length;
+  const phaseReviewedUnits = targetReviewComplete || taskReviewComplete
+    ? phaseCompletedUnits
+    : activeReviewTargets.length > 0
+      ? activeReviewTargets.filter((target) => target.reviewStatus === "confirmed").length
+      : reviewedTasks;
 
   return {
     workdayDate: window.workdayDate,
@@ -299,20 +519,23 @@ function buildSummary(input: {
     minutesUntilRollover: window.minutesUntilRollover,
     reviewWindow,
     phase: getReviewPhase({
-      completedTasks: tasks.length,
-      reviewedTasks,
+      completedTasks: phaseCompletedUnits,
+      reviewedTasks: phaseReviewedUnits,
       localNowMinutes: window.localNowMinutes,
       minutesUntilRollover: window.minutesUntilRollover,
       middayReviewEnabled: input.settings.middayReviewEnabled,
       middayReviewTime: input.settings.middayReviewTime,
     }),
     settings: input.settings,
+    targets,
     plannedTasks,
     tasks,
     totals: {
       completedTasks: tasks.length,
       reviewedTasks,
       reviewedMinutes,
+      reviewedTargets: confirmedTargetReviews.length,
+      targetReviewedMinutes,
     },
   };
 }
@@ -381,6 +604,32 @@ export function saveTodayTimeReviewForUser(
         durationMinutes: entry.durationMinutes,
         startMinute: entry.startMinute,
         endMinute: entry.endMinute,
+        reviewWindow,
+        now,
+      });
+    }
+
+    const targetsByCategory = new Map(
+      listDailyTargetsForUser(userId)
+        .filter((target) => target.enabled)
+        .map((target) => [target.category, target]),
+    );
+
+    for (const rawEntry of input.targetEntries ?? []) {
+      const entry = normalizeTargetEntry(rawEntry);
+      const target = targetsByCategory.get(entry.category);
+      if (!target || !isDailyTargetScheduledForDate(target.schedule, window.workdayDate)) continue;
+
+      upsertTargetReviewQuery.run({
+        userId,
+        targetId: target.id,
+        category: target.category,
+        workdayDate: window.workdayDate,
+        targetKind: target.kind,
+        targetMinutes: target.kind === "time" ? target.targetMinutes : null,
+        targetCount: target.kind === "count" ? target.targetCount : null,
+        actualMinutes: target.kind === "time" ? entry.actualMinutes ?? 0 : null,
+        actualCount: target.kind === "count" ? entry.actualCount ?? 0 : null,
         reviewWindow,
         now,
       });

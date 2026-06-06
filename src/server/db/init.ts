@@ -268,6 +268,51 @@ export function initializeDatabase(sqlite: Database.Database) {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS pmwd_daily_targets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'inactive',
+      target_kind TEXT NOT NULL DEFAULT 'time',
+      target_minutes INTEGER,
+      target_count INTEGER,
+      schedule TEXT NOT NULL DEFAULT 'every_day',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_daily_targets_user_category_unique
+    ON pmwd_daily_targets(user_id, category);
+
+    CREATE INDEX IF NOT EXISTS pmwd_daily_targets_user_status_idx
+    ON pmwd_daily_targets(user_id, status);
+
+    CREATE TABLE IF NOT EXISTS pmwd_daily_target_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      target_id INTEGER,
+      category TEXT NOT NULL,
+      workday_date TEXT NOT NULL,
+      target_kind TEXT NOT NULL,
+      target_minutes INTEGER,
+      target_count INTEGER,
+      actual_minutes INTEGER,
+      actual_count INTEGER,
+      review_status TEXT NOT NULL DEFAULT 'confirmed',
+      review_window TEXT NOT NULL DEFAULT 'same_workday_end',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_id) REFERENCES pmwd_daily_targets(id) ON DELETE SET NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS pmwd_daily_target_reviews_user_category_workday_unique
+    ON pmwd_daily_target_reviews(user_id, category, workday_date);
+
+    CREATE INDEX IF NOT EXISTS pmwd_daily_target_reviews_user_workday_idx
+    ON pmwd_daily_target_reviews(user_id, workday_date);
+
     CREATE TABLE IF NOT EXISTS pmwd_task_time_reviews (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

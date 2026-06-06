@@ -6,13 +6,14 @@ import {
   type TaskCategoryAllocation,
   type TaskCategoryId,
 } from "../categories/taskCategories";
-import type { TimeReviewPlannedTask, TimeReviewSummary, TimeReviewTask } from "./types";
+import type { TimeReviewPlannedTask, TimeReviewSummary, TimeReviewTarget, TimeReviewTask } from "./types";
 
 export type DayRecapRowId = Exclude<TaskCategoryId, "lifestyle"> | LifestyleTraitId;
 
 export type DayRecapRow = {
   id: DayRecapRowId;
   label: string;
+  metric: "time" | "tasks";
   doneMinutes: number;
   promisedMinutes: number;
   completedTaskWeight: number;
@@ -24,8 +25,11 @@ export type DayRecapRow = {
 export type DayRecapSummary = {
   rows: DayRecapRow[];
   primaryMetric: "time" | "tasks";
+  secondaryMetric: "tasks" | null;
   totalDoneValue: number;
   totalPromisedValue: number;
+  secondaryTotalDoneValue: number;
+  secondaryTotalPromisedValue: number;
   totalDoneMinutes: number;
   totalPromisedMinutes: number;
   tasksClosed: number;
@@ -46,6 +50,7 @@ function createEmptyRows() {
       row.id,
       {
         ...row,
+        metric: "tasks",
         doneMinutes: 0,
         promisedMinutes: 0,
         completedTaskWeight: 0,
@@ -114,24 +119,89 @@ function addAllocationToRows(
   }
 }
 
-function addPromisedTask(rows: Map<DayRecapRowId, DayRecapRow>, task: TimeReviewPlannedTask) {
+function withoutSkippedCategories(
+  allocations: TaskCategoryAllocation[],
+  skippedCategories: Set<TaskCategoryId>,
+) {
+  return allocations.filter((allocation) => !skippedCategories.has(allocation.category));
+}
+
+function addPromisedTask(
+  rows: Map<DayRecapRowId, DayRecapRow>,
+  task: TimeReviewPlannedTask,
+  options: {
+    minuteTargetCategories: Set<TaskCategoryId>;
+    countTargetCategories: Set<TaskCategoryId>;
+  },
+) {
   addAllocationToRows(rows, {
     minutes: task.estimatedTimeMinutes ?? 0,
+    taskWeight: 0,
+    target: "promised",
+    categoryAllocations: withoutSkippedCategories(task.categoryAllocations, options.minuteTargetCategories),
+    lifestyleTraits: task.lifestyleTraits,
+  });
+
+  addAllocationToRows(rows, {
+    minutes: 0,
     taskWeight: 1,
     target: "promised",
-    categoryAllocations: task.categoryAllocations,
+    categoryAllocations: withoutSkippedCategories(task.categoryAllocations, options.countTargetCategories),
     lifestyleTraits: task.lifestyleTraits,
   });
 }
 
-function addCompletedTask(rows: Map<DayRecapRowId, DayRecapRow>, task: TimeReviewTask) {
+function addCompletedTask(
+  rows: Map<DayRecapRowId, DayRecapRow>,
+  task: TimeReviewTask,
+  options: {
+    reviewedMinuteTargetCategories: Set<TaskCategoryId>;
+    reviewedCountTargetCategories: Set<TaskCategoryId>;
+  },
+) {
   addAllocationToRows(rows, {
     minutes: task.durationMinutes,
-    taskWeight: 1,
+    taskWeight: 0,
     target: "done",
-    categoryAllocations: task.categoryAllocations,
+    categoryAllocations: withoutSkippedCategories(task.categoryAllocations, options.reviewedMinuteTargetCategories),
     lifestyleTraits: task.lifestyleTraits,
   });
+
+  addAllocationToRows(rows, {
+    minutes: 0,
+    taskWeight: 1,
+    target: "done",
+    categoryAllocations: withoutSkippedCategories(task.categoryAllocations, options.reviewedCountTargetCategories),
+    lifestyleTraits: task.lifestyleTraits,
+  });
+}
+
+function addTargetPromise(rows: Map<DayRecapRowId, DayRecapRow>, target: TimeReviewTarget) {
+  addAllocationToRows(rows, {
+    minutes: target.kind === "time" ? target.targetMinutes ?? 0 : 0,
+    taskWeight: target.kind === "count" ? target.targetCount ?? 0 : 0,
+    target: "promised",
+    categoryAllocations: [{ category: target.category, weight: 100 }],
+    lifestyleTraits: [],
+  });
+}
+
+function addTargetProof(rows: Map<DayRecapRowId, DayRecapRow>, target: TimeReviewTarget) {
+  addAllocationToRows(rows, {
+    minutes: target.kind === "time" ? target.reviewedMinutes : 0,
+    taskWeight: target.kind === "count" ? target.reviewedCount : 0,
+    target: "done",
+    categoryAllocations: [{ category: target.category, weight: 100 }],
+    lifestyleTraits: [],
+  });
+}
+
+function getTargetRowIds(target: Pick<TimeReviewTarget, "category">): DayRecapRowId[] {
+  if (target.category === "lifestyle") {
+    return LIFESTYLE_TRAIT_DEFINITIONS.map((definition) => definition.id);
+  }
+
+  return [target.category];
 }
 
 function getRecapTitle(rows: DayRecapRow[]) {
@@ -149,43 +219,100 @@ function getRecapTitle(rows: DayRecapRow[]) {
 
 export function buildDayRecapSummary(summary: TimeReviewSummary): DayRecapSummary {
   const rows = createEmptyRows();
-  const totalDoneMinutes = summary.totals.reviewedMinutes;
-  const totalPromisedMinutes = summary.plannedTasks.reduce((total, task) => total + (task.estimatedTimeMinutes ?? 0), 0);
-  const primaryMetric = totalDoneMinutes > 0 && totalPromisedMinutes > 0 ? "time" : "tasks";
+  const activeTargets = summary.targets.filter((target) => target.appliesToday && (target.enabled || target.reviewStatus === "confirmed"));
+  const activeTimeTargets = activeTargets.filter((target) => target.kind === "time");
+  const activeCountTargets = activeTargets.filter((target) => target.kind === "count");
+  const reviewedTimeTargets = activeTimeTargets.filter((target) => target.reviewStatus === "confirmed");
+  const reviewedCountTargets = activeCountTargets.filter((target) => target.reviewStatus === "confirmed");
+  const minuteTargetCategories = new Set(activeTimeTargets.map((target) => target.category));
+  const countTargetCategories = new Set(activeCountTargets.map((target) => target.category));
+  const reviewedMinuteTargetCategories = new Set(reviewedTimeTargets.map((target) => target.category));
+  const reviewedCountTargetCategories = new Set(reviewedCountTargets.map((target) => target.category));
+  const promisedMinuteCoveredCategories = new Set([...minuteTargetCategories, ...countTargetCategories]);
+  const reviewedMinuteCoveredCategories = new Set([...reviewedMinuteTargetCategories, ...countTargetCategories]);
 
   for (const task of summary.plannedTasks) {
-    addPromisedTask(rows, task);
+    addPromisedTask(rows, task, {
+      minuteTargetCategories: promisedMinuteCoveredCategories,
+      countTargetCategories,
+    });
   }
 
   for (const task of summary.tasks) {
-    addCompletedTask(rows, task);
+    addCompletedTask(rows, task, {
+      reviewedMinuteTargetCategories: reviewedMinuteCoveredCategories,
+      reviewedCountTargetCategories,
+    });
   }
+
+  for (const target of activeTargets) {
+    addTargetPromise(rows, target);
+  }
+
+  for (const target of [...reviewedTimeTargets, ...reviewedCountTargets]) {
+    addTargetProof(rows, target);
+  }
+
+  const rawRows = ROWS.map((row) => rows.get(row.id))
+    .filter((row): row is DayRecapRow => Boolean(row));
+  const totalDoneMinutes = Math.round(rawRows.reduce((total, row) => total + row.doneMinutes, 0));
+  const totalPromisedMinutes = Math.round(rawRows.reduce((total, row) => total + row.promisedMinutes, 0));
+  const totalDoneTaskWeight = Math.round(rawRows.reduce((total, row) => total + row.completedTaskWeight, 0) * 10) / 10;
+  const totalPromisedTaskWeight = Math.round(rawRows.reduce((total, row) => total + row.promisedTaskWeight, 0) * 10) / 10;
+  const primaryMetric = totalPromisedMinutes > 0 && (totalDoneMinutes > 0 || activeTimeTargets.length > 0) ? "time" : "tasks";
+  const timeTargetRowIds = new Set(activeTimeTargets.flatMap(getTargetRowIds));
 
   const orderedRows = ROWS.map((row) => rows.get(row.id))
     .filter((row): row is DayRecapRow => Boolean(row))
-    .map((row) => ({
-      ...row,
-      doneMinutes: Math.round(row.doneMinutes),
-      promisedMinutes: Math.round(row.promisedMinutes),
-      completedTaskWeight: Math.round(row.completedTaskWeight * 10) / 10,
-      promisedTaskWeight: Math.round(row.promisedTaskWeight * 10) / 10,
-      doneValue: primaryMetric === "time"
-        ? Math.round(row.doneMinutes)
-        : Math.round(row.completedTaskWeight * 10) / 10,
-      promisedValue: primaryMetric === "time"
-        ? Math.round(row.promisedMinutes)
-        : Math.round(row.promisedTaskWeight * 10) / 10,
-    }));
+    .map((row) => {
+      const metric: DayRecapRow["metric"] = primaryMetric === "tasks" && !timeTargetRowIds.has(row.id)
+        ? "tasks"
+        : row.doneMinutes > 0 || row.promisedMinutes > 0
+          ? "time"
+          : "tasks";
+      const doneMinutes = Math.round(row.doneMinutes);
+      const promisedMinutes = Math.round(row.promisedMinutes);
+      const completedTaskWeight = Math.round(row.completedTaskWeight * 10) / 10;
+      const promisedTaskWeight = Math.round(row.promisedTaskWeight * 10) / 10;
+
+      return {
+        ...row,
+        metric,
+        doneMinutes,
+        promisedMinutes,
+        completedTaskWeight,
+        promisedTaskWeight,
+        doneValue: metric === "time" ? doneMinutes : completedTaskWeight,
+        promisedValue: metric === "time" ? promisedMinutes : promisedTaskWeight,
+      };
+    });
+  const secondaryMetric = primaryMetric === "time"
+    && orderedRows.some((row) => row.metric === "tasks" && (row.doneValue > 0 || row.promisedValue > 0))
+    ? "tasks"
+    : null;
+  const secondaryTotalDoneValue = secondaryMetric
+    ? Math.round(orderedRows
+      .filter((row) => row.metric === secondaryMetric)
+      .reduce((total, row) => total + row.doneValue, 0) * 10) / 10
+    : 0;
+  const secondaryTotalPromisedValue = secondaryMetric
+    ? Math.round(orderedRows
+      .filter((row) => row.metric === secondaryMetric)
+      .reduce((total, row) => total + row.promisedValue, 0) * 10) / 10
+    : 0;
 
   return {
     rows: orderedRows,
     primaryMetric,
-    totalDoneValue: primaryMetric === "time" ? totalDoneMinutes : summary.totals.completedTasks,
-    totalPromisedValue: primaryMetric === "time" ? totalPromisedMinutes : summary.plannedTasks.length,
+    secondaryMetric,
+    totalDoneValue: primaryMetric === "time" ? totalDoneMinutes : totalDoneTaskWeight,
+    totalPromisedValue: primaryMetric === "time" ? totalPromisedMinutes : totalPromisedTaskWeight,
+    secondaryTotalDoneValue,
+    secondaryTotalPromisedValue,
     totalDoneMinutes,
     totalPromisedMinutes,
     tasksClosed: summary.totals.completedTasks,
-    tasksPromised: summary.plannedTasks.length,
+    tasksPromised: totalPromisedTaskWeight,
     title: getRecapTitle(orderedRows),
   };
 }

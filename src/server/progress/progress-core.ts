@@ -9,6 +9,7 @@ import type {
 } from "../../features/progress/types";
 import {
   getTaskCategoryLabel,
+  isTaskCategoryId,
   normalizeTaskCategoryAllocations,
   type ProjectCategorySeed,
   type TaskCategoryId,
@@ -63,6 +64,7 @@ export type ReviewedTimeProgressRow = {
   durationMinutes: number;
   projectType?: string | null;
   categoryAllocations?: string | null;
+  category?: TaskCategoryId | null;
 };
 
 export type ProgressSourceRows = {
@@ -163,6 +165,26 @@ function addTaskCategoryMinutes(
   });
 
   for (const allocation of allocations) {
+    totals.set(allocation.category, (totals.get(allocation.category) ?? 0) + entry.durationMinutes * (allocation.weight / 100));
+  }
+}
+
+function addReviewedTimeCategoryMinutes(
+  totals: Map<TaskCategoryId, number>,
+  entry: ReviewedTimeProgressRow,
+  skippedCategories: Set<string>,
+) {
+  if (entry.category && isTaskCategoryId(entry.category)) {
+    totals.set(entry.category, (totals.get(entry.category) ?? 0) + entry.durationMinutes);
+    return;
+  }
+
+  const allocations = normalizeTaskCategoryAllocations(entry.categoryAllocations, {
+    projectType: getProjectType(entry.projectType ?? null),
+  });
+
+  for (const allocation of allocations) {
+    if (skippedCategories.has(`${entry.workdayDate}:${allocation.category}`)) continue;
     totals.set(allocation.category, (totals.get(allocation.category) ?? 0) + entry.durationMinutes * (allocation.weight / 100));
   }
 }
@@ -290,15 +312,20 @@ export function buildProgressSummary(input: {
   }
 
   const reviewedTimeEntries = input.rows.reviewedTimeEntries ?? [];
+  const targetReviewCategories = new Set(
+    reviewedTimeEntries
+      .filter((entry) => entry.category && entry.durationMinutes >= 0)
+      .map((entry) => `${entry.workdayDate}:${entry.category}`),
+  );
   for (const entry of reviewedTimeEntries) {
     if (entry.durationMinutes <= 0) continue;
 
     if (entry.workdayDate === window.todayDate) {
-      addTaskCategoryMinutes(todayCategoryTimeTotals, entry);
+      addReviewedTimeCategoryMinutes(todayCategoryTimeTotals, entry, targetReviewCategories);
     }
 
     if (isDateInRange(entry.workdayDate, window.weekStartDate, window.weekEndDate)) {
-      addTaskCategoryMinutes(weekCategoryTimeTotals, entry);
+      addReviewedTimeCategoryMinutes(weekCategoryTimeTotals, entry, targetReviewCategories);
     }
   }
 
@@ -320,12 +347,22 @@ export function buildProgressSummary(input: {
   });
   const weekPlannedTasks = plannedWeekRows.length;
   const weekCompletedPlannedTasks = plannedWeekRows.filter((task) => task.isCompleted === 1).length;
-  const todayReviewedMinutes = reviewedTimeEntries
+  const getReviewedMinutes = (entry: ReviewedTimeProgressRow) => {
+    if (entry.category) return Math.max(0, entry.durationMinutes);
+    const allocations = normalizeTaskCategoryAllocations(entry.categoryAllocations, {
+      projectType: getProjectType(entry.projectType ?? null),
+    });
+    const coveredWeight = allocations
+      .filter((allocation) => targetReviewCategories.has(`${entry.workdayDate}:${allocation.category}`))
+      .reduce((sum, allocation) => sum + allocation.weight, 0);
+    return Math.max(0, entry.durationMinutes * Math.max(0, 100 - coveredWeight) / 100);
+  };
+  const todayReviewedMinutes = Math.round(reviewedTimeEntries
     .filter((entry) => entry.workdayDate === window.todayDate)
-    .reduce((total, entry) => total + Math.max(0, entry.durationMinutes), 0);
-  const weekReviewedMinutes = reviewedTimeEntries
+    .reduce((total, entry) => total + getReviewedMinutes(entry), 0));
+  const weekReviewedMinutes = Math.round(reviewedTimeEntries
     .filter((entry) => isDateInRange(entry.workdayDate, window.weekStartDate, window.weekEndDate))
-    .reduce((total, entry) => total + Math.max(0, entry.durationMinutes), 0);
+    .reduce((total, entry) => total + getReviewedMinutes(entry), 0));
   const productiveWeekDays = weekDays.filter((day) => day.completedTasks > 0);
   const bestDay =
     productiveWeekDays

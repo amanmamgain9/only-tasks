@@ -1,4 +1,5 @@
 import { sqlite } from "@/server/db/client";
+import type { TaskCategoryId } from "@/features/categories/taskCategories";
 import { materializeRecurringTasksForDateRangeInDatabase } from "@/server/tasks/recurrence";
 import { buildProgressSummary, getProgressWindow, type ProgressSourceRows } from "./progress-core";
 
@@ -41,6 +42,7 @@ type ReviewedTimeRow = {
   durationMinutes: number;
   projectType: string | null;
   categoryAllocations: string | null;
+  category?: TaskCategoryId | null;
 };
 
 const completedTasksQuery = sqlite.prepare(`
@@ -122,12 +124,29 @@ const reviewedTimeQuery = sqlite.prepare(`
     review.workday_date AS workdayDate,
     review.duration_minutes AS durationMinutes,
     project.type AS projectType,
-    task.category_allocations AS categoryAllocations
+    task.category_allocations AS categoryAllocations,
+    NULL AS category
   FROM pmwd_task_time_reviews review
   LEFT JOIN pmwd_tasks task ON task.id = review.task_id
   LEFT JOIN pmwd_projects project ON project.id = review.project_id
   WHERE review.user_id = @userId
     AND review.duration_minutes > 0
+    AND review.workday_date >= @rangeStartDate
+    AND review.workday_date < @rangeEndDate
+  ORDER BY review.workday_date DESC
+`);
+
+const targetReviewedTimeQuery = sqlite.prepare(`
+  SELECT
+    review.workday_date AS workdayDate,
+    review.actual_minutes AS durationMinutes,
+    NULL AS projectType,
+    NULL AS categoryAllocations,
+    review.category AS category
+  FROM pmwd_daily_target_reviews review
+  WHERE review.user_id = @userId
+    AND review.actual_minutes IS NOT NULL
+    AND review.actual_minutes >= 0
     AND review.workday_date >= @rangeStartDate
     AND review.workday_date < @rangeEndDate
   ORDER BY review.workday_date DESC
@@ -185,11 +204,18 @@ export function getProgressSummaryForUser(
       rangeStartUtc: historyOrWeekStartUtc,
       rangeEndUtc: historyOrWeekEndUtc,
     }) as TimerSessionRow[],
-    reviewedTimeEntries: reviewedTimeQuery.all({
-      userId,
-      rangeStartDate: plannedStartDate,
-      rangeEndDate: plannedEndDate,
-    }) as ReviewedTimeRow[],
+    reviewedTimeEntries: [
+      ...(targetReviewedTimeQuery.all({
+        userId,
+        rangeStartDate: plannedStartDate,
+        rangeEndDate: plannedEndDate,
+      }) as ReviewedTimeRow[]),
+      ...(reviewedTimeQuery.all({
+        userId,
+        rangeStartDate: plannedStartDate,
+        rangeEndDate: plannedEndDate,
+      }) as ReviewedTimeRow[]),
+    ],
   };
 
   return buildProgressSummary({

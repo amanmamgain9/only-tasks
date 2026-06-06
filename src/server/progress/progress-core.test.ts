@@ -249,6 +249,47 @@ describe("progress summary", () => {
     expect(summary.week.reviewedMinutes).toBe(90);
   });
 
+  test("uses target-level category reviews before task-level time for the same category", () => {
+    const summary = buildProgressSummary({
+      timeZone: "UTC",
+      now: new Date("2026-06-03T12:00:00.000Z"),
+      rows: {
+        ...emptyRows,
+        reviewedTimeEntries: [
+          {
+            workdayDate: "2026-06-03",
+            durationMinutes: 180,
+            projectType: null,
+            categoryAllocations: null,
+            category: "side_project",
+          },
+          {
+            workdayDate: "2026-06-03",
+            durationMinutes: 60,
+            projectType: "side_project",
+            categoryAllocations: JSON.stringify([
+              { category: "side_project", weight: 70 },
+              { category: "lifestyle", weight: 30 },
+            ]),
+          },
+          {
+            workdayDate: "2026-06-03",
+            durationMinutes: 20,
+            projectType: "chore",
+            categoryAllocations: null,
+          },
+        ],
+      },
+    });
+
+    expect(summary.today.reviewedMinutes).toBe(218);
+    expect(summary.todayCategoryTimeBreakdown).toEqual([
+      { category: "side_project", label: "Side Project", minutes: 180, percent: 83 },
+      { category: "chore", label: "Chore", minutes: 20, percent: 9 },
+      { category: "lifestyle", label: "Lifestyle", minutes: 18, percent: 8 },
+    ]);
+  });
+
   test("returns recent completions newest first with local dates", () => {
     const summary = buildProgressSummary({
       timeZone: "Asia/Kolkata",

@@ -45,8 +45,8 @@ function formatTaskCount(value: number) {
   return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
-function formatRecapPair(row: DayRecapRow, metric: DayRecapSummary["primaryMetric"]) {
-  if (metric === "time") {
+function formatRecapPair(row: DayRecapRow) {
+  if (row.metric === "time") {
     return `${formatDuration(row.doneValue)} / ${formatDuration(row.promisedValue)}`;
   }
 
@@ -54,8 +54,12 @@ function formatRecapPair(row: DayRecapRow, metric: DayRecapSummary["primaryMetri
 }
 
 function formatRecapTotal(recap: DayRecapSummary) {
+  const secondaryText = recap.secondaryMetric === "tasks" && recap.secondaryTotalPromisedValue > 0
+    ? ` · ${formatTaskCount(recap.secondaryTotalDoneValue)} of ${formatTaskCount(recap.secondaryTotalPromisedValue)} tasks`
+    : "";
+
   if (recap.primaryMetric === "time") {
-    return `${formatDuration(recap.totalDoneValue)} done of ${formatDuration(recap.totalPromisedValue)} promised`;
+    return `${formatDuration(recap.totalDoneValue)} done of ${formatDuration(recap.totalPromisedValue)} promised${secondaryText}`;
   }
 
   return `${formatTaskCount(recap.totalDoneValue)} tasks done of ${formatTaskCount(recap.totalPromisedValue)} promised`;
@@ -116,9 +120,18 @@ function promisedPath(x: number, y: number, width: number, seed: number) {
 }
 
 function RecapTerrain({ recap }: { recap: DayRecapSummary }) {
-  const minScaleValue = recap.primaryMetric === "time" ? 45 : 1;
-  const maxValue = Math.max(minScaleValue, ...recap.rows.flatMap((row) => [row.doneValue, row.promisedValue]));
-  const widthScale = 470 / maxValue;
+  const maxTimeValue = Math.max(
+    45,
+    ...recap.rows
+      .filter((row) => row.metric === "time")
+      .flatMap((row) => [row.doneValue, row.promisedValue]),
+  );
+  const maxTaskValue = Math.max(
+    1,
+    ...recap.rows
+      .filter((row) => row.metric === "tasks")
+      .flatMap((row) => [row.doneValue, row.promisedValue]),
+  );
 
   return (
     <svg viewBox="0 0 920 470" role="img" aria-label="Promise versus proof terrain" className="h-full w-full">
@@ -130,6 +143,7 @@ function RecapTerrain({ recap }: { recap: DayRecapSummary }) {
 
       {recap.rows.map((row, index) => {
         const y = 39 + index * 61;
+        const widthScale = 470 / (row.metric === "time" ? maxTimeValue : maxTaskValue);
         const promisedWidth = row.promisedValue * widthScale;
         const doneWidth = row.doneValue * widthScale;
         const ratio = row.promisedValue > 0
@@ -151,7 +165,7 @@ function RecapTerrain({ recap }: { recap: DayRecapSummary }) {
               {row.label}
             </text>
             <text x="348" y={y + 16} textAnchor="end" fill={colors.fill} fontSize="19" fontWeight="900" letterSpacing="0">
-              {formatRecapPair(row, recap.primaryMetric)}
+              {formatRecapPair(row)}
             </text>
             {promised && (
               <path

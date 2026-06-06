@@ -5,6 +5,7 @@ import React, { useMemo } from "react";
 import { Calendar, CalendarDays, Sunrise } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProjects } from "../../_hooks/useScheduleManagement";
+import DailyTargetsStrip from "../TargetComponents/DailyTargetsStrip";
 import TreeMainComponent from "./TaskTreeComponents/TaskTreeMainComponent";
 import type { Project } from "../../types";
 
@@ -100,9 +101,16 @@ const MyDayTasksComponent: React.FC<MyDayTasksComponentProps> = ({ dueDateFilter
         </div>
       ) : null}
 
+      {dueDateFilter === "today" ? (
+        <div data-order="1">
+          <DailyTargetsStrip />
+        </div>
+      ) : null}
+
       <div
         className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
         data-layout="vertical"
+        data-order={dueDateFilter === "today" ? "2" : "1"}
       >
         {projectsLoading ? (
           <LoadingState />

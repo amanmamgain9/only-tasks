@@ -14,7 +14,7 @@ const height = Number(args.height || 900);
 const fps = Number(args.fps || 15);
 const cdpPort = Number(args.port || 9344);
 const debugUrl = args["debug-url"] || `http://127.0.0.1:${cdpPort}`;
-const baseUrl = String(args["base-url"] || "http://127.0.0.1:3000").replace(/\/+$/, "");
+const baseUrl = String(args["base-url"] || "http://127.0.0.1:5173").replace(/\/+$/, "");
 const authFile = path.resolve(projectRoot, String(args.auth || "scripts/demo/.demo-auth.json"));
 const framesDir = path.resolve(projectRoot, String(args.frames || "scripts/demo/frames"));
 const launchChrome = args["connect-only"] !== "1" && args["connect-only"] !== "true";

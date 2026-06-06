@@ -1,4 +1,5 @@
 import type { ProgressSummary } from "@/features/progress/types";
+import type { DailyTargetDefinition, SaveDailyTargetsInput } from "@/features/dailyTargets/types";
 import type { SaveTimeReviewInput, TimeReviewSummary } from "@/features/timeReview/types";
 import type { RecurrenceAssistantThread } from "@/features/ai/types";
 import type { ApiResponse, Project, SaveProjectInput, TimerSettings, TimerStatus } from "../types";
@@ -222,6 +223,29 @@ export const saveTodayTimeReview = async (input: SaveTimeReviewInput): Promise<A
   });
 
   return parseResponse<TimeReviewSummary>(response);
+};
+
+export const getDailyTargets = async (): Promise<ApiResponse<DailyTargetDefinition[]> | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/daily-targets`, {
+      method: "GET",
+      cache: "no-store",
+    });
+    return await parseResponse<DailyTargetDefinition[]>(response);
+  } catch (error) {
+    console.error("Error fetching daily targets:", error);
+    return null;
+  }
+};
+
+export const saveDailyTargets = async (input: SaveDailyTargetsInput): Promise<ApiResponse<DailyTargetDefinition[]>> => {
+  const response = await fetch(`${API_BASE_URL}/api/daily-targets`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  return parseResponse<DailyTargetDefinition[]>(response);
 };
 
 export const startTimer = async (input: {

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { ArrowLeft, CalendarCheck2, CheckCircle2, Clock3, ListChecks } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, CheckCircle2, Clock3, Target } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import type { AuthenticatedUser } from "@/server/auth";
 import WorkspaceSidebar from "../WorkspaceSidebar";
+import TargetReviewPanel from "./TargetReviewPanel";
 import TimeReviewPanel from "../TimeReviewComponents/TimeReviewPanel";
 import { useTodayTimeReview } from "../../_hooks/useTimeReview";
 
@@ -54,9 +55,10 @@ function ReviewView() {
   const navigate = useNavigate();
   const reviewQuery = useTodayTimeReview(timeZone);
   const summary = reviewQuery.data?.success ? reviewQuery.data.data ?? null : null;
-  const remainingTasks = summary
-    ? Math.max(0, summary.totals.completedTasks - summary.totals.reviewedTasks)
-    : 0;
+  const activeTargets = summary?.targets.filter((target) => target.enabled && target.appliesToday) ?? [];
+  const metTargets = activeTargets.filter((target) => target.met).length;
+  const reviewedTasks = summary?.totals.reviewedTasks ?? 0;
+  const remainingTaskReviews = Math.max(0, (summary?.totals.completedTasks ?? 0) - reviewedTasks);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4">
@@ -81,36 +83,75 @@ function ReviewView() {
         </Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Completed</p>
-            <CheckCircle2 className="size-4 text-emerald-500" />
+      {activeTargets.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Promised</p>
+              <Target className="size-4 text-cyan-500" />
+            </div>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{activeTargets.length}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">daily targets for this workday</p>
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{summary?.totals.completedTasks ?? 0}</p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">tasks finished today</p>
-        </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Reviewed</p>
-            <Clock3 className="size-4 text-cyan-500" />
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Proof</p>
+              <Clock3 className="size-4 text-cyan-500" />
+            </div>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{formatDuration(summary?.totals.reviewedMinutes ?? 0)}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{summary?.totals.reviewedTargets ?? 0} targets reviewed</p>
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{formatDuration(summary?.totals.reviewedMinutes ?? 0)}</p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{summary?.totals.reviewedTasks ?? 0} tasks have time</p>
-        </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Remaining</p>
-            <ListChecks className="size-4 text-slate-500" />
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Met</p>
+              <CheckCircle2 className="size-4 text-emerald-500" />
+            </div>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{metTargets}/{activeTargets.length}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">targets at or above promise</p>
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{remainingTasks}</p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">completed tasks need time</p>
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Completed</p>
+              <CheckCircle2 className="size-4 text-emerald-500" />
+            </div>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{summary?.totals.completedTasks ?? 0}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">tasks finished today</p>
+          </div>
 
-      <TimeReviewPanel initialExpanded pageMode onSaved={() => navigate("/workspace/day-recap")} />
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Reviewed</p>
+              <Clock3 className="size-4 text-cyan-500" />
+            </div>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{formatDuration(summary?.totals.reviewedMinutes ?? 0)}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{reviewedTasks} tasks have time</p>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Remaining</p>
+              <Target className="size-4 text-cyan-500" />
+            </div>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{remainingTaskReviews}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">completed tasks need time</p>
+          </div>
+        </div>
+      )}
+
+      {summary && activeTargets.length > 0 ? (
+        <TargetReviewPanel summary={summary} onSaved={() => navigate("/workspace/day-recap")} />
+      ) : null}
+
+      <TimeReviewPanel
+        pageMode
+        initialExpanded={activeTargets.length === 0}
+        onSaved={() => navigate("/workspace/day-recap")}
+      />
     </div>
   );
 }
