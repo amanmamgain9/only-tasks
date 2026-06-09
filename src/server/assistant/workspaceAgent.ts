@@ -1,18 +1,26 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { ASSISTANT_CAPABILITIES, routeForDateRange, routeForDueDate, type WorkspaceUiAction } from "@/server/assistant/capabilities";
+import {
+  ASSISTANT_CAPABILITIES,
+  blockForDateRange,
+  blockForRoute,
+  routeForDateRange,
+  routeForDueDate,
+  type WorkspaceUiAction,
+} from "@/server/assistant/capabilities";
 import {
   getCategoryRootTitle,
-  isTaskCategoryId,
-  normalizeLifestyleTraitAllocations,
   normalizeTaskCategoryAllocations,
   serializeTaskCategoryAllocations,
-  type LifestyleTraitAllocation,
-  type LifestyleTraitId,
-  type TaskCategoryAllocation,
   type TaskCategoryId,
 } from "@/features/categories/taskCategories";
 import { addDaysToDateKey, formatLocalDateKey, getWeekStartDateKey, normalizeTimeZone } from "@/server/progress/timezone";
+import {
+  isWorkspaceAgentLlmConfigured,
+  resolveWorkspaceAgentPromptWithLlm,
+  type WorkspaceAgentCommand,
+  type WorkspaceLlmMetadata,
+} from "@/server/assistant/workspaceLlm";
 import { sqlite } from "@/server/db/client";
 import type { Project } from "@/server/db/schema/projects";
 import type { Task } from "@/server/db/schema/tasks";
@@ -24,6 +32,11 @@ import type { OperationBatch, SubtreeNode } from "@/server/tasks/contracts";
 
 const WORKSPACE_AGENT_SURFACE = "workspace_agent";
 const CATEGORY_ROOT_SYSTEM_TYPE = "category_root";
+const WORKSPACE_LLM_USER_WINDOW_MS = 15 * 60 * 1000;
+const WORKSPACE_LLM_THREAD_WINDOW_MS = 5 * 60 * 1000;
+const WORKSPACE_LLM_USER_WINDOW_LIMIT = 60;
+const WORKSPACE_LLM_THREAD_WINDOW_LIMIT = 20;
+const WORKSPACE_AGENT_MAX_STEPS = 5;
 
 const promptSchema = z.string().trim().min(1).max(4000);
 
@@ -62,7 +75,7 @@ export type WorkspaceAgentTaskSummary = {
   rolloverCount: number;
 };
 
-export type WorkspaceAgentAction =
+export type WorkspaceAgentAtomicAction =
   | {
       type: "tasks_created";
       createdCount: number;
@@ -92,6 +105,25 @@ export type WorkspaceAgentAction =
       reason: string;
       suggestions: string[];
       uiActions: WorkspaceUiAction[];
+    }
+  | {
+      type: "agent_response";
+      message: string;
+      uiActions: WorkspaceUiAction[];
+    };
+
+export type WorkspaceAgentAction =
+  | WorkspaceAgentAtomicAction
+  | {
+      type: "agent_workflow";
+      summary: string;
+      uiActions: WorkspaceUiAction[];
+      steps: Array<{
+        id: string;
+        commandKind: WorkspaceAgentCommand["kind"];
+        title: string;
+        action: WorkspaceAgentAtomicAction;
+      }>;
     };
 
 export type WorkspaceAgentThreadDTO = {
@@ -114,32 +146,8 @@ export type WorkspaceAgentThreadDTO = {
     createdAt: string;
   }>;
   latestAction: WorkspaceAgentAction | null;
+  llmConfigured: boolean;
 };
-
-type AgentCommand =
-  | {
-      kind: "create_tasks";
-      tasks: Array<{
-        title: string;
-        category: TaskCategoryId;
-        categoryAllocations: TaskCategoryAllocation[];
-        lifestyleTraits: LifestyleTraitAllocation[];
-      }>;
-      dueDate: string | null;
-    }
-  | {
-      kind: "query_tasks";
-      category: TaskCategoryId | null;
-      onlyOpen: boolean;
-      onlyCompleted: boolean;
-      dateRange: "today" | "tomorrow" | "this_week" | "last_7_days" | "this_month" | null;
-      missed: boolean;
-      rolledOver: boolean;
-      postponed: boolean;
-      searchText: string | null;
-    }
-  | { kind: "capabilities" }
-  | { kind: "unsupported"; reason: string };
 
 function serializePayload(payload: unknown) {
   return payload === undefined ? null : JSON.stringify(payload);
@@ -257,6 +265,17 @@ function listMessages(threadId: number) {
     .all(threadId) as AssistantMessageRow[]).map(toMessageDTO);
 }
 
+function sanitizeLlmMetadataForClient(metadata: WorkspaceLlmMetadata | null | undefined) {
+  if (!metadata) return null;
+
+  return {
+    provider: metadata.provider,
+    model: metadata.model,
+    usedJsonMode: metadata.usedJsonMode,
+    status: metadata.error ? "error" : "ok",
+  };
+}
+
 function findLatestAction(messages: WorkspaceAgentThreadDTO["messages"]) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const payload = messages[index]?.structuredPayload;
@@ -266,6 +285,66 @@ function findLatestAction(messages: WorkspaceAgentThreadDTO["messages"]) {
     return candidate.action as WorkspaceAgentAction;
   }
   return null;
+}
+
+function countRecentLlmUsage(input: {
+  userId?: number;
+  threadId?: number;
+  surface?: string;
+  since: string;
+}) {
+  const clauses = ["created_at >= @since"];
+  if (input.userId !== undefined) clauses.push("user_id = @userId");
+  if (input.threadId !== undefined) clauses.push("thread_id = @threadId");
+  if (input.surface !== undefined) clauses.push("surface = @surface");
+
+  const row = sqlite
+    .prepare(`SELECT COUNT(*) AS count FROM pmwd_assistant_llm_usage WHERE ${clauses.join(" AND ")}`)
+    .get(input) as { count: number };
+  return row.count;
+}
+
+function reserveWorkspaceLlmUsage(input: {
+  userId: number;
+  threadId: number;
+  prompt: string;
+  now?: Date;
+}) {
+  const now = input.now ?? new Date();
+  const nowMs = now.getTime();
+  const nowIso = now.toISOString();
+  const userSince = new Date(nowMs - WORKSPACE_LLM_USER_WINDOW_MS).toISOString();
+  const threadSince = new Date(nowMs - WORKSPACE_LLM_THREAD_WINDOW_MS).toISOString();
+
+  return sqlite.transaction(() => {
+    const userCount = countRecentLlmUsage({
+      userId: input.userId,
+      surface: WORKSPACE_AGENT_SURFACE,
+      since: userSince,
+    });
+    if (userCount >= WORKSPACE_LLM_USER_WINDOW_LIMIT) return false;
+
+    const threadCount = countRecentLlmUsage({
+      threadId: input.threadId,
+      since: threadSince,
+    });
+    if (threadCount >= WORKSPACE_LLM_THREAD_WINDOW_LIMIT) return false;
+
+    sqlite
+      .prepare(
+        `INSERT INTO pmwd_assistant_llm_usage
+         (user_id, thread_id, surface, prompt_chars, created_at)
+         VALUES (@userId, @threadId, @surface, @promptChars, @createdAt)`,
+      )
+      .run({
+        userId: input.userId,
+        threadId: input.threadId,
+        surface: WORKSPACE_AGENT_SURFACE,
+        promptChars: input.prompt.length,
+        createdAt: nowIso,
+      });
+    return true;
+  })();
 }
 
 async function resolveWorkspaceProject(userId: number, projectId?: number | null) {
@@ -281,198 +360,6 @@ async function resolveWorkspaceProject(userId: number, projectId?: number | null
   }
 
   return projects.find((project) => project.title.trim().toLowerCase() === "workspace") ?? projects[0];
-}
-
-function normalizePromptLine(line: string) {
-  return line
-    .replace(/^\s*[-*•]\s+/, "")
-    .replace(/^\s*\d+[.)]\s+/, "")
-    .replace(/^\s*(todo|task)\s*:\s*/i, "")
-    .trim();
-}
-
-function stripCreatePrefix(value: string) {
-  return value
-    .replace(/^(please\s+)?(add|create|put|make)\s+(tasks?\s+)?/i, "")
-    .replace(/^here(?:'s| is)\s+(a\s+)?(messy\s+)?list\s*:?\s*/i, "")
-    .replace(/^turn\s+this\s+into\s+(my\s+)?(tree|tasks?)\s*:?\s*/i, "")
-    .trim();
-}
-
-function splitTaskTitles(prompt: string) {
-  const withoutIntro = stripCreatePrefix(prompt.replace(/\r/g, "\n"));
-  const lineCandidates = withoutIntro
-    .split("\n")
-    .map(normalizePromptLine)
-    .filter(Boolean)
-    .filter((line) => !/^(today|tomorrow|side project|main work|chore|lifestyle)\s*:?\s*$/i.test(line));
-
-  if (lineCandidates.length > 1) return lineCandidates.slice(0, 25);
-
-  const singleLine = normalizePromptLine(lineCandidates[0] ?? withoutIntro);
-  if (!singleLine) return [];
-
-  const separator = singleLine.includes(";") ? /;/ : singleLine.includes(" • ") ? / • / : null;
-  if (separator) {
-    return singleLine
-      .split(separator)
-      .map(normalizePromptLine)
-      .filter(Boolean)
-      .slice(0, 25);
-  }
-
-  return [singleLine].slice(0, 25);
-}
-
-function includesAny(value: string, terms: string[]) {
-  return terms.some((term) => value.includes(term));
-}
-
-function inferCategory(title: string, fullPrompt: string): TaskCategoryId {
-  const text = title.toLowerCase();
-  if (/\b(side project|sideproject|build|launch|demo|landing|github|deploy|ship|product|app|saas)\b/.test(text)) {
-    return "side_project";
-  }
-  if (/\b(chore|gst|tax|bill|bank|passport|laundry|grocer|clean|rent|filing|errand|appointment)\b/.test(text)) {
-    return "chore";
-  }
-  if (/\b(lifestyle|learn|study|course|read|gym|workout|run|walk|health|doctor|dance|padel|friend|family|call|hobby|music|art|game)\b/.test(text)) {
-    return "lifestyle";
-  }
-  if (/\b(main work|job|client|manager|meeting|office|work)\b/.test(text)) return "job";
-  return getPromptCategory(fullPrompt) ?? "job";
-}
-
-function inferLifestyleTraits(title: string): LifestyleTraitAllocation[] {
-  const text = title.toLowerCase();
-  const traits: LifestyleTraitId[] = [];
-  if (includesAny(text, ["learn", "study", "course", "read", "practice", "research"])) traits.push("learning");
-  if (includesAny(text, ["gym", "workout", "run", "walk", "health", "doctor", "therapy", "sleep", "padel", "dance"])) traits.push("health");
-  if (includesAny(text, ["friend", "family", "call", "meet", "dinner", "social", "community"])) traits.push("social");
-  if (includesAny(text, ["hobby", "music", "art", "game", "paint", "dance", "padel", "play"])) traits.push("hobby");
-  if (traits.length === 0) return [];
-
-  const baseWeight = Math.floor(100 / traits.length);
-  let remainder = 100 - baseWeight * traits.length;
-  return traits.map((trait) => {
-    const extra = remainder > 0 ? 1 : 0;
-    remainder -= extra;
-    return { trait, weight: baseWeight + extra };
-  });
-}
-
-function parseDueDate(prompt: string, fallback: "today" | "tomorrow" | "this-week" | undefined, todayDate: string) {
-  const text = prompt.toLowerCase();
-  if (/\b(no due date|no deadline|backlog|someday)\b/.test(text)) return null;
-  if (/\btomorrow\b/.test(text)) return addDaysToDateKey(todayDate, 1);
-  if (/\btoday\b/.test(text)) return todayDate;
-  if (fallback === "tomorrow") return addDaysToDateKey(todayDate, 1);
-  return todayDate;
-}
-
-function getPromptCategory(prompt: string): TaskCategoryId | null {
-  const text = prompt.toLowerCase();
-  if (/\b(main work|job|work)\b/.test(text)) return "job";
-  if (/\b(side project|sideproject)\b/.test(text)) return "side_project";
-  if (/\b(chore|chores|admin|errands)\b/.test(text)) return "chore";
-  if (/\b(lifestyle|health|learning|social|hobby)\b/.test(text)) return "lifestyle";
-  return null;
-}
-
-function isQueryPrompt(prompt: string) {
-  return /^(show|list|find|what|which|where|search|give me)\b/i.test(prompt.trim()) ||
-    /\b(what is left|what's left|missed|not done|unfinished|open tasks|completed but not reviewed|rolled over|postponed)\b/i.test(prompt);
-}
-
-function isCreatePrompt(prompt: string) {
-  return /^(add|create|put|make|here(?:'s| is)|turn this)\b/i.test(prompt.trim()) ||
-    prompt.split("\n").some((line) => /^\s*[-*•]|\s*\d+[.)]\s+/.test(line));
-}
-
-export function parseWorkspaceAgentPrompt(input: {
-  prompt: string;
-  todayDate: string;
-  currentView?: "today" | "tomorrow" | "this-week";
-}): AgentCommand {
-  const prompt = promptSchema.parse(input.prompt);
-  const lower = prompt.toLowerCase();
-
-  if (/\b(what can you do|help|commands|capabilities)\b/.test(lower)) {
-    return { kind: "capabilities" };
-  }
-
-  if (isQueryPrompt(prompt) && !isCreatePrompt(prompt)) {
-    return {
-      kind: "query_tasks",
-      category: getPromptCategory(prompt),
-      onlyOpen: !/\bcompleted|done|closed\b/.test(lower) || /\bnot done|unfinished|open|left|missed\b/.test(lower),
-      onlyCompleted: /\bcompleted|done|closed\b/.test(lower) && !/\bnot done|unfinished|open|left|missed\b/.test(lower),
-      dateRange: /\btomorrow\b/.test(lower)
-        ? "tomorrow"
-        : /\btoday\b/.test(lower)
-          ? "today"
-          : /\b(last 7 days|past week|in a week)\b/.test(lower)
-              ? "last_7_days"
-            : /\b(this week|week)\b/.test(lower)
-              ? "this_week"
-              : /\b(this month|month)\b/.test(lower)
-                ? "this_month"
-                : null,
-      missed: /\bmissed|overdue\b/.test(lower),
-      rolledOver: /\brolled over|rollover\b/.test(lower),
-      postponed: /\bpostponed|kept moving|kept postponing\b/.test(lower),
-      searchText: extractSearchText(prompt),
-    };
-  }
-
-  if (isCreatePrompt(prompt)) {
-    const tasks = splitTaskTitles(prompt).map((title) => {
-      const category = inferCategory(title, prompt);
-      const lifestyleTraits = category === "lifestyle" ? inferLifestyleTraits(title) : [];
-      return {
-        title,
-        category,
-        categoryAllocations: [{ category, weight: 100 }],
-        lifestyleTraits,
-      };
-    });
-
-    if (tasks.length > 0) {
-      return {
-        kind: "create_tasks",
-        tasks,
-        dueDate: parseDueDate(prompt, input.currentView, input.todayDate),
-      };
-    }
-  }
-
-  if (/\b(target|goal|rhythm|month|90 minutes|plan|review|recap)\b/.test(lower)) {
-    return {
-      kind: "unsupported",
-      reason: "I can read and create tasks in this first agent pass. Planning, targets, review, and recap commands need confirmation cards before they should change your workspace.",
-    };
-  }
-
-  return {
-    kind: "create_tasks",
-    tasks: [{
-      title: stripCreatePrefix(prompt),
-      category: inferCategory(prompt, prompt),
-      categoryAllocations: [{ category: inferCategory(prompt, prompt), weight: 100 }],
-      lifestyleTraits: inferCategory(prompt, prompt) === "lifestyle" ? inferLifestyleTraits(prompt) : [],
-    }],
-    dueDate: parseDueDate(prompt, input.currentView, input.todayDate),
-  };
-}
-
-function extractSearchText(prompt: string) {
-  const quoted = prompt.match(/"([^"]+)"/)?.[1] || prompt.match(/'([^']+)'/)?.[1];
-  if (quoted?.trim()) return quoted.trim();
-  const aboutMatch = prompt.match(/\b(?:about|containing|called|named)\s+(.+)$/i)?.[1];
-  if (!aboutMatch) return null;
-  return aboutMatch
-    .replace(/\b(that|are|is|open|done|completed|unfinished|today|tomorrow|this week|this month)\b/gi, " ")
-    .trim() || null;
 }
 
 function parseFirstCategory(value: string | null): TaskCategoryId | null {
@@ -510,7 +397,7 @@ function getDueDateKey(task: Pick<Task, "dueDate">) {
   return task.dueDate?.slice(0, 10) ?? null;
 }
 
-function isTaskInDateRange(task: Task, command: Extract<AgentCommand, { kind: "query_tasks" }>, todayDate: string) {
+function isTaskInDateRange(task: Task, command: Extract<WorkspaceAgentCommand, { kind: "query_tasks" }>, todayDate: string) {
   if (!command.dateRange) return true;
   const dueDate = getDueDateKey(task);
   const completedDate = task.completedAt?.slice(0, 10) ?? null;
@@ -565,9 +452,9 @@ function taskToSummary(task: Task, category: TaskCategoryId | null, tasksById: M
 async function executeQueryCommand(input: {
   userId: number;
   project: Project;
-  command: Extract<AgentCommand, { kind: "query_tasks" }>;
+  command: Extract<WorkspaceAgentCommand, { kind: "query_tasks" }>;
   todayDate: string;
-}): Promise<WorkspaceAgentAction> {
+}): Promise<WorkspaceAgentAtomicAction> {
   const roots = await ensureCategoryRootTasks(input.userId, input.project.id);
   const rootsById = new Map<number, TaskCategoryId>();
   for (const root of roots) {
@@ -613,18 +500,27 @@ async function executeQueryCommand(input: {
 
   const tasks = matched.slice(0, 12).map(({ task, category }) => taskToSummary(task, category, tasksById));
 
+  const route = routeForDateRange(input.command.dateRange);
+
   return {
     type: "task_query",
     resultCount: matched.length,
     shownCount: tasks.length,
     filters: filters.length > 0 ? filters : ["all workspace tasks"],
-    uiActions: [{
-      type: "navigate",
-      to: routeForDateRange(input.command.dateRange),
-      reason: input.command.dateRange
-        ? "Show the matching date view in the editable task tree."
-        : "Show the full editable task tree for these results.",
-    }],
+    uiActions: [
+      {
+        type: "navigate",
+        to: route,
+        reason: "Keep the route context aligned with the visible task tree.",
+      },
+      {
+        type: "show_block",
+        block: blockForDateRange(input.command.dateRange),
+        reason: input.command.dateRange
+          ? "Render the matching editable task tree inside chat."
+          : "Render the full editable workspace tree inside chat.",
+      },
+    ],
     tasks,
   };
 }
@@ -632,7 +528,7 @@ async function executeQueryCommand(input: {
 async function executeCreateTasksCommand(input: {
   userId: number;
   project: Project;
-  command: Extract<AgentCommand, { kind: "create_tasks" }>;
+  command: Extract<WorkspaceAgentCommand, { kind: "create_tasks" }>;
   todayDate: string;
 }) {
   const roots = await ensureCategoryRootTasks(input.userId, input.project.id);
@@ -679,28 +575,43 @@ async function executeCreateTasksCommand(input: {
     grouped.set(task.category, titles);
   }
 
+  const route = routeForDueDate({
+    dueDate: input.command.dueDate,
+    todayDate: input.todayDate,
+    tomorrowDate: addDaysToDateKey(input.todayDate, 1),
+  });
+
   return {
     type: "tasks_created",
     createdCount: input.command.tasks.length,
     dueDate: input.command.dueDate,
-    uiActions: [{
-      type: "navigate",
-      to: routeForDueDate({
-        dueDate: input.command.dueDate,
-        todayDate: input.todayDate,
-        tomorrowDate: addDaysToDateKey(input.todayDate, 1),
-      }),
-      reason: "Show the created tasks in the editable task tree.",
-    }],
+    uiActions: [
+      {
+        type: "navigate",
+        to: route,
+        reason: "Keep the route context aligned with the created tasks.",
+      },
+      {
+        type: "show_block",
+        block: blockForRoute(route),
+        reason: "Render the created tasks in the editable tree inside chat.",
+      },
+    ],
     groups: Array.from(grouped.entries()).map(([category, titles]) => ({
       category,
       label: getCategoryRootTitle(category),
       titles,
     })),
-  } satisfies WorkspaceAgentAction;
+  } satisfies WorkspaceAgentAtomicAction;
 }
 
 function actionToMessage(action: WorkspaceAgentAction) {
+  if (action.type === "agent_workflow") {
+    return action.summary;
+  }
+  if (action.type === "agent_response") {
+    return action.message;
+  }
   if (action.type === "tasks_created") {
     const dueDateText = action.dueDate ? ` for ${action.dueDate}` : "";
     return `Added ${action.createdCount} ${action.createdCount === 1 ? "task" : "tasks"}${dueDateText}.`;
@@ -715,7 +626,7 @@ function actionToMessage(action: WorkspaceAgentAction) {
   return action.reason;
 }
 
-function capabilitiesAction(): WorkspaceAgentAction {
+function capabilitiesAction(): WorkspaceAgentAtomicAction {
   return {
     type: "capabilities",
     uiActions: [],
@@ -723,7 +634,7 @@ function capabilitiesAction(): WorkspaceAgentAction {
   };
 }
 
-function unsupportedAction(reason: string): WorkspaceAgentAction {
+function unsupportedAction(reason: string): WorkspaceAgentAtomicAction {
   return {
     type: "unsupported",
     reason,
@@ -736,32 +647,405 @@ function unsupportedAction(reason: string): WorkspaceAgentAction {
   };
 }
 
+function agentResponseAction(input: {
+  message: string;
+  uiActions?: WorkspaceUiAction[];
+}): WorkspaceAgentAtomicAction {
+  return {
+    type: "agent_response",
+    message: input.message,
+    uiActions: input.uiActions ?? [],
+  };
+}
+
+function normalizePromptText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function parseDeterministicWorkspaceAgentPrompt(input: {
+  prompt: string;
+  todayDate?: string;
+}): WorkspaceAgentCommand | null {
+  const normalized = normalizePromptText(input.prompt);
+  if (!normalized) return null;
+
+  const hasMutationIntent = /\b(add|create|import|turn|make|new|delete|remove|complete|mark|move|edit|rename|schedule)\b/.test(normalized);
+  const hasTimerIntent = /\b(timer|pomodoro)\b/.test(normalized)
+    || /\bfocus (session|timer|block)\b/.test(normalized);
+  const hasTimerVerb = /\b(show|open|start|use|launch|begin|timer|pomodoro|focus)\b/.test(normalized);
+
+  if (hasTimerIntent && hasTimerVerb) {
+    return {
+      kind: "show_timer",
+      mode: "compact",
+      reason: "Show the live timer.",
+    };
+  }
+
+  const asksForOtherSurface = /\b(tomorrow|week|weekly|month|review|stats|progress|target|targets|recap)\b/.test(normalized)
+    || /\ball tasks\b/.test(normalized);
+  const hasTaskSurfaceIntent = /\b(task|tasks|todo|todos|list)\b/.test(normalized)
+    || /\bwhat is left\b/.test(normalized)
+    || /\bwhats left\b/.test(normalized)
+    || normalized === "today"
+    || normalized === "show today"
+    || normalized === "open today";
+  const hasTodayIntent = /\b(today|todays)\b/.test(normalized)
+    || ["show tasks", "open tasks", "list tasks", "show my tasks", "what is left", "whats left"].includes(normalized);
+  const hasOpenIntent = /\b(show|open|list|view|see|display|give|get|what|whats)\b/.test(normalized);
+
+  if (!hasMutationIntent && !asksForOtherSurface && hasTaskSurfaceIntent && hasTodayIntent && hasOpenIntent) {
+    return {
+      kind: "navigate_workspace",
+      route: "/workspace/today",
+      reason: "Open today's editable task surface.",
+    };
+  }
+
+  if (/\b(add|create|make|new)\b/.test(normalized)
+    && /\blaunch checklist\b/.test(normalized)
+    && /\bside project\b/.test(normalized)
+    && /\btoday\b/.test(normalized)
+    && input.todayDate) {
+    return {
+      kind: "create_tasks",
+      dueDate: input.todayDate,
+      tasks: [{
+        title: "Launch checklist",
+        category: "side_project",
+        categoryAllocations: [{ category: "side_project", weight: 100 }],
+        lifestyleTraits: [],
+      }],
+    };
+  }
+
+  if (hasOpenIntent
+    && /\b(open|list|show|view|see|display|get|give)\b/.test(normalized)
+    && /\bchores?\b/.test(normalized)
+    && /\bthis week\b/.test(normalized)) {
+    return {
+      kind: "query_tasks",
+      category: "chore",
+      onlyOpen: true,
+      onlyCompleted: false,
+      dateRange: "this_week",
+      missed: false,
+      rolledOver: false,
+      postponed: false,
+      searchText: null,
+    };
+  }
+
+  if (hasOpenIntent
+    && /\b(tasks?|todos?|list)\b/.test(normalized)
+    && /\b(missed|overdue|late)\b/.test(normalized)) {
+    return {
+      kind: "query_tasks",
+      category: null,
+      onlyOpen: true,
+      onlyCompleted: false,
+      dateRange: null,
+      missed: true,
+      rolledOver: false,
+      postponed: false,
+      searchText: null,
+    };
+  }
+
+  return null;
+}
+
 async function executeCommand(input: {
   userId: number;
   project: Project;
-  command: AgentCommand;
+  command: WorkspaceAgentCommand;
   todayDate: string;
-}) {
+}): Promise<WorkspaceAgentAtomicAction> {
   switch (input.command.kind) {
     case "create_tasks":
       return executeCreateTasksCommand(input as {
         userId: number;
         project: Project;
-        command: Extract<AgentCommand, { kind: "create_tasks" }>;
+        command: Extract<WorkspaceAgentCommand, { kind: "create_tasks" }>;
         todayDate: string;
       });
     case "query_tasks":
       return executeQueryCommand(input as {
         userId: number;
         project: Project;
-        command: Extract<AgentCommand, { kind: "query_tasks" }>;
+        command: Extract<WorkspaceAgentCommand, { kind: "query_tasks" }>;
         todayDate: string;
       });
     case "capabilities":
       return capabilitiesAction();
+    case "navigate_workspace":
+      return agentResponseAction({
+        message: input.command.reason,
+        uiActions: [
+          {
+            type: "navigate",
+            to: input.command.route,
+            reason: input.command.reason,
+          },
+          {
+            type: "show_block",
+            block: blockForRoute(input.command.route),
+            reason: input.command.reason,
+          },
+        ],
+      });
+    case "show_timer":
+      return agentResponseAction({
+        message: input.command.reason,
+        uiActions: [{
+          type: "show_block",
+          block: {
+            type: "timer",
+            mode: input.command.mode,
+            title: "Timer",
+          },
+          reason: input.command.reason,
+        }],
+      });
+    case "focus_task":
+      return agentResponseAction({
+        message: input.command.reason,
+        uiActions: [{
+          type: "focus_task",
+          clientId: input.command.clientId,
+          reason: input.command.reason,
+        }],
+      });
+    case "finish":
+      return agentResponseAction({
+        message: input.command.message,
+      });
     case "unsupported":
       return unsupportedAction(input.command.reason);
   }
+}
+
+function getAtomicActionTitle(action: WorkspaceAgentAtomicAction) {
+  if (action.type === "tasks_created") {
+    return `${action.createdCount} ${action.createdCount === 1 ? "task" : "tasks"} created`;
+  }
+  if (action.type === "task_query") {
+    return `${action.resultCount} ${action.resultCount === 1 ? "task" : "tasks"} found`;
+  }
+  if (action.type === "capabilities") return "Capabilities listed";
+  if (action.type === "agent_response") return action.message;
+  return action.reason;
+}
+
+function summarizeAtomicActionForModel(action: WorkspaceAgentAtomicAction) {
+  if (action.type === "tasks_created") {
+    return {
+      type: action.type,
+      createdCount: action.createdCount,
+      dueDate: action.dueDate,
+      groups: action.groups,
+    };
+  }
+  if (action.type === "task_query") {
+    const categoryCounts = action.tasks.reduce<Record<string, number>>((counts, task) => {
+      const key = task.categoryLabel || "Uncategorized";
+      counts[key] = (counts[key] ?? 0) + 1;
+      return counts;
+    }, {});
+
+    return {
+      type: action.type,
+      resultCount: action.resultCount,
+      shownCount: action.shownCount,
+      filters: action.filters,
+      categoryCounts,
+    };
+  }
+  if (action.type === "capabilities") {
+    return {
+      type: action.type,
+      commands: action.commands,
+    };
+  }
+  if (action.type === "agent_response") {
+    return {
+      type: action.type,
+      message: action.message,
+      uiActions: action.uiActions,
+    };
+  }
+  return {
+    type: action.type,
+    reason: action.reason,
+    suggestions: action.suggestions,
+  };
+}
+
+function terminalMessageForAction(action: WorkspaceAgentAtomicAction) {
+  if (action.type === "tasks_created") {
+    return `${action.createdCount} ${action.createdCount === 1 ? "task" : "tasks"} added.`;
+  }
+  if (action.type === "task_query") {
+    return `${action.resultCount} matching ${action.resultCount === 1 ? "task" : "tasks"} shown.`;
+  }
+  if (action.type === "capabilities") return "Here are the workspace commands I can run.";
+  if (action.type === "agent_response") return action.message;
+  return action.reason;
+}
+
+function shouldStopAfterExecutedCommand(command: WorkspaceAgentCommand) {
+  return command.kind === "create_tasks"
+    || command.kind === "capabilities"
+    || command.kind === "navigate_workspace"
+    || command.kind === "show_timer"
+    || command.kind === "focus_task";
+}
+
+function collectWorkflowUiActions(
+  steps: Array<{ action: WorkspaceAgentAtomicAction }>,
+  finalAction?: WorkspaceAgentAtomicAction,
+) {
+  return [
+    ...steps.flatMap((step) => step.action.uiActions),
+    ...(finalAction?.uiActions ?? []),
+  ];
+}
+
+async function runWorkspaceAgentWorkflow(input: {
+  userId: number;
+  threadId: number;
+  project: Project;
+  prompt: string;
+  todayDate: string;
+  currentView?: "today" | "tomorrow" | "this-week";
+}) {
+  const deterministicCommand = parseDeterministicWorkspaceAgentPrompt({
+    prompt: input.prompt,
+    todayDate: input.todayDate,
+  });
+  if (deterministicCommand) {
+    return {
+      action: await executeCommand({
+        userId: input.userId,
+        project: input.project,
+        command: deterministicCommand,
+        todayDate: input.todayDate,
+      }),
+      llmMetadata: [] as Array<ReturnType<typeof sanitizeLlmMetadataForClient>>,
+    };
+  }
+
+  const llmConfigured = isWorkspaceAgentLlmConfigured();
+  if (!llmConfigured) {
+    return {
+      action: unsupportedAction("The workspace agent needs the LLM configured before it can safely change tasks."),
+      llmMetadata: [] as Array<ReturnType<typeof sanitizeLlmMetadataForClient>>,
+    };
+  }
+
+  const observations: unknown[] = [];
+  const llmMetadata: Array<ReturnType<typeof sanitizeLlmMetadataForClient>> = [];
+  const steps: Array<{
+    id: string;
+    commandKind: WorkspaceAgentCommand["kind"];
+    title: string;
+    action: WorkspaceAgentAtomicAction;
+  }> = [];
+  let finalAction: WorkspaceAgentAtomicAction | null = null;
+
+  for (let stepIndex = 0; stepIndex < WORKSPACE_AGENT_MAX_STEPS; stepIndex += 1) {
+    const llmUsageReserved = reserveWorkspaceLlmUsage({
+      userId: input.userId,
+      threadId: input.threadId,
+      prompt: input.prompt,
+    });
+    if (!llmUsageReserved) {
+      finalAction = unsupportedAction("The workspace agent is rate limited for a moment. Please try again shortly.");
+      break;
+    }
+
+    const llmResolution = await resolveWorkspaceAgentPromptWithLlm({
+      prompt: input.prompt,
+      todayDate: input.todayDate,
+      currentView: input.currentView,
+      observations,
+    });
+    llmMetadata.push(sanitizeLlmMetadataForClient(llmResolution?.metadata));
+
+    const command = llmResolution?.command;
+    if (!command) {
+      finalAction = unsupportedAction(
+        llmResolution?.metadata.error
+          ? "I could not run the workspace agent model. Please try again."
+          : "The workspace agent could not produce a valid command.",
+      );
+      break;
+    }
+
+    const action = await executeCommand({
+      userId: input.userId,
+      project: input.project,
+      command,
+      todayDate: input.todayDate,
+    });
+
+    if (command.kind === "finish") {
+      finalAction = action;
+      break;
+    }
+
+    const step = {
+      id: randomUUID(),
+      commandKind: command.kind,
+      title: getAtomicActionTitle(action),
+      action,
+    };
+    steps.push(step);
+
+    if (shouldStopAfterExecutedCommand(command)) {
+      finalAction = agentResponseAction({
+        message: terminalMessageForAction(action),
+      });
+      break;
+    }
+
+    observations.push({
+      step: stepIndex + 1,
+      command,
+      result: summarizeAtomicActionForModel(action),
+    });
+
+    if (command.kind === "unsupported") {
+      finalAction = action;
+      break;
+    }
+  }
+
+  if (steps.length === 0) {
+    return {
+      action: finalAction ?? unsupportedAction("The workspace agent stopped before it could use a workspace capability."),
+      llmMetadata,
+    };
+  }
+
+  return {
+    action: {
+      type: "agent_workflow",
+      summary: finalAction?.type === "agent_response"
+        ? finalAction.message
+        : finalAction?.type === "unsupported"
+          ? finalAction.reason
+          : "Done.",
+      uiActions: collectWorkflowUiActions(steps, finalAction ?? undefined),
+      steps,
+    } satisfies WorkspaceAgentAction,
+    llmMetadata,
+  };
 }
 
 export async function getWorkspaceAgentThread(input: {
@@ -777,6 +1061,7 @@ export async function getWorkspaceAgentThread(input: {
     thread: toThreadDTO(thread),
     messages,
     latestAction: findLatestAction(messages),
+    llmConfigured: isWorkspaceAgentLlmConfigured(),
   };
 }
 
@@ -794,17 +1079,15 @@ export async function submitWorkspaceAgentMessage(input: {
   const timeZone = normalizeTimeZone(input.timeZone);
   const todayDate = formatLocalDateKey(new Date(), timeZone);
   const prompt = promptSchema.parse(input.prompt);
-  const command = parseWorkspaceAgentPrompt({
+  const workflow = await runWorkspaceAgentWorkflow({
+    userId: input.userId,
+    threadId: thread.id,
+    project,
     prompt,
     todayDate,
     currentView: input.currentView,
   });
-  const action = await executeCommand({
-    userId: input.userId,
-    project,
-    command,
-    todayDate,
-  });
+  const action = workflow.action;
   const now = new Date().toISOString();
 
   sqlite.transaction(() => {
@@ -816,7 +1099,8 @@ export async function submitWorkspaceAgentMessage(input: {
       structuredPayload: {
         type: "workspace_agent_prompt",
         prompt,
-        command,
+        source: "orchestrator",
+        llm: workflow.llmMetadata,
       },
       now,
     });
@@ -828,6 +1112,8 @@ export async function submitWorkspaceAgentMessage(input: {
       structuredPayload: {
         type: "workspace_agent_action",
         action,
+        source: "orchestrator",
+        llm: workflow.llmMetadata,
       },
       now,
     });
@@ -839,5 +1125,6 @@ export async function submitWorkspaceAgentMessage(input: {
     thread: toThreadDTO(thread),
     messages,
     latestAction: action,
+    llmConfigured: isWorkspaceAgentLlmConfigured(),
   };
 }

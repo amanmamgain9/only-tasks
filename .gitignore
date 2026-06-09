@@ -11,3 +11,4 @@ scripts/demo/frames/
 scripts/demo/.demo-auth.json
 scripts/demo/.server-state.json
 scripts/demo/chrome-profile/
+.product-quality-loop/

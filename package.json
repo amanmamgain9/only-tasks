@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "test:sdlc": "node scripts/sdlc-check.mjs",
     "migrate:legacy": "node scripts/migrate-legacy-data.mjs"
   },
   "dependencies": {

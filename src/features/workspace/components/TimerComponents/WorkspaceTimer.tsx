@@ -721,21 +721,41 @@ function CompactTimerDisplay({
   );
 }
 
-export default function WorkspaceTimer({ regionOrder }: { regionOrder: number }) {
+export default function WorkspaceTimer({
+  regionOrder = 0,
+  embedded = false,
+  regionId = "timer-region",
+  mode = "compact",
+}: {
+  regionOrder?: number;
+  embedded?: boolean;
+  regionId?: string;
+  mode?: "compact" | "full";
+}) {
   const timer = useWorkspaceTimerViewModel();
   const [focusOpen, setFocusOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [variant, setVariant] = useState<"inline" | "detailed">("inline");
+  const preferredVariant = mode === "full" ? "detailed" : "inline";
+  const [variant, setVariant] = useState<"inline" | "detailed">(preferredVariant);
+
+  useEffect(() => {
+    setVariant(preferredVariant);
+  }, [preferredVariant]);
 
   return (
     <>
       <section
-        data-region
-        id="timer-region"
+        data-region={embedded ? undefined : true}
+        id={regionId}
         data-order={regionOrder}
-        className="sticky top-0 z-20 border-b border-border/20 bg-background/90 shadow-sm backdrop-blur-xl"
+        className={embedded
+          ? "rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/80"
+          : "sticky top-0 z-20 border-b border-border/20 bg-background/90 shadow-sm backdrop-blur-xl"}
       >
-        <div className={`mx-auto max-w-7xl px-3 sm:px-6 md:px-8 ${variant === "detailed" ? "py-4" : "py-3"}`}>
+        <div className={embedded
+          ? ""
+          : `mx-auto max-w-7xl px-3 sm:px-6 md:px-8 ${variant === "detailed" ? "py-4" : "py-3"}`}
+        >
           <div data-layout="horizontal" className="flex items-center justify-center gap-2 sm:gap-3">
             <CompactTimerDisplay
               timer={timer}

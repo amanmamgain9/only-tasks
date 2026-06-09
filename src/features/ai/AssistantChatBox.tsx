@@ -23,6 +23,10 @@ export type AssistantChatBoxProps = {
   order?: string | number;
   emptyState?: React.ReactNode;
   footer?: React.ReactNode;
+  liveContent?: React.ReactNode;
+  className?: string;
+  messagesClassName?: string;
+  canSubmitOverride?: boolean;
 };
 
 function getAssistantBubbleTone(tone: AssistantChatMessage["tone"]) {
@@ -50,9 +54,13 @@ function AssistantChatBoxComponent({
   order = "1",
   emptyState,
   footer,
+  liveContent,
+  className = "space-y-3",
+  messagesClassName,
+  canSubmitOverride = true,
 }: AssistantChatBoxProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const canSubmit = value.trim().length > 0 && !isBusy && !disabled;
+  const canSubmit = canSubmitOverride && value.trim().length > 0 && !isBusy && !disabled;
   const hasMessages = messages.length > 0;
 
   useEffect(() => {
@@ -61,9 +69,9 @@ function AssistantChatBoxComponent({
 
   const submitCurrentValue = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed || isBusy || disabled) return;
+    if (!trimmed || isBusy || disabled || !canSubmitOverride) return;
     onSubmit(trimmed);
-  }, [disabled, isBusy, onSubmit, value]);
+  }, [canSubmitOverride, disabled, isBusy, onSubmit, value]);
 
   const handleSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -86,9 +94,9 @@ function AssistantChatBoxComponent({
     <div
       data-layout="vertical"
       data-order={order.toString()}
-      className="space-y-3"
+      className={className}
     >
-      <div data-order="0" className={hasMessages ? "max-h-72 overflow-y-auto px-1 py-1" : "px-2 py-8"}>
+      <div data-order="0" data-layout="vertical" className={messagesClassName ?? (hasMessages ? "max-h-[56vh] overflow-y-auto px-1 py-1" : "px-2 py-10")}>
         {hasMessages ? (
           <div className="space-y-3">
             {messages.map((message) => {
@@ -109,11 +117,16 @@ function AssistantChatBoxComponent({
             })}
           </div>
         ) : (
-          <div className="flex min-h-28 items-center justify-center text-center text-xl font-medium text-slate-950 dark:text-slate-100">
+          <div className="flex min-h-40 items-center justify-center text-center text-xl font-medium text-slate-950 dark:text-slate-100">
             {emptyState}
           </div>
         )}
         <div ref={messagesEndRef} />
+        {liveContent ? (
+          <div data-order="1" data-layout="vertical" className={hasMessages ? "mt-4" : "mt-6"}>
+            {liveContent}
+          </div>
+        ) : null}
       </div>
 
       {suggestions.length > 0 ? (
@@ -139,7 +152,7 @@ function AssistantChatBoxComponent({
         data-order="2"
         data-layout="horizontal"
         onSubmit={handleSubmit}
-        className={`flex items-end border border-slate-300 bg-white p-2 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-900 ${
+        className={`sticky bottom-3 z-20 flex items-end border border-slate-300 bg-white p-2 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-900 ${
           hasMessages ? "rounded-2xl" : "rounded-full"
         }`}
       >

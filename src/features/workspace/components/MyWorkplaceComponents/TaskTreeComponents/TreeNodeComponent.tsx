@@ -287,6 +287,8 @@ const TreeNodeComponent: React.FC<TreeNodeProps> = ({
           }`}
         style={indentationStyle}
         data-node-id={node.id}
+        data-parent-node-id={node.parentPath[node.parentPath.length - 1] ?? 'root'}
+        data-is-ephemeral={node.isEphemeral ? 'true' : undefined}
         data-node-type={node.nodeType}
         data-task-id={node.taskId}
         data-layout="horizontal"

@@ -55,9 +55,47 @@ export type WorkspaceUiAction =
       type: "focus_task";
       clientId: string;
       reason: string;
+    }
+  | {
+      type: "show_block";
+      block: WorkspaceUiBlock;
+      reason: string;
     };
 
-export type WorkspaceAgentAction =
+export type WorkspaceUiBlock =
+  | {
+      type: "task_tree";
+      id?: string;
+      title?: string;
+      view: "all" | "today" | "tomorrow" | "this_week";
+      focusTaskId?: string;
+    }
+  | {
+      type: "timer";
+      id?: string;
+      title?: string;
+      mode: "compact" | "full";
+      taskClientId?: string;
+    }
+  | {
+      type: "day_review";
+      id?: string;
+      title?: string;
+      mode: "compact" | "full";
+    }
+  | {
+      type: "progress";
+      id?: string;
+      title?: string;
+      range: "daily" | "weekly";
+    }
+  | {
+      type: "daily_targets";
+      id?: string;
+      title?: string;
+    };
+
+export type WorkspaceAgentAtomicAction =
   | {
       type: "tasks_created";
       createdCount: number;
@@ -87,10 +125,30 @@ export type WorkspaceAgentAction =
       reason: string;
       uiActions: WorkspaceUiAction[];
       suggestions: string[];
+    }
+  | {
+      type: "agent_response";
+      message: string;
+      uiActions: WorkspaceUiAction[];
+    };
+
+export type WorkspaceAgentAction =
+  | WorkspaceAgentAtomicAction
+  | {
+      type: "agent_workflow";
+      summary: string;
+      uiActions: WorkspaceUiAction[];
+      steps: Array<{
+        id: string;
+        commandKind: string;
+        title: string;
+        action: WorkspaceAgentAtomicAction;
+      }>;
     };
 
 export type WorkspaceAgentThread = {
   thread: AssistantThread;
   messages: AssistantStoredMessage[];
   latestAction: WorkspaceAgentAction | null;
+  llmConfigured: boolean;
 };

@@ -50,7 +50,7 @@ function ReviewSkeleton() {
   );
 }
 
-function ReviewView() {
+export function ReviewView() {
   const timeZone = getBrowserTimeZone();
   const navigate = useNavigate();
   const reviewQuery = useTodayTimeReview(timeZone);

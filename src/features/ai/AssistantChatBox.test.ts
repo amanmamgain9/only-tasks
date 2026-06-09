@@ -100,7 +100,7 @@ describe("AssistantChatBox", () => {
 
     expect(container.textContent).toContain("Ready when you are.");
     expect(container.querySelector("textarea")?.placeholder).toBe("");
-    expect(container.querySelector('[data-order="0"]')?.className).toContain("py-8");
+    expect(container.querySelector('[data-order="0"]')?.className).toContain("py-10");
   });
 
   test("uses chat history layout after messages exist", () => {
@@ -162,6 +162,24 @@ describe("AssistantChatBox", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  test("blocks Enter submissions when submit override is disabled", () => {
+    const onSubmit = vi.fn();
+    const { container } = render(React.createElement(AssistantChatBox, {
+      messages,
+      value: "Show today",
+      onValueChange: () => undefined,
+      onSubmit,
+      canSubmitOverride: false,
+    }));
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    const submit = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+    expect(submit.disabled).toBe(true);
+    pressComposerKey(textarea, "Enter");
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   test("exposes stable keyboard layout metadata for modal scopes", () => {
     const onSubmit = vi.fn();
     const footer = React.createElement("button", { type: "button", "data-focusable": true }, "Save");
@@ -176,7 +194,7 @@ describe("AssistantChatBox", () => {
 
     expect(container.querySelector('[data-layout="vertical"][data-order="1"]')).not.toBeNull();
     expect(container.querySelector('[data-layout="horizontal"][data-order="1"]')).not.toBeNull();
-    expect(container.querySelector('form[data-layout="horizontal"][data-order="2"]')).not.toBeNull();
+    expect(container.querySelector('form[data-layout="horizontal"][data-order="2"]')?.className).toContain("sticky");
     expect(container.querySelector('textarea[data-entrypoint-focus][data-focusable]')).not.toBeNull();
     expect(container.querySelector('[data-layout="vertical"][data-order="3"]')?.textContent).toContain("Save");
   });

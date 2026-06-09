@@ -157,7 +157,6 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     [currentRootTaskId, projectData, tasks],
   );
   const hasBreadcrumbs = breadcrumbs.length > 1;
-  const nodesContainerIndex = hasBreadcrumbs ? 1 : 0;
   const showImportAction = false;
 
   const escapeAttributeValue = useCallback((value: string) => (
@@ -166,12 +165,14 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
       : value.replace(/["\\]/g, '\\$&')
   ), []);
 
-  const focusNodeAction = useCallback((nodeIndex: number, actionIndex: number, shouldScroll = true) => {
-    NavigationService.focusByPath({
+  const focusTreeSelector = useCallback((selector: string, shouldScroll = true) => {
+    const target = {
       regionId: 'workspace-region',
-      path: [0, 0, 2, nodesContainerIndex, nodeIndex, actionIndex],
-    }, shouldScroll);
-  }, [nodesContainerIndex]);
+      selector,
+    };
+    NavigationService.focusBySelector(target, false);
+    if (shouldScroll) NavigationService.focusBySelector(target, true);
+  }, []);
 
   const handleToggleExpansion = useCallback((node: VisibleNode) => {
     if (node.nodeType === 'task') toggleExpansion({ clientId: node.id });
@@ -267,8 +268,13 @@ function useTreeMainController({ project, dueDateFilter, chatId }: Props) {
     if (parentType !== 'project' && parentType !== 'task') return;
 
     addChildAction({ parentClientId: parentNode.id, parentType });
-    focusNodeAction(parentNodeIndex + 1, 1);
-  }, [addChildAction, focusNodeAction, visibleNodes]);
+    const parentSelector = parentNode.id.startsWith('project-')
+      ? '[data-parent-node-id="root"]'
+      : `[data-parent-node-id="${escapeAttributeValue(parentNode.id)}"]`;
+    focusTreeSelector(
+      `[data-node-id][data-is-ephemeral="true"]${parentSelector} [data-entrypoint-focus]`,
+    );
+  }, [addChildAction, escapeAttributeValue, focusTreeSelector, visibleNodes]);
 
   const handleCommitTasks = useCallback(async (importedTasks: PendingImportTask[]) => {
     const parentClientId = currentRootTaskId || `project-${projectData.id}`;

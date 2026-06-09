@@ -4,9 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import MyWorkplaceComponent from "./MyWorkplaceComponents/MyWorkplaceComponent";
-import ProgressWorkspaceComponent from "./ProgressComponents/ProgressWorkspaceComponent";
 import DayRecapWorkspaceComponent from "./ReviewComponents/DayRecapWorkspaceComponent";
-import ReviewWorkspaceComponent from "./ReviewComponents/ReviewWorkspaceComponent";
 import { NavigationService } from "../_services/navigationService";
 import { TASK_OPERATIONS_SAVED_EVENT, type TaskOperationsSavedDetail } from "../_events/taskOperationEvents";
 import { progressSummaryKey } from "../_hooks/useProgressSummary";
@@ -76,16 +74,16 @@ export default function WorkspaceApp({ viewer }: WorkspaceAppProps) {
         <Routes>
           <Route path="/" element={<MyWorkplaceComponent regionOrder={1} viewer={viewer} />} />
           <Route path="/workspace" element={<MyWorkplaceComponent regionOrder={1} viewer={viewer} />} />
-          <Route path="/workspace/all-tasks" element={<MyWorkplaceComponent regionOrder={1} viewer={viewer} />} />
-          <Route path="/workspace/today" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="today" viewer={viewer} />} />
-          <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" viewer={viewer} />} />
-          <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" viewer={viewer} />} />
-          <Route path="/workspace/day-review" element={<ReviewWorkspaceComponent regionOrder={1} viewer={viewer} />} />
+          <Route path="/workspace/all-tasks" element={<MyWorkplaceComponent regionOrder={1} surface="all-tasks" viewer={viewer} />} />
+          <Route path="/workspace/today" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="today" surface="tasks" viewer={viewer} />} />
+          <Route path="/workspace/tomorrow" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="tomorrow" surface="tasks" viewer={viewer} />} />
+          <Route path="/workspace/this-week" element={<MyWorkplaceComponent regionOrder={1} dueDateFilter="this-week" surface="tasks" viewer={viewer} />} />
+          <Route path="/workspace/day-review" element={<MyWorkplaceComponent regionOrder={1} surface="day-review" viewer={viewer} />} />
           <Route path="/workspace/day-recap" element={<DayRecapWorkspaceComponent regionOrder={1} viewer={viewer} />} />
           <Route path="/workspace/day-review/complete" element={<DayRecapWorkspaceComponent regionOrder={1} viewer={viewer} />} />
-          <Route path="/workspace/review" element={<ReviewWorkspaceComponent regionOrder={1} viewer={viewer} />} />
-          <Route path="/review/today" element={<ReviewWorkspaceComponent regionOrder={1} viewer={viewer} />} />
-          <Route path="/workspace/progress" element={<ProgressWorkspaceComponent regionOrder={1} viewer={viewer} />} />
+          <Route path="/workspace/review" element={<MyWorkplaceComponent regionOrder={1} surface="day-review" viewer={viewer} />} />
+          <Route path="/review/today" element={<MyWorkplaceComponent regionOrder={1} surface="day-review" viewer={viewer} />} />
+          <Route path="/workspace/progress" element={<MyWorkplaceComponent regionOrder={1} surface="progress" viewer={viewer} />} />
           <Route path="*" element={<MyWorkplaceComponent regionOrder={1} viewer={viewer} />} />
         </Routes>
       </BrowserRouter>
