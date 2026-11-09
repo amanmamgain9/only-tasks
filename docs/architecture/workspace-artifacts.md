@@ -133,4 +133,3 @@ The story has automated coverage for the architecture boundaries:
 - `WorkspaceAgentPanel.test.tsx` covers no default artifact, route-owned artifacts, close focus return, native focus preference, Today without Daily Targets, default shortcuts narrowed to Today/Timer, and expanded-mode reversibility.
 - `workspaceArtifacts.test.ts` covers artifact identity, deduping, stale companion-block replacement, timer singleton behavior, and pinned persistence.
 - `workspaceAgentDeterministic.test.ts` covers deterministic Today/Timer command parsing and verifies mutation/other-route prompts are not hijacked.
-- `scripts/sdlc-check.mjs` runs TypeScript, unit tests, and browser smoke for the chat-first shell and artifact interactions.

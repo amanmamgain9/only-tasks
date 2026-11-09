@@ -16,4 +16,4 @@ node scripts/demo/capture-real-app-demo.mjs
 node scripts/demo/encode-pmwd-demo.mjs
 ```
 
-The capture script needs the local app running and needs headless Chrome. If sandbox restrictions block Chrome, run it with the same elevated permission flow used by Codex.
+The capture script needs the local app running and headless Chrome.

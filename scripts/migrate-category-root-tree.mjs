@@ -6,7 +6,7 @@ import { generateKeyBetween } from "fractional-indexing";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = process.env.DATABASE_URL || path.join(projectRoot, "data", "app.db");
-const targetEmails = (process.env.PMWD_CATEGORY_TREE_USERS || "amanmamgain9@gmail.com,demo@planmyworkday.dev")
+const targetEmails = (process.env.PMWD_CATEGORY_TREE_USERS || "demo@planmyworkday.dev")
   .split(",")
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
